@@ -71,6 +71,7 @@ export function CheckoutStepper({
   const grouped = useMemo(() => {
     const groups: Record<string, PaymentMethod[]> = {};
     for (const m of methods) {
+      if (m.provider === 'xendit') continue; // Hide Xendit for now
       groups[m.provider] = groups[m.provider] ?? [];
       groups[m.provider].push(m);
     }

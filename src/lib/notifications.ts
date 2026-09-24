@@ -111,7 +111,7 @@ export async function notifyPaymentSuccess(orderId: number) {
     const formatter = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" });
     const formattedTotal = formatter.format(Number(order.totalAmount));
 
-    const waMessage = `Hi ${user.name}! Access to ${course.title} is now active. Click: https://fluencyhub.id/dashboard`;
+    const waMessage = `*FluencyHub - Pembayaran Berhasil!* 🎉\n\nHalo *${user.name}*, pembayaran kamu untuk kelas *${course.title}* sebesar *${formattedTotal}* telah berhasil diverifikasi.\n\nSilakan login ke *Dashboard* kamu dan mulai belajar sekarang:\n👉 https://fluencyhub.id/dashboard\n\nSemoga lancar belajarnya brok! 🔥`;
 
     // 2. Siapkan Pesan Email (HTML)
     const emailSubject = `✅ Payment Confirmed — Access to ${course.title} is Now Active!`;
@@ -131,7 +131,7 @@ export async function notifyPaymentSuccess(orderId: number) {
         </table>
         
         <p>Access your course now:<br>
-        👉 <a href="https://fluencyhub.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://fluencyhub.id/dashboard</a></p>
+        👉 <a href="https://fluencyhub-theta.vercel.app/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://fluencyhub.id/dashboard</a></p>
         
         <p style="margin-top: 30px;">Happy learning!<br>The FluencyHub Team</p>
       </div>
@@ -155,5 +155,67 @@ export async function notifyPaymentSuccess(orderId: number) {
 
   } catch (error) {
     console.error("[Notifications] Error saat memproses notifikasi:", error);
+  }
+}
+
+/**
+ * Fungsi yang dipanggil saat admin menolak bukti pembayaran manual.
+ */
+export async function notifyPaymentRejected(orderId: number, note: string) {
+  try {
+    const order = await getOrderById(orderId);
+    if (!order) return;
+
+    const [user, course] = await Promise.all([
+      getUserById(order.userId),
+      getCourseById(order.courseId)
+    ]);
+
+    if (!user || !course) return;
+
+    // 1. Siapkan Pesan WhatsApp
+    const waMessage = `*FluencyHub - Pembayaran Ditolak* ❌\n\nHalo *${user.name}*, mohon maaf bukti transfer kamu untuk kelas *${course.title}* telah ditolak oleh Admin.\n\n*Alasan penolakan:*\n"${note || 'Bukti transfer tidak valid/kurang jelas.'}"\n\nSilakan upload ulang bukti pembayaran yang benar melalui halaman:\n👉 https://fluencyhub.id/dashboard\n\nJika ada pertanyaan, silakan balas pesan ini.`;
+
+    // 2. Siapkan Pesan Email (HTML)
+    const emailSubject = `❌ Payment Rejected — Please re-upload your payment proof`;
+    const emailHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <p>Hi ${user.name},</p>
+        <p>We are sorry, but your manual payment proof for the following course has been rejected:</p>
+        
+        <table style="margin-bottom: 20px;">
+          <tr><td style="padding-right: 10px;">📚 <strong>Course</strong></td><td>: ${course.title}</td></tr>
+          <tr><td style="padding-right: 10px;">🔖 <strong>Order ID</strong></td><td>: ${order.orderNumber}</td></tr>
+        </table>
+
+        <div style="background: #FFF0F0; padding: 15px; border-left: 4px solid #EF4444; margin-bottom: 20px;">
+          <strong>Reason for rejection:</strong><br>
+          ${note || 'Invalid payment proof.'}
+        </div>
+        
+        <p>Please re-upload a clear and valid payment proof to continue accessing your course:<br>
+        👉 <a href="https://fluencyhub-theta.vercel.app/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://fluencyhub.id/dashboard</a></p>
+        
+        <p style="margin-top: 30px;">Thank you,<br>The FluencyHub Team</p>
+      </div>
+    `;
+
+    // 3. Kirim secara paralel
+    const promises = [];
+    
+    if (user.whatsappNumber) {
+      let targetPhone = user.whatsappNumber.replace(/[^0-9]/g, "");
+      if (targetPhone.startsWith("0")) targetPhone = "62" + targetPhone.slice(1);
+      else if (targetPhone.startsWith("8")) targetPhone = "62" + targetPhone;
+      
+      promises.push(sendFonnteWhatsApp(targetPhone, waMessage));
+    }
+    
+    promises.push(sendResendEmail(user.email, emailSubject, emailHtml));
+
+    await Promise.allSettled(promises);
+
+  } catch (error) {
+    console.error("[Notifications] Error saat memproses notifikasi rejection:", error);
   }
 }

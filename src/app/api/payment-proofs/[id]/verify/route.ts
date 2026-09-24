@@ -4,6 +4,8 @@ import { getOrderById, updateOrderStatus } from "@/lib/db/orders.queries";
 import { getPaymentProofById, updatePaymentProofStatus } from "@/lib/db/payment-proofs.queries";
 import { approveManualOrder } from "@/lib/orders";
 import { auth } from "@/lib/session";
+import { notifyPaymentRejected } from "@/lib/notifications";
+import { createAuditLog } from "@/lib/db/audit-logs.queries";
 
 const Schema = z.object({
   action: z.enum(["approve", "reject"]),
@@ -27,9 +29,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (parsed.data.action === "reject") {
     await updatePaymentProofStatus(proof.id, "rejected", Number(session.user.id), parsed.data.note);
     await updateOrderStatus(order.id, "pending", { notes: parsed.data.note ?? null });
+    
+    // Kirim notifikasi penolakan (WA & Email)
+    await notifyPaymentRejected(order.id, parsed.data.note ?? "");
+
+    await createAuditLog({
+      adminId: Number(session.user.id),
+      action: "REJECT_PAYMENT_PROOF",
+      entityType: "payment_proof",
+      entityId: proof.id,
+      newValueJson: { status: "rejected", note: parsed.data.note },
+      ipAddress: req.headers.get("x-forwarded-for") ?? undefined,
+      userAgent: req.headers.get("user-agent") ?? undefined,
+    }).catch(console.error);
+    
     return NextResponse.json({ data: { status: "rejected" } });
   }
 
   const paid = await approveManualOrder(order.id, Number(session.user.id));
+  
+  await createAuditLog({
+    adminId: Number(session.user.id),
+    action: "APPROVE_PAYMENT_PROOF",
+    entityType: "payment_proof",
+    entityId: proof.id,
+    newValueJson: { status: "approved" },
+    ipAddress: req.headers.get("x-forwarded-for") ?? undefined,
+    userAgent: req.headers.get("user-agent") ?? undefined,
+  }).catch(console.error);
+  
   return NextResponse.json({ data: { status: "approved", order: paid } });
 }
