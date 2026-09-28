@@ -64,6 +64,19 @@ export async function POST(req: Request) {
   if (couponCode) {
     const coupon = await getCouponByCode(couponCode);
     if (coupon) {
+      if (coupon.applicableCourseId && coupon.applicableCourseId !== courseId) {
+        return NextResponse.json({ error: "Kupon tidak berlaku untuk kelas ini" }, { status: 400 });
+      }
+      const now = new Date();
+      if (coupon.validFrom && now < coupon.validFrom) {
+        return NextResponse.json({ error: "Kupon belum aktif" }, { status: 400 });
+      }
+      if (coupon.validUntil && now > coupon.validUntil) {
+        return NextResponse.json({ error: "Kupon kedaluwarsa" }, { status: 400 });
+      }
+      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
+        return NextResponse.json({ error: "Kupon habis" }, { status: 400 });
+      }
       if (coupon.discountType === "percentage") {
         discount = Math.round((subtotal * Number(coupon.discountValue)) / 100);
       } else {

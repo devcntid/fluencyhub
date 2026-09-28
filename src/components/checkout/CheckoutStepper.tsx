@@ -78,6 +78,30 @@ export function CheckoutStepper({
     return groups;
   }, [methods]);
 
+  useEffect(() => {
+    if (step !== 6 || !orderId || (method?.type === 'manual_transfer' || method?.provider === 'manual')) {
+      return;
+    }
+    
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/orders/${orderId}/status`);
+        if (!res.ok) return;
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const json = await res.json();
+          if (json.data?.status === "paid") {
+            window.location.href = `/checkout/success?orderNumber=${orderNumber}`;
+          }
+        }
+      } catch (err) {
+        // Ignore network errors during polling
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [step, orderId, method, orderNumber]);
+
   async function applyCoupon() {
     setError("");
     const res = await fetch("/api/coupons/validate", {
@@ -127,6 +151,12 @@ export function CheckoutStepper({
           couponCode: coupon || undefined,
         }),
       });
+      const createContentType = create.headers.get("content-type");
+      if (createContentType && createContentType.indexOf("application/json") === -1) {
+        const text = await create.text();
+        console.error("API /orders HTML Error:", text);
+        throw new Error("Sistem gagal membuat order (HTML response). Cek console.");
+      }
       const created = await create.json();
       if (!create.ok) throw new Error(created.error ?? "Failed to create order");
       const id = created.data.id as number;
@@ -134,6 +164,12 @@ export function CheckoutStepper({
       setOrderNumber(created.data.orderNumber);
 
       const payRes = await fetch(`/api/orders/${id}/pay`, { method: "POST" });
+      const payContentType = payRes.headers.get("content-type");
+      if (payContentType && payContentType.indexOf("application/json") === -1) {
+        const text = await payRes.text();
+        console.error("API /pay HTML Error:", text);
+        throw new Error("Sistem mengembalikan format yang tidak valid (HTML). Cek console.");
+      }
       const paid = await payRes.json();
       if (!payRes.ok) throw new Error(paid.error ?? "Payment failed");
 
@@ -551,6 +587,19 @@ export function CheckoutStepper({
           </div>
         </aside>
       </div>
+
+      {busy && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm px-4 text-white">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 mb-4 animate-pulse">
+            <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <h3 className="font-heading text-lg font-bold">Memproses Pembayaran...</h3>
+          <p className="mt-1 text-sm text-white/70 text-center">Mohon tunggu sebentar, jangan tutup atau refresh halaman ini</p>
+        </div>
+      )}
 
       {snapToken ? (
         <SnapModal

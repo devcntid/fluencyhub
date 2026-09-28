@@ -2,9 +2,9 @@ import { getOrderById } from "./db/orders.queries";
 import { getUserById } from "./db/users.queries";
 import { getCourseById } from "./db/courses.queries";
 import { getPaymentMethodById } from "./db/payment-methods.queries";
+import { sendEmail } from "./email";
 
 const FONNTE_API_URL = "https://api.fonnte.com/send";
-const RESEND_API_URL = "https://api.resend.com/emails";
 
 /**
  * Mengirim pesan WhatsApp menggunakan API Fonnte.
@@ -45,44 +45,6 @@ export async function sendFonnteWhatsApp(targetPhone: string, message: string) {
   }
 }
 
-/**
- * Mengirim Email menggunakan API Resend.
- */
-export async function sendResendEmail(toEmail: string, subject: string, htmlContent: string) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.warn("[Notifications] RESEND_API_KEY tidak ditemukan di environment.");
-    return false;
-  }
-
-  try {
-    const response = await fetch(RESEND_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "FluencyHub <onboarding@resend.dev>", // Ganti dengan domain asli jika sudah punya
-        to: toEmail,
-        subject: subject,
-        html: htmlContent,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("[Notifications] Resend Error:", errorData);
-      return false;
-    }
-
-    console.log(`[Notifications] Email berhasil dikirim ke ${toEmail}`);
-    return true;
-  } catch (error) {
-    console.error("[Notifications] Gagal memanggil API Resend:", error);
-    return false;
-  }
-}
 
 /**
  * Fungsi utama yang dipanggil saat pembayaran lunas.
@@ -149,7 +111,7 @@ export async function notifyPaymentSuccess(orderId: number) {
       promises.push(sendFonnteWhatsApp(targetPhone, waMessage));
     }
     
-    promises.push(sendResendEmail(user.email, emailSubject, emailHtml));
+    promises.push(sendEmail({ to: user.email, subject: emailSubject, html: emailHtml }));
 
     await Promise.allSettled(promises);
 
@@ -211,7 +173,7 @@ export async function notifyPaymentRejected(orderId: number, note: string) {
       promises.push(sendFonnteWhatsApp(targetPhone, waMessage));
     }
     
-    promises.push(sendResendEmail(user.email, emailSubject, emailHtml));
+    promises.push(sendEmail({ to: user.email, subject: emailSubject, html: emailHtml }));
 
     await Promise.allSettled(promises);
 
