@@ -39,7 +39,6 @@ export function DashboardChrome({
     { id: "videos", icon: "Play", label: "Videos", href: "/dashboard/videos" },
     { id: "live", icon: "Video", label: "Live", href: "/dashboard/live" },
     { id: "resources", icon: "BookOpen", label: "Resources", href: "/dashboard/resources" },
-    { id: "home", icon: "Home", label: "Halaman Utama", href: "/" },
   ];
 
   return (

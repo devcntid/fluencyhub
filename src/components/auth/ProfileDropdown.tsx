@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 export function ProfileDropdown({
   user,
@@ -15,6 +16,7 @@ export function ProfileDropdown({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   console.log("ProfileDropdown rendered with hasDashboardAccess:", hasDashboardAccess, "for user:", user.name, "role:", user.role);
 
@@ -56,6 +58,15 @@ export function ProfileDropdown({
                 className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
               >
                 Dashboard
+              </Link>
+            )}
+            {pathname !== "/" && (
+              <Link
+                href="/"
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+              >
+                Halaman Utama
               </Link>
             )}
             <Link
