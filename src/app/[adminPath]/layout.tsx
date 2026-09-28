@@ -4,6 +4,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { TopbarSignOut } from "@/components/layout/TopbarSignOut";
 import { getAdminPath } from "@/lib/auth";
 import { auth } from "@/lib/session";
+import { getUserById } from "@/lib/db/users.queries";
 
 export default async function AdminLayout({
   children,
@@ -16,6 +17,12 @@ export default async function AdminLayout({
   const expected = getAdminPath();
   if (adminPath !== expected) notFound();
   const session = await auth();
+  
+  let dbUser = null;
+  if (session?.user?.id) {
+    dbUser = await getUserById(Number(session.user.id));
+  }
+
   const base = `/${expected}`;
   const groups = [
     {
@@ -53,9 +60,9 @@ export default async function AdminLayout({
     <div className="dash-shell">
       <AdminSidebar
         base={base}
-        name={session?.user.name ?? "Admin"}
-        email={session?.user.email ?? ""}
-        avatarUrl={session?.user.image ?? null}
+        name={dbUser?.name ?? session?.user?.name ?? "Admin"}
+        email={dbUser?.email ?? session?.user?.email ?? ""}
+        avatarUrl={dbUser?.avatarUrl ?? session?.user?.image ?? null}
         groups={groups}
       />
       <div className="dash-main">

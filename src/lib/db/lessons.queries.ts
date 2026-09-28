@@ -211,6 +211,7 @@ export type UpcomingLiveClass = {
   liveClassDatetime: Date | null;
   liveClassUrl: string | null;
   moduleName: string;
+  courseTitle: string;
   coachName: string;
   coachAvatar: string;
 };
@@ -223,6 +224,7 @@ export async function listUpcomingLiveClasses(userId: number): Promise<UpcomingL
       l.live_class_datetime,
       l.live_class_url,
       s.title as module_name,
+      c.title as course_title,
       u.name as coach_name,
       u.avatar_url as coach_avatar
     FROM lessons l
@@ -243,6 +245,7 @@ export async function listUpcomingLiveClasses(userId: number): Promise<UpcomingL
       liveClassDatetime: raw.live_class_datetime ? new Date(String(raw.live_class_datetime)) : null,
       liveClassUrl: raw.live_class_url ? String(raw.live_class_url) : null,
       moduleName: String(raw.module_name),
+      courseTitle: String(raw.course_title),
       coachName: String(raw.coach_name),
       coachAvatar: raw.coach_avatar ? String(raw.coach_avatar) : "https://i.pravatar.cc/150?u=" + String(raw.coach_name),
     };

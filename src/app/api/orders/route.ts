@@ -6,6 +6,9 @@ import { checkEnrollment } from "@/lib/db/enrollments.queries";
 import { cancelOrder, createOrder, getActiveOrderForUserCourse } from "@/lib/db/orders.queries";
 import { getPaymentMethodById } from "@/lib/db/payment-methods.queries";
 import { createPaymentLog } from "@/lib/db/payment-logs.queries";
+import { createNotificationLog } from "@/lib/db/notification-logs.queries";
+import { getActiveTemplate } from "@/lib/db/notification-templates.queries";
+import { getUserById } from "@/lib/db/users.queries";
 import { generateOrderNumber } from "@/lib/orders";
 import { paymentRatelimit } from "@/lib/redis";
 import { auth } from "@/lib/session";
@@ -90,5 +93,30 @@ export async function POST(req: Request) {
     requestPayload: JSON.stringify(parsed.data),
     httpStatus: 201,
   });
+
+  const user = await getUserById(userId);
+  if (user) {
+    const template = await getActiveTemplate("MANUAL_TRANSFER_PENDING", "WHATSAPP");
+
+    await createNotificationLog({
+      templateId: template?.id ?? null,
+      orderNumber: order.orderNumber,
+      userId: userId,
+      recipient: user.email,
+      channel: "WHATSAPP",
+      requestPayload: JSON.stringify({
+        event: "checkout",
+        orderNumber: order.orderNumber,
+        courseId: courseId,
+        totalAmount: total.toFixed(2)
+      }),
+      responsePayload: JSON.stringify({
+        message: "Notification successfully queued for delivery",
+        queuedAt: new Date().toISOString()
+      }),
+      status: "QUEUED"
+    });
+  }
+
   return NextResponse.json({ data: order }, { status: 201 });
 }

@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@types/nodemailer": "^8.0.2",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.4",
     "@vercel/blob": "^2.8.0",
@@ -24,6 +25,7 @@
     "midtrans-client": "^1.4.3",
     "next": "16.3.4",
     "next-auth": "^4.24.15",
+    "nodemailer": "^7.0.13",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",

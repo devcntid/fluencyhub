@@ -9,6 +9,8 @@ import type {
   PaymentProof,
   Section,
   User,
+  NotificationLog,
+  NotificationTemplate,
 } from "@/types/db";
 import { asDate, asDateOrNull, asNum } from "./client";
 
@@ -206,5 +208,35 @@ export function mapPaymentProof(row: Row): PaymentProof {
     verifiedAt: asDateOrNull(row.verified_at),
     rejectionNote: (row.rejection_note as string) ?? null,
     uploadedAt: asDate(row.uploaded_at),
+  };
+}
+
+export function mapNotificationLog(row: Row): NotificationLog {
+  return {
+    id: asNum(row.id),
+    templateId: row.template_id == null ? null : asNum(row.template_id),
+    orderNumber: (row.order_number as string) ?? null,
+    userId: row.user_id == null ? null : asNum(row.user_id),
+    lessonId: row.lesson_id == null ? null : asNum(row.lesson_id),
+    recipient: String(row.recipient),
+    channel: String(row.channel),
+    requestPayload: (row.request_payload as string) ?? null,
+    responsePayload: (row.response_payload as string) ?? null,
+    status: String(row.status),
+    errorMessage: (row.error_message as string) ?? null,
+    createdAt: asDate(row.created_at),
+    sentAt: asDateOrNull(row.sent_at),
+  };
+}
+
+export function mapNotificationTemplate(row: Row): NotificationTemplate {
+  return {
+    id: asNum(row.id),
+    eventTrigger: String(row.event_trigger),
+    channel: String(row.channel),
+    messageContent: String(row.message_content),
+    isActive: Boolean(row.is_active),
+    createdAt: asDate(row.created_at),
+    updatedAt: asDate(row.updated_at),
   };
 }

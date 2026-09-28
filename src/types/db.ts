@@ -286,3 +286,29 @@ export interface WebhookLog {
   receivedAt: Date;
   processedAt: Date | null;
 }
+
+export interface NotificationLog {
+  id: number;
+  templateId: number | null;
+  orderNumber: string | null;
+  userId: number | null;
+  lessonId: number | null;
+  recipient: string;
+  channel: string;
+  requestPayload: string | null;
+  responsePayload: string | null;
+  status: string;
+  errorMessage: string | null;
+  createdAt: Date;
+  sentAt: Date | null;
+}
+
+export interface NotificationTemplate {
+  id: number;
+  eventTrigger: string;
+  channel: string;
+  messageContent: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}

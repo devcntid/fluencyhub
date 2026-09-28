@@ -150,6 +150,8 @@ export const paymentMethods = pgTable(
     provider: varchar("provider", { length: 50 }).notNull(),
     adminFeeFlat: bigint("admin_fee_flat", { mode: "number" }).notNull().default(0),
     adminFeePct: numeric("admin_fee_pct", { precision: 5, scale: 2 }).notNull().default("0.00"),
+    accountNumber: varchar("account_number", { length: 50 }),
+    accountName: varchar("account_name", { length: 100 }),
     isActive: boolean("is_active").notNull().default(true),
     isRedirect: boolean("is_redirect").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
