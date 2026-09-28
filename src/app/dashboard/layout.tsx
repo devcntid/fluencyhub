@@ -1,7 +1,22 @@
 import { DashboardChrome } from "@/components/layout/DashboardChrome";
 import { auth } from "@/lib/session";
+import { getUserById } from "@/lib/db/users.queries";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  return <DashboardChrome user={session?.user}>{children}</DashboardChrome>;
+  
+  let user = session?.user;
+  if (session?.user?.id) {
+    const dbUser = await getUserById(Number(session.user.id));
+    if (dbUser) {
+      user = {
+        ...session.user,
+        name: dbUser.name,
+        email: dbUser.email,
+        image: dbUser.avatarUrl,
+      };
+    }
+  }
+
+  return <DashboardChrome user={user}>{children}</DashboardChrome>;
 }
