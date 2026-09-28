@@ -54,7 +54,7 @@ export default async function AdminLayout({
       ],
     },
   ];
-  const flat = groups.flatMap((g) => g.items);
+
 
   return (
     <div className="dash-shell">
@@ -67,9 +67,12 @@ export default async function AdminLayout({
       />
       <div className="dash-main">
         <div className="topbar">
-          <span className="badge badge-danger" style={{ fontSize: 10 }}>
-            ADMIN MODE
-          </span>
+          <div className="flex items-center gap-2">
+            <AdminMobileNav base={base} groups={groups} />
+            <span className="badge badge-danger" style={{ fontSize: 10 }}>
+              ADMIN MODE
+            </span>
+          </div>
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -81,7 +84,6 @@ export default async function AdminLayout({
           </div>
         </div>
         <div className="dash-content">
-          <AdminMobileNav items={flat} />
           {children}
         </div>
       </div>

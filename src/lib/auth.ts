@@ -24,6 +24,11 @@ export function getAuthOptions(): NextAuthOptions {
     callbacks: {
       async signIn({ user }) {
         if (!user.email) return false;
+        const dbUser = await getUserByEmail(user.email);
+        // Jika akun ditemukan dan status is_active = false, tolak login
+        if (dbUser && !dbUser.isActive) {
+          return false;
+        }
         return true;
       },
       async jwt({ token, user, account }) {

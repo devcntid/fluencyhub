@@ -1,4 +1,4 @@
-import { InstructorBottomNav, InstructorSidebar } from "@/components/instructor/InstructorSidebar";
+import { InstructorMobileNav, InstructorSidebar } from "@/components/instructor/InstructorSidebar";
 import { TopbarSignOut } from "@/components/layout/TopbarSignOut";
 import { auth } from "@/lib/session";
 import { getUserById } from "@/lib/db/users.queries";
@@ -23,9 +23,17 @@ export default async function InstructorLayout({ children }: { children: React.R
       />
       <div className="dash-main">
         <div className="topbar">
-          <span className="badge badge-inst" style={{ fontSize: 10 }}>
-            Instructor Mode
-          </span>
+          <div className="flex items-center gap-2">
+            <InstructorMobileNav
+              name={dbUser?.name ?? session?.user.name ?? "Instructor"}
+              email={dbUser?.email ?? session?.user.email ?? ""}
+              avatarUrl={dbUser?.avatarUrl ?? session?.user.image ?? null}
+              sharePct={share}
+            />
+            <span className="badge badge-inst" style={{ fontSize: 10 }}>
+              Instructor Mode
+            </span>
+          </div>
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -37,7 +45,6 @@ export default async function InstructorLayout({ children }: { children: React.R
           </div>
         </div>
         <div className="dash-content">{children}</div>
-        <InstructorBottomNav />
       </div>
     </div>
   );

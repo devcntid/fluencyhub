@@ -47,6 +47,7 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const filteredUsers = users.filter((u) => {
     const q = searchQuery.toLowerCase();
@@ -61,6 +62,7 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
     setEditId(null);
     setValues(empty);
     setError("");
+    setSubmitted(false);
     setOpen(true);
   }
 
@@ -76,12 +78,17 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
       revenueSharePct: u.revenueSharePct,
     });
     setError("");
+    setSubmitted(false);
     setOpen(true);
   }
 
   async function save() {
-    setBusy(true);
+    setSubmitted(true);
     setError("");
+    if (!values.name.trim() || !values.email.trim()) {
+      return;
+    }
+    setBusy(true);
     const body = {
       name: values.name,
       email: values.email,
@@ -98,8 +105,15 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
     });
     setBusy(false);
     if (!res.ok) {
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(typeof json.error === "string" ? json.error : "Save failed");
+      const json = (await res.json().catch(() => ({}))) as any;
+      if (json.error && typeof json.error === "object" && json.error.fieldErrors) {
+        // Zod error
+        const firstField = Object.keys(json.error.fieldErrors)[0];
+        const firstMsg = json.error.fieldErrors[firstField]?.[0];
+        setError(`Invalid data for ${firstField}: ${firstMsg}`);
+      } else {
+        setError(typeof json.error === "string" ? json.error : "Save failed");
+      }
       return;
     }
     setOpen(false);
@@ -215,11 +229,12 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
       </AdminDataGrid>
       <AdminFormDialog title={editId == null ? "Add user" : "Edit user"} open={open} onClose={() => setOpen(false)}>
         <div className="grid gap-3">
-          <label>
+          <label className="flex flex-col">
             <span className="label">Name</span>
             <input className="input" value={values.name} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} />
+            {submitted && !values.name.trim() && <span className="mt-1 text-[11px] font-medium text-[var(--red)]">⚠️ Data nama masih kosong, tolong di isi.</span>}
           </label>
-          <label>
+          <label className="flex flex-col">
             <span className="label">Email</span>
             <input
               className="input"
@@ -227,6 +242,7 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
               value={values.email}
               onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))}
             />
+            {submitted && !values.email.trim() && <span className="mt-1 text-[11px] font-medium text-[var(--red)]">⚠️ Data email masih kosong, tolong di isi.</span>}
           </label>
           <label>
             <span className="label">WhatsApp</span>
