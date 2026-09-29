@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { updatePaymentMethod } from "@/lib/db/payment-methods.queries";
 import type { PaymentMethodType, PaymentProvider } from "@/types/db";
+import { createAuditLog } from "@/lib/db/audit-logs.queries";
 
 const Schema = z.object({
   name: z.string().optional(),
@@ -26,5 +27,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const parsed = Schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
   const method = await updatePaymentMethod(Number(id), parsed.data);
+
+  await createAuditLog({
+    adminId: Number(gate.session!.user.id),
+    action: "UPDATE_PAYMENT_METHOD",
+    entityType: "payment_method",
+    entityId: method.id,
+    newValueJson: parsed.data,
+    ipAddress: req.headers.get("x-forwarded-for") ?? undefined,
+    userAgent: req.headers.get("user-agent") ?? undefined,
+  }).catch(console.error);
+
   return NextResponse.json({ data: method });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { updateCourseAdmin } from "@/lib/db/courses.queries";
+import { createAuditLog } from "@/lib/db/audit-logs.queries";
 
 const Schema = z.object({
   instructorId: z.number().int().positive().optional(),
@@ -23,5 +24,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const parsed = Schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
   const course = await updateCourseAdmin(Number(id), parsed.data);
+
+  await createAuditLog({
+    adminId: Number(gate.session!.user.id),
+    action: "UPDATE_COURSE",
+    entityType: "course",
+    entityId: course.id,
+    newValueJson: parsed.data,
+    ipAddress: req.headers.get("x-forwarded-for") ?? undefined,
+    userAgent: req.headers.get("user-agent") ?? undefined,
+  }).catch(console.error);
+
   return NextResponse.json({ data: course });
 }

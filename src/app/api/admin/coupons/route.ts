@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createCouponAdmin } from "@/lib/db/coupons.queries";
 import { auth } from "@/lib/session";
+import { createAuditLog } from "@/lib/db/audit-logs.queries";
 
 export async function POST(req: Request) {
   try {
@@ -23,6 +24,15 @@ export async function POST(req: Request) {
       discountValue,
       maxUses: maxUses ? Number(maxUses) : null,
     });
+
+    await createAuditLog({
+      adminId: Number(session.user.id),
+      action: "CREATE_COUPON",
+      entityType: "coupon",
+      newValueJson: { code, description, discountType, discountValue, maxUses },
+      ipAddress: req.headers.get("x-forwarded-for") ?? undefined,
+      userAgent: req.headers.get("user-agent") ?? undefined,
+    }).catch(console.error);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

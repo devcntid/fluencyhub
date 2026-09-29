@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listInstructorCoursesWithRevenue } from "@/lib/db/courses.queries";
 import { instructorScopeId } from "@/lib/instructor-scope";
 import { auth } from "@/lib/session";
+import { InstructorCourseCreateButton } from "@/components/instructor/InstructorCourseCreateButton";
 
 export default async function InstructorCoursesPage() {
   const session = await auth();
@@ -10,9 +11,12 @@ export default async function InstructorCoursesPage() {
 
   return (
     <div className="mx-auto max-w-[800px]">
-      <div className="mb-4">
-        <h1 className="text-xl font-extrabold">My Courses</h1>
-        <p className="mt-1 text-sm text-[var(--text-3)]">Classes are assigned by admin. You can edit curriculum and students only.</p>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-extrabold">My Courses</h1>
+          <p className="mt-1 text-sm text-[var(--text-3)]">Classes you teach. You can create new ones or edit curriculum.</p>
+        </div>
+        <InstructorCourseCreateButton />
       </div>
       <div className="flex flex-col gap-2.5">
         {courses.length === 0 ? <p className="text-sm text-[var(--text-3)]">No courses yet.</p> : null}
