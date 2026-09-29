@@ -9,7 +9,11 @@ export function ProofVerifyActions({ proofId }: { proofId: number }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
 
-  async function act(action: "approve" | "reject") {
+  async function act(action: "approve" | "reject" | "cancel") {
+    if ((action === "reject" || action === "cancel") && !note.trim()) {
+      setError("Note is required for rejecting or cancelling");
+      return;
+    }
     setBusy(true);
     setError("");
     const res = await fetch(`/api/payment-proofs/${proofId}/verify`, {
@@ -19,7 +23,7 @@ export function ProofVerifyActions({ proofId }: { proofId: number }) {
     });
     setBusy(false);
     if (!res.ok) {
-      setError(action === "approve" ? "Approve failed." : "Reject failed.");
+      setError(`Action ${action} failed.`);
       return;
     }
     router.refresh();
@@ -28,13 +32,16 @@ export function ProofVerifyActions({ proofId }: { proofId: number }) {
   return (
     <div className="mt-3 flex flex-col gap-2">
       {error ? <p className="text-sm text-[var(--red)]">{error}</p> : null}
-      <input className="input" placeholder="Reject note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+      <input className="input" placeholder="Reject/Cancel note (required)" value={note} onChange={(e) => setNote(e.target.value)} />
       <div className="flex gap-2">
         <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => act("approve")}>
           Approve & enroll
         </button>
         <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => act("reject")}>
-          Reject
+          Reject (Retry)
+        </button>
+        <button type="button" className="btn btn-sm bg-red-600 text-white hover:bg-red-700" disabled={busy} onClick={() => act("cancel")}>
+          Cancel Order
         </button>
       </div>
     </div>
