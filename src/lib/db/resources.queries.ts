@@ -28,12 +28,12 @@ export async function listUserResources(userId: number): Promise<UserResource[]>
     ORDER BY l.created_at DESC
   `;
 
-  return rows.map((r: any) => ({
-    id: r.id,
-    title: r.title,
-    description: r.description,
-    documentUrl: r.document_url,
-    contentType: r.content_type,
-    courseTitle: r.course_title,
+  return rows.map((r: Record<string, unknown>) => ({
+    id: Number(r.id),
+    title: String(r.title),
+    description: r.description ? String(r.description) : null,
+    documentUrl: r.document_url ? String(r.document_url) : null,
+    contentType: String(r.content_type),
+    courseTitle: String(r.course_title),
   }));
 }

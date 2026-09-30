@@ -123,7 +123,7 @@ export function InstructorCourseCreateButton() {
             <img src={thumbnailUrl} alt="" className="h-24 w-40 rounded-[var(--r)] object-cover" />
           ) : null}
           <p className="text-xs text-[var(--text-4)] mt-2">
-            New courses are saved as "Draft" by default. An admin can publish them later.
+            New courses are saved as &quot;Draft&quot; by default. An admin can publish them later.
           </p>
         </div>
         {error ? <p className="mt-3 text-sm text-[var(--red)]">{error}</p> : null}

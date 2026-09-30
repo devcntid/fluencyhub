@@ -25,7 +25,7 @@ export type PlayerSection = { id: number; title: string; lessons: PlayerLesson[]
 export async function listCoursePlayerCurriculum(courseId: number, userId: number | null): Promise<PlayerSection[]> {
   const tree = await listInstructorCurriculum(courseId);
   
-  let progressMap = new Map<number, boolean>();
+  const progressMap = new Map<number, boolean>();
   if (userId) {
     const rows = await sql`
       SELECT lp.lesson_id, lp.is_completed

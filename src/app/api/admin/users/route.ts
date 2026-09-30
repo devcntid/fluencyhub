@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { createUserAdmin, getUserByEmail } from "@/lib/db/users.queries";
+import { createAuditLog } from "@/lib/db/audit-logs.queries";
 
 const Schema = z.object({
   name: z.string().min(1),
@@ -25,5 +26,16 @@ export async function POST(req: Request) {
     whatsappNumber: parsed.data.whatsappNumber || null,
     avatarUrl: parsed.data.avatarUrl || null,
   });
+
+  await createAuditLog({
+    adminId: Number(gate.session.user.id),
+    action: "create_user",
+    entityType: "users",
+    entityId: user.id,
+    newValueJson: user,
+    ipAddress: req.headers.get("x-forwarded-for") || undefined,
+    userAgent: req.headers.get("user-agent") || undefined,
+  });
+
   return NextResponse.json({ data: user }, { status: 201 });
 }

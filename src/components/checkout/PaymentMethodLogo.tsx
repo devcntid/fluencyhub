@@ -47,6 +47,7 @@ export function PaymentMethodLogo({
   const initial = name.slice(0, 2).toUpperCase();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRemoteOk(false);
   }, [src]);
 

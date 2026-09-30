@@ -1,13 +1,25 @@
 import { auth } from "@/lib/session";
-import { getAuditLogs } from "@/lib/db/audit-logs.queries";
+import { getAuditLogs, getAuditLogsCount } from "@/lib/db/audit-logs.queries";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import Link from "next/link";
 
-export default async function AuditLogsPage() {
+export default async function AuditLogsPage(props: { params: Promise<{ adminPath: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") return <div>Unauthorized</div>;
 
-  const logs = await getAuditLogs(100);
+  const { adminPath } = await props.params;
+  const searchParams = await props.searchParams;
+  const page = typeof searchParams.page === "string" ? Math.max(1, parseInt(searchParams.page) || 1) : 1;
+  const limit = 10;
+  const offset = (page - 1) * limit;
+
+  const [logs, totalCount] = await Promise.all([
+    getAuditLogs(limit, offset),
+    getAuditLogsCount()
+  ]);
+
+  const totalPages = Math.ceil(totalCount / limit);
 
   return (
     <div>
@@ -15,11 +27,12 @@ export default async function AuditLogsPage() {
         <h1 className="text-2xl font-bold font-heading text-[var(--text)]">Audit Logs</h1>
       </div>
 
-      <div className="card p-0 overflow-hidden">
+      <div className="card p-0 overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-[var(--surface-2)] text-[var(--text-3)]">
               <tr>
+                <th className="px-4 py-3 font-semibold w-12 text-center">No.</th>
                 <th className="px-4 py-3 font-semibold">Waktu</th>
                 <th className="px-4 py-3 font-semibold">Aksi</th>
                 <th className="px-4 py-3 font-semibold">Tipe Entitas</th>
@@ -29,13 +42,16 @@ export default async function AuditLogsPage() {
             <tbody className="divide-y divide-[var(--border)]">
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-[var(--text-3)]">
+                  <td colSpan={5} className="px-4 py-8 text-center text-[var(--text-3)]">
                     Belum ada log aktivitas admin.
                   </td>
                 </tr>
               ) : (
-                logs.map((log) => (
+                logs.map((log, idx) => (
                   <tr key={log.id} className="hover:bg-[var(--surface-2)] transition-colors">
+                    <td className="px-4 py-3 text-center font-medium text-[var(--text-3)]">
+                      {offset + idx + 1}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {format(new Date(log.createdAt), "dd MMM yyyy, HH:mm", { locale: id })}
                     </td>
@@ -59,6 +75,39 @@ export default async function AuditLogsPage() {
           </table>
         </div>
       </div>
+      
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-[var(--text-3)]">
+            Menampilkan {offset + 1}-{Math.min(offset + limit, totalCount)} dari {totalCount} log
+          </div>
+          <div className="flex gap-2">
+            {page > 1 ? (
+              <Link href={`/${adminPath}/audit?page=${page - 1}`} className="btn btn-secondary btn-sm">
+                ← Sebelumnya
+              </Link>
+            ) : (
+              <button disabled className="btn btn-secondary btn-sm opacity-50 cursor-not-allowed">
+                ← Sebelumnya
+              </button>
+            )}
+            
+            <div className="flex items-center px-4 font-medium text-sm">
+              Halaman {page} / {totalPages}
+            </div>
+
+            {page < totalPages ? (
+              <Link href={`/${adminPath}/audit?page=${page + 1}`} className="btn btn-secondary btn-sm">
+                Selanjutnya →
+              </Link>
+            ) : (
+              <button disabled className="btn btn-secondary btn-sm opacity-50 cursor-not-allowed">
+                Selanjutnya →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

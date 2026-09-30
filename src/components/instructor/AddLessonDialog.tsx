@@ -31,6 +31,22 @@ export function AddLessonDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  async function uploadDocument(file: File) {
+    setBusy(true);
+    const form = new FormData();
+    form.set("file", file);
+    form.set("folder", "documents");
+    const res = await fetch("/api/upload", { method: "POST", body: form });
+    if (!res.ok) {
+      setError("Document upload failed.");
+      setBusy(false);
+      return;
+    }
+    const json = (await res.json()) as { data?: { url?: string } };
+    if (json.data?.url) setUrl(json.data.url);
+    setBusy(false);
+  }
+
   async function save() {
     if (!title) {
       setError("Title is required");
@@ -114,7 +130,10 @@ export function AddLessonDialog({
                     background: type === t.v ? "var(--brand-50)" : "#fff",
                     color: type === t.v ? "var(--brand)" : "var(--text-3)",
                   }}
-                  onClick={() => setType(t.v)}
+                  onClick={() => {
+                    setType(t.v);
+                    setUrl("");
+                  }}
                 >
                   {t.l}
                 </button>
@@ -143,10 +162,34 @@ export function AddLessonDialog({
             </>
           ) : null}
           {type === "document" ? (
-            <label>
-              <span className="label">Document URL</span>
-              <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} />
-            </label>
+            <div className="flex flex-col gap-2">
+              <label>
+                <span className="label">Upload PDF Document</span>
+                <input
+                  className="input"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadDocument(file);
+                  }}
+                />
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="h-[1px] flex-1 bg-[var(--border)]" />
+                <span className="text-xs text-[var(--text-4)]">OR</span>
+                <div className="h-[1px] flex-1 bg-[var(--border)]" />
+              </div>
+              <label>
+                <span className="label">Document URL (External Link)</span>
+                <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+              </label>
+              {url && (
+                <p className="text-xs text-[var(--brand)] font-medium truncate">
+                  Current PDF: {url}
+                </p>
+              )}
+            </div>
           ) : null}
           {type === "text" ? (
             <label>

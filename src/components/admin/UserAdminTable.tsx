@@ -39,7 +39,15 @@ const empty: Draft = {
   revenueSharePct: "70.00",
 };
 
-export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; currentUserId: number | null }) {
+export function UserAdminTable({
+  users,
+  currentUserId,
+  courses = [],
+}: {
+  users: UserRow[];
+  currentUserId: number | null;
+  courses?: { id: number; title: string }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -48,6 +56,9 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  
+  const [enrollUserId, setEnrollUserId] = useState<number | null>(null);
+  const [enrollCourseId, setEnrollCourseId] = useState<number>(0);
 
   const filteredUsers = users.filter((u) => {
     const q = searchQuery.toLowerCase();
@@ -150,6 +161,25 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
     router.refresh();
   }
 
+  async function submitEnroll() {
+    if (!enrollUserId || !enrollCourseId) return;
+    setBusy(true);
+    const res = await fetch(`/api/admin/users/${enrollUserId}/enroll`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: enrollCourseId }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      alert(typeof json.error === "string" ? json.error : "Enrollment failed");
+      return;
+    }
+    setEnrollUserId(null);
+    setEnrollCourseId(0);
+    router.refresh();
+  }
+
   return (
     <div>
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -208,9 +238,14 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
               <td>
                 <div className="flex gap-2">
                   {!u.deletedAt && (
-                    <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => startEdit(u)}>
-                      Edit
-                    </button>
+                    <>
+                      <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => startEdit(u)}>
+                        Edit
+                      </button>
+                      <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => setEnrollUserId(u.id)}>
+                        Enroll
+                      </button>
+                    </>
                   )}
                   {u.deletedAt ? (
                     <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => restore(u)}>
@@ -272,14 +307,16 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
               <option value="admin">admin</option>
             </select>
           </label>
-          <label>
-            <span className="label">Revenue share %</span>
-            <input
-              className="input"
-              value={values.revenueSharePct}
-              onChange={(e) => setValues((v) => ({ ...v, revenueSharePct: e.target.value }))}
-            />
-          </label>
+          {values.role === "instructor" && (
+            <label>
+              <span className="label">Revenue share %</span>
+              <input
+                className="input"
+                value={values.revenueSharePct}
+                onChange={(e) => setValues((v) => ({ ...v, revenueSharePct: e.target.value }))}
+              />
+            </label>
+          )}
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -296,6 +333,36 @@ export function UserAdminTable({ users, currentUserId }: { users: UserRow[]; cur
           </button>
           <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={save}>
             {busy ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </AdminFormDialog>
+
+      <AdminFormDialog 
+        title="Enroll User to Course" 
+        open={enrollUserId !== null} 
+        onClose={() => { setEnrollUserId(null); setEnrollCourseId(0); }}
+      >
+        <div className="grid gap-3">
+          <label className="flex flex-col">
+            <span className="label">Select Course</span>
+            <select
+              className="input"
+              value={enrollCourseId}
+              onChange={(e) => setEnrollCourseId(Number(e.target.value))}
+            >
+              <option value={0}>-- Select a course --</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setEnrollUserId(null); setEnrollCourseId(0); }}>
+            Cancel
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={busy || enrollCourseId === 0} onClick={submitEnroll}>
+            {busy ? "Enrolling..." : "Enroll"}
           </button>
         </div>
       </AdminFormDialog>

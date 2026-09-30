@@ -5,8 +5,8 @@ export async function createAuditLog(params: {
   action: string;
   entityType?: string;
   entityId?: number;
-  oldValueJson?: any;
-  newValueJson?: any;
+  oldValueJson?: unknown;
+  newValueJson?: unknown;
   ipAddress?: string;
   userAgent?: string;
 }) {
@@ -51,10 +51,15 @@ export async function getAuditLogs(limit: number = 50, offset: number = 0) {
     action: row.action as string,
     entityType: row.entity_type as string | null,
     entityId: row.entity_id ? Number(row.entity_id) : null,
-    oldValueJson: row.old_value_json as any,
-    newValueJson: row.new_value_json as any,
+    oldValueJson: row.old_value_json as unknown,
+    newValueJson: row.new_value_json as unknown,
     ipAddress: row.ip_address as string | null,
     userAgent: row.user_agent as string | null,
     createdAt: new Date(row.created_at as string | Date),
   }));
+}
+
+export async function getAuditLogsCount() {
+  const rows = await sql`SELECT COUNT(*) as count FROM audit_logs`;
+  return Number(rows[0].count);
 }

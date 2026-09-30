@@ -124,9 +124,19 @@ export function CoursePlayer({
             </div>
           ) : null}
           {current.contentType === "document" && current.documentUrl ? (
-            <a href={current.documentUrl} className="btn btn-primary btn-default" target="_blank" rel="noreferrer">
-              Open document
-            </a>
+            <div className="card bg-[var(--brand-50)] border border-[var(--brand-200)] p-6 text-center">
+              <Icon name="FileText" size={48} className="mx-auto text-[var(--brand)] mb-3" />
+              <h4 className="font-semibold text-lg text-[var(--brand)] mb-1">Dokumen PDF</h4>
+              <p className="text-sm text-[var(--text-3)] mb-4">Instruktur telah menyediakan materi dalam bentuk dokumen untuk diunduh.</p>
+              <div className="flex justify-center gap-3">
+                <a href={current.documentUrl} className="btn btn-primary btn-default" target="_blank" rel="noreferrer">
+                  <Icon name="ExternalLink" size={16} /> Buka Dokumen
+                </a>
+                <a href={current.documentUrl} download className="btn btn-secondary btn-default" target="_blank" rel="noreferrer">
+                  <Icon name="Download" size={16} /> Unduh File
+                </a>
+              </div>
+            </div>
           ) : null}
           {current.contentType === "text" && current.textContent ? (
             <div className="card whitespace-pre-wrap text-sm">{current.textContent}</div>

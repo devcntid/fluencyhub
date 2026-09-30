@@ -1,4 +1,4 @@
-import { sql, asNum, asDateOrNull } from "./client";
+import { sql, asNum } from "./client";
 import { mapCourse, mapLesson, mapSection } from "./mappers";
 
 export async function getUserDashboardStats(userId: number) {
@@ -41,9 +41,9 @@ export async function getActiveEnrollment(userId: number) {
   `;
 
   if (!enrollmentsRes[0]) return null;
-  const row = enrollmentsRes[0] as any;
-  const enrollment = { id: row.id, courseId: row.course_id, progressPct: Number(row.progress_pct || 0) };
-  const course = { id: row.course_id, title: row.course_title, thumbnailUrl: row.course_thumbnail_url };
+  const row = enrollmentsRes[0] as Record<string, unknown>;
+  const enrollment = { id: row.id as number, courseId: row.course_id as number, progressPct: Number(row.progress_pct || 0) };
+  const course = { id: row.course_id as number, title: row.course_title as string, thumbnailUrl: row.course_thumbnail_url as string | null };
 
   const sectionsRes = await sql`
     SELECT * FROM sections WHERE course_id = ${course.id} ORDER BY sort_order ASC
@@ -65,15 +65,15 @@ export async function getActiveEnrollment(userId: number) {
 
   for (const l of lessonsRes) {
     if (!completedIds.has(l.id)) {
-      nextLesson = mapLesson(l as any);
-      nextSection = mapSection(sectionsRes.find(s => s.id === l.section_id) as any);
+      nextLesson = mapLesson(l as Record<string, unknown>);
+      nextSection = mapSection(sectionsRes.find(s => s.id === l.section_id) as Record<string, unknown>);
       break;
     }
   }
 
   if (!nextLesson && lessonsRes.length > 0) {
-    nextLesson = mapLesson(lessonsRes[0] as any);
-    nextSection = mapSection(sectionsRes.find(s => s.id === lessonsRes[0].section_id) as any);
+    nextLesson = mapLesson(lessonsRes[0] as Record<string, unknown>);
+    nextSection = mapSection(sectionsRes.find(s => s.id === lessonsRes[0].section_id) as Record<string, unknown>);
   }
 
   const totalLessons = lessonsRes.length;
