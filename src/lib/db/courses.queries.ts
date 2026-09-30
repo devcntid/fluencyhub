@@ -222,3 +222,25 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
   `;
   return rows[0] ? mapCourse(rows[0] as Record<string, unknown>) : null;
 }
+
+export async function getInstructorUpcomingLiveClasses(instructorId: number | null) {
+  const rows = await sql`
+    SELECT l.id, l.title, l.live_class_datetime as datetime, c.title as course_title, c.id as course_id
+    FROM lessons l
+    JOIN sections s ON s.id = l.section_id
+    JOIN courses c ON c.id = s.course_id
+    WHERE l.content_type = 'live_class'
+      AND l.live_class_datetime > NOW()
+      AND c.deleted_at IS NULL
+      AND (${instructorId}::bigint IS NULL OR c.instructor_id = ${instructorId})
+    ORDER BY l.live_class_datetime ASC
+    LIMIT 5
+  `;
+  return rows.map(r => ({
+    id: r.id as number,
+    title: r.title as string,
+    datetime: (r.datetime as Date).toISOString(),
+    courseTitle: r.course_title as string,
+    courseId: r.course_id as number,
+  }));
+}

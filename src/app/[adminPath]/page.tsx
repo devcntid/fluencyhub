@@ -44,17 +44,17 @@ export default async function AdminOverviewPage() {
         ))}
       </div>
       <div className="overview-grid">
-        <div className="card">
+        <div className="card min-w-0 overflow-hidden">
           <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>
             Recent Transactions
           </h3>
-          <div className="tbl-wrap">
-            <table className="tbl">
+          <div className="tbl-wrap border-none md:border-solid">
+            <table className="tbl !min-w-full md:!min-w-[520px]">
               <thead>
                 <tr>
-                  <th>Order</th>
+                  <th className="hidden md:table-cell">Order</th>
                   <th>Buyer</th>
-                  <th>Method</th>
+                  <th className="hidden sm:table-cell">Method</th>
                   <th>Amount</th>
                   <th>Status</th>
                 </tr>
@@ -62,9 +62,9 @@ export default async function AdminOverviewPage() {
               <tbody>
                 {orders.map((o) => (
                   <tr key={o.id}>
-                    <td style={{ fontWeight: 700, fontSize: 12, color: "var(--brand)" }}>{o.orderNumber}</td>
+                    <td className="hidden md:table-cell" style={{ fontWeight: 700, fontSize: 12, color: "var(--brand)" }}>{o.orderNumber}</td>
                     <td style={{ fontSize: 13 }}>{o.buyerName}</td>
-                    <td style={{ fontSize: 12, color: "var(--text-3)" }}>{o.methodName ?? "Unknown"}</td>
+                    <td className="hidden sm:table-cell" style={{ fontSize: 12, color: "var(--text-3)" }}>{o.methodName ?? "Unknown"}</td>
                     <td style={{ fontWeight: 700, fontSize: 13 }}>{formatIdr(o.totalAmount)}</td>
                     <td>
                       <span className={`badge ${badgeClass(o.status)}`}>{o.status}</span>

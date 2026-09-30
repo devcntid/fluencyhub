@@ -66,7 +66,7 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
         <select
           value={selectedCourse}
           onChange={(e) => setSelectedCourse(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full md:w-auto max-w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="all">Semua Kelas</option>
           {courses.map((course) => (
@@ -90,12 +90,12 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
                 key={res.id} 
                 className="group flex flex-col rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm transition hover:border-zinc-200 hover:shadow-md"
               >
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-4 gap-3">
                   <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${meta.bg}`}>
                     <LandingIcon name={meta.icon} color={meta.color} />
                   </div>
                   {selectedCourse === "all" && (
-                    <span className="inline-block rounded-full bg-indigo-50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-indigo-600 border border-indigo-100">
+                    <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-indigo-600 border border-indigo-100 text-right line-clamp-2 max-w-[65%] leading-tight shrink break-words">
                       {res.courseTitle}
                     </span>
                   )}

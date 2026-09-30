@@ -53,6 +53,12 @@ export default async function AdminLayout({
         { href: `${base}/cms/faqs`, label: "FAQs" },
       ],
     },
+    {
+      title: "Configurations",
+      items: [
+        { href: `${base}/notifications`, label: "Notifications" },
+      ],
+    },
   ];
 
 

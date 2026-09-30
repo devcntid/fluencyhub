@@ -50,7 +50,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
         <select
           value={selectedCourse}
           onChange={(e) => setSelectedCourse(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full md:w-auto max-w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="all">Semua Kelas</option>
           {courses.map((course) => (
@@ -97,11 +97,11 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                 <div className="flex-1 text-center md:text-left">
                   <div className="mb-2 flex flex-wrap items-center justify-center gap-2 md:justify-start">
                     {selectedCourse === "all" && (
-                      <span className="inline-block rounded-full bg-indigo-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 border border-indigo-100">
+                      <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 border border-indigo-100 text-center line-clamp-2 leading-tight max-w-full break-words shrink">
                         {session.courseTitle}
                       </span>
                     )}
-                    <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-600">
+                    <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 border border-blue-100 text-center line-clamp-2 leading-tight max-w-full break-words shrink">
                       {session.moduleName}
                     </span>
                   </div>
