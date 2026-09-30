@@ -31,10 +31,10 @@ export async function PublicNavbar() {
           </span>
         </Link>
         <div className="hidden items-center gap-6 md:flex">
-          <a href="/#masalah" className="nav-link">Masalah</a>
-          <a href="/#metode" className="nav-link">Metode</a>
-          <a href="/#harga" className="nav-link">Harga</a>
-          <a href="/#testimoni" className="nav-link">Testimoni</a>
+          <Link href="/#masalah" className="nav-link">Masalah</Link>
+          <Link href="/#metode" className="nav-link">Metode</Link>
+          <Link href="/#harga" className="nav-link">Harga</Link>
+          <Link href="/#testimoni" className="nav-link">Testimoni</Link>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {session?.user ? (
@@ -44,9 +44,9 @@ export async function PublicNavbar() {
               <Link href="/auth/signin" className="btn btn-secondary btn-default hidden md:inline-flex">
                 <LandingIcon name="LogIn" color="var(--text-2)" /> Log in
               </Link>
-              <a href="/#harga" className="btn btn-primary btn-default">
+              <Link href="/#harga" className="btn btn-primary btn-default">
                 Mulai Gratis
-              </a>
+              </Link>
             </>
           )}
         </div>
