@@ -5,8 +5,10 @@ export type UserResource = {
   title: string;
   description: string | null;
   documentUrl: string | null;
+  textContent: string | null;
   contentType: string;
   courseTitle: string;
+  courseId: number;
 };
 
 export async function listUserResources(userId: number): Promise<UserResource[]> {
@@ -16,8 +18,10 @@ export async function listUserResources(userId: number): Promise<UserResource[]>
       l.title, 
       l.description, 
       l.document_url, 
+      l.text_content,
       l.content_type, 
-      c.title as course_title
+      c.title as course_title,
+      c.id as course_id
     FROM lessons l
     JOIN sections s ON l.section_id = s.id
     JOIN courses c ON s.course_id = c.id
@@ -33,7 +37,9 @@ export async function listUserResources(userId: number): Promise<UserResource[]>
     title: String(r.title),
     description: r.description ? String(r.description) : null,
     documentUrl: r.document_url ? String(r.document_url) : null,
+    textContent: r.text_content ? String(r.text_content) : null,
     contentType: String(r.content_type),
     courseTitle: String(r.course_title),
+    courseId: Number(r.course_id),
   }));
 }

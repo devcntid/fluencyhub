@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import { ProfileDropdown } from "@/components/auth/ProfileDropdown";
 
@@ -14,6 +14,10 @@ export function DashboardChrome({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const c = searchParams.get("c");
+  const suffix = c ? `?c=${c}` : "";
+
   const [open, setOpen] = useState(false);
   const player = /\/dashboard\/courses\/\d+/.test(pathname);
   
@@ -37,9 +41,9 @@ export function DashboardChrome({
 
   const menu = [
     { id: "dashboard", icon: "LayoutDashboard", label: "Dashboard", href: "/dashboard" },
-    { id: "videos", icon: "Play", label: "Videos", href: "/dashboard/videos" },
-    { id: "live", icon: "Video", label: "Live", href: "/dashboard/live" },
-    { id: "resources", icon: "BookOpen", label: "Resources", href: "/dashboard/resources" },
+    { id: "videos", icon: "Play", label: "Videos", href: `/dashboard/videos${suffix}` },
+    { id: "live", icon: "Video", label: "Live", href: `/dashboard/live${suffix}` },
+    { id: "resources", icon: "BookOpen", label: "Resources", href: `/dashboard/resources${suffix}` },
   ];
 
   return (

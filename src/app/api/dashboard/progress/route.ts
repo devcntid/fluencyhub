@@ -35,6 +35,33 @@ export async function POST(req: Request) {
         updated_at = EXCLUDED.updated_at
     `;
 
+    // Recalculate and update enrollment progress_pct
+    const countRes = await sql`
+      SELECT COUNT(*) as completed_count
+      FROM lesson_progress
+      WHERE enrollment_id = ${enrollment.id} AND is_completed = true
+    `;
+    const completedCount = Number(countRes[0].completed_count);
+
+    const totalRes = await sql`
+      SELECT COUNT(l.id) as total_count
+      FROM lessons l
+      JOIN sections s ON l.section_id = s.id
+      WHERE s.course_id = ${courseId}
+    `;
+    const totalCount = Number(totalRes[0].total_count);
+    
+    const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    await sql`
+      UPDATE enrollments
+      SET progress_pct = ${progressPct}, updated_at = NOW()
+      WHERE id = ${enrollment.id}
+    `;
+
+    const { revalidatePath } = require("next/cache");
+    revalidatePath("/dashboard", "layout");
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("Progress API Error:", err);

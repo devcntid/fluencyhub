@@ -84,7 +84,7 @@ export default async function DashboardHomePage() {
           <div className="mb-6 flex items-center justify-between">
             <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold text-zinc-900">Lanjutkan Belajar</h3>
             {activeEnrollment && (
-              <Link href={`/dashboard/courses/${activeEnrollment.course.id}`} className="flex items-center gap-1 text-sm font-semibold text-zinc-500 hover:text-[var(--brand)]">
+              <Link href={`/dashboard/videos?c=${activeEnrollment.course.id}`} className="flex items-center gap-1 text-sm font-semibold text-zinc-500 hover:text-[var(--brand)]">
                 Lihat Semua <LandingIcon name="ArrowRight" color="currentColor" />
               </Link>
             )}
@@ -176,7 +176,7 @@ export default async function DashboardHomePage() {
             <h2 className="mb-4 text-xl font-extrabold text-zinc-900">Kelas Saya</h2>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {enrollments.map((e) => (
-                <Link key={e.id} href={`/dashboard/courses/${e.courseId}`} className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:shadow-md">
+                <Link key={e.id} href={`/dashboard/videos?c=${e.courseId}`} className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:shadow-md">
                   <div className="relative h-32 w-full bg-zinc-100">
                     {e.course.thumbnailUrl ? (
                       <img src={e.course.thumbnailUrl} alt={e.course.title} className="h-full w-full object-cover" />

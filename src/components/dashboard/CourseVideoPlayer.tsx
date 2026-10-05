@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { PlayerSection, PlayerLesson } from "@/lib/db/lessons.queries";
 
@@ -11,7 +12,16 @@ export function CourseVideoPlayer({
   course: { id: number; title: string; thumbnail_url?: string | null };
   curriculum: PlayerSection[];
 }) {
+  const router = useRouter();
   const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Notes state
+  const [showNotes, setShowNotes] = useState(false);
+  const [noteContent, setNoteContent] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [noteStatus, setNoteStatus] = useState(""); // For "Saved!" indication
+
 
   // Find the active lesson object
   let activeLesson: PlayerLesson | null = null;
@@ -26,6 +36,94 @@ export function CourseVideoPlayer({
       }
     }
   }
+
+  // Load note when lesson changes
+  import("react").then(({ useEffect }) => {
+    // We import useEffect dynamically because it wasn't imported at top level
+    // Wait, let's just add it to the top level import later.
+  });
+
+
+  async function handleToggleComplete() {
+    if (!activeLesson || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/dashboard/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: course.id,
+          lessonId: activeLesson.id,
+          isCompleted: !activeLesson.isCompleted,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update progress");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan. Silakan coba lagi.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // Load note content
+  useEffect(() => {
+    if (!activeLessonId) return;
+    let isMounted = true;
+    
+    setNoteContent("");
+    setNoteStatus("");
+    
+    fetch(`/api/dashboard/notes?lessonId=${activeLessonId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.note) {
+          setNoteContent(data.note.content);
+        }
+      })
+      .catch((err) => console.error("Failed to load note:", err));
+      
+    return () => {
+      isMounted = false;
+    };
+  }, [activeLessonId]);
+
+  async function handleSaveNote() {
+    if (!activeLessonId || isSavingNote) return;
+    setIsSavingNote(true);
+    setNoteStatus("Menyimpan...");
+    try {
+      const res = await fetch("/api/dashboard/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonId: activeLessonId,
+          content: noteContent,
+        }),
+      });
+      if (!res.ok) throw new Error("Gagal menyimpan");
+      setNoteStatus("Tersimpan!");
+      setTimeout(() => setNoteStatus(""), 3000);
+    } catch (err) {
+      console.error(err);
+      setNoteStatus("Gagal menyimpan");
+    } finally {
+      setIsSavingNote(false);
+    }
+  }
+
+  function handleDownloadNote() {
+    if (!activeLesson) return;
+    const blob = new Blob([noteContent], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Catatan - ${activeLesson.title}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
 
   // --- PLAYER VIEW ---
   if (activeLesson) {
@@ -83,14 +181,62 @@ export function CourseVideoPlayer({
               )}
 
               <div className="flex flex-wrap gap-2 mt-5">
-                <button className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 active:scale-95">
-                  <LandingIcon name="CheckCircle" size={14} color="#fff" />
-                  Tandai Selesai
+                <button
+                  disabled={isSubmitting}
+                  onClick={handleToggleComplete}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-95 ${
+                    activeLesson.isCompleted
+                      ? "bg-zinc-600 hover:bg-zinc-700"
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
+                >
+                  <LandingIcon name={activeLesson.isCompleted ? "X" : "CheckCircle"} size={14} color="#fff" />
+                  {activeLesson.isCompleted ? "Batal Tandai Selesai" : "Tandai Selesai"}
                 </button>
-                <button className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-600 shadow-sm transition hover:bg-zinc-50 hover:text-zinc-900">
+                <button
+                  onClick={() => setShowNotes(!showNotes)}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition ${
+                    showNotes
+                      ? "border-blue-200 bg-blue-50 text-blue-700"
+                      : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                  }`}
+                >
                   <LandingIcon name="StickyNote" size={14} /> Catatan
                 </button>
               </div>
+
+              {showNotes && (
+                <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                      <LandingIcon name="Pencil" size={14} /> Catatan Pribadi
+                    </h4>
+                    <span className="text-xs font-semibold text-green-600">{noteStatus}</span>
+                  </div>
+                  <textarea
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    placeholder="Ketik catatan Anda di sini..."
+                    className="w-full min-h-[150px] rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+                  />
+                  <div className="mt-3 flex justify-between gap-2">
+                    <button
+                      onClick={handleDownloadNote}
+                      disabled={!noteContent.trim()}
+                      className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
+                    >
+                      <LandingIcon name="Download" size={12} /> Download
+                    </button>
+                    <button
+                      onClick={handleSaveNote}
+                      disabled={isSavingNote}
+                      className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {isSavingNote ? "Menyimpan..." : "Simpan"}
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {activeLesson.description && (
                 <div className="mt-6 text-sm text-[var(--text-2)] whitespace-pre-wrap">
@@ -116,7 +262,13 @@ export function CourseVideoPlayer({
                           onClick={() => setActiveLessonId(l.id)}
                           className={`player-item w-full text-left transition ${isPlaying ? "active" : "hover:bg-zinc-50"}`}
                         >
-                          <div className={`player-radio flex items-center justify-center ${isPlaying ? 'border-[var(--brand)] shadow-[inset_0_0_0_3px_var(--brand)]' : ''}`} />
+                          {l.isCompleted ? (
+                            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[var(--green-bg)] text-[var(--green)]">
+                              <LandingIcon name="Check" size={12} />
+                            </div>
+                          ) : (
+                            <div className={`player-radio flex items-center justify-center ${isPlaying ? 'border-[var(--brand)] shadow-[inset_0_0_0_3px_var(--brand)]' : ''}`} />
+                          )}
                           <div className="min-w-0 flex-1">
                             <span className={`block truncate text-[13px] font-semibold ${isPlaying ? 'text-[var(--brand)]' : 'text-zinc-900'}`}>{l.title}</span>
                             <span className="text-[10px] text-[var(--text-4)]">
@@ -169,7 +321,7 @@ export function CourseVideoPlayer({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               {sec.lessons.map((l) => {
                 const isLocked = false;
-                const isDone = false;
+                const isDone = l.isCompleted;
 
                 return (
                   <button

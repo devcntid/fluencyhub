@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import { auth } from "@/lib/session";
 import { listUpcomingLiveClasses } from "@/lib/db/lessons.queries";
@@ -24,7 +25,9 @@ export default async function LivePage() {
         <p className="mt-1 text-zinc-500">Jadwal praktik mingguan via Zoom.</p>
       </div>
 
-      <LiveClassList liveClasses={liveClasses} />
+      <Suspense fallback={<div>Loading jadwal...</div>}>
+        <LiveClassList liveClasses={liveClasses} />
+      </Suspense>
     </main>
   );
 }

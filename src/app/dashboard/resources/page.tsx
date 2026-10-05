@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { auth } from "@/lib/session";
 import { listUserResources } from "@/lib/db/resources.queries";
 import { redirect } from "next/navigation";
@@ -23,7 +24,9 @@ export default async function ResourcesPage() {
         </p>
       </div>
 
-      <ResourceList resources={resources} />
+      <Suspense fallback={<div>Loading resources...</div>}>
+        <ResourceList resources={resources} />
+      </Suspense>
     </main>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 
 // Based on the type inferred from page.tsx
@@ -9,13 +11,34 @@ export type ResourceItem = {
   title: string;
   description: string | null;
   courseTitle: string;
+  courseId: number;
   documentUrl: string | null;
+  textContent: string | null;
 };
 
 export function ResourceList({ resources }: { resources: ResourceItem[] }) {
-  const [selectedCourse, setSelectedCourse] = useState<string>("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const c = searchParams.get("c");
+  
+  const defaultSelectedCourse = c 
+    ? resources.find((r) => r.courseId === Number(c))?.courseTitle || "all" 
+    : "all";
+
+  const [selectedCourse, setSelectedCourse] = useState<string>(defaultSelectedCourse);
 
   const courses = Array.from(new Set(resources.map((r) => r.courseTitle)));
+
+  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const title = e.target.value;
+    setSelectedCourse(title);
+    if (title === "all") {
+      router.push("/dashboard/resources");
+    } else {
+      const cid = resources.find((r) => r.courseTitle === title)?.courseId;
+      if (cid) router.push(`/dashboard/resources?c=${cid}`);
+    }
+  };
 
   const filteredResources =
     selectedCourse === "all"
@@ -65,7 +88,7 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
         </p>
         <select
           value={selectedCourse}
-          onChange={(e) => setSelectedCourse(e.target.value)}
+          onChange={handleSelect}
           className="w-full md:w-auto max-w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="all">Semua Kelas</option>
@@ -109,22 +132,46 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
                 </p>
                 
                 {res.documentUrl ? (
-                  <a
-                    href={res.documentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50"
-                  >
-                    <LandingIcon name="Download" color="currentColor" />
-                    Download
-                  </a>
+                  <div className="flex w-full gap-2 mt-auto">
+                    <a
+                      href={res.documentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-100"
+                    >
+                      <LandingIcon name="Eye" size={14} color="currentColor" />
+                      Lihat
+                    </a>
+                    <a
+                      href={res.documentUrl}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-2.5 text-xs font-bold text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+                    >
+                      <LandingIcon name="Download" size={14} color="currentColor" />
+                      Download
+                    </a>
+                  </div>
+                ) : res.textContent ? (
+                  <div className="mt-auto">
+                    <Link
+                      href={`/dashboard/resources/${res.id}`}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
+                    >
+                      <LandingIcon name="BookOpen" size={16} color="currentColor" />
+                      Baca Teks Materi
+                    </Link>
+                  </div>
                 ) : (
-                  <button
-                    disabled
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 text-sm font-semibold text-zinc-400"
-                  >
-                    Kosong
-                  </button>
+                  <div className="mt-auto">
+                    <button
+                      disabled
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 text-sm font-semibold text-zinc-400"
+                    >
+                      Kosong
+                    </button>
+                  </div>
                 )}
               </div>
             );

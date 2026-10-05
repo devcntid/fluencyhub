@@ -1,13 +1,33 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { UpcomingLiveClass } from "@/lib/db/lessons.queries";
 
 export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[] }) {
-  const [selectedCourse, setSelectedCourse] = useState<string>("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const c = searchParams.get("c");
+  
+  const defaultSelectedCourse = c 
+    ? liveClasses.find((l) => l.courseId === Number(c))?.courseTitle || "all" 
+    : "all";
+
+  const [selectedCourse, setSelectedCourse] = useState<string>(defaultSelectedCourse);
 
   const courses = Array.from(new Set(liveClasses.map((c) => c.courseTitle)));
+
+  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const title = e.target.value;
+    setSelectedCourse(title);
+    if (title === "all") {
+      router.push("/dashboard/live");
+    } else {
+      const cid = liveClasses.find((l) => l.courseTitle === title)?.courseId;
+      if (cid) router.push(`/dashboard/live?c=${cid}`);
+    }
+  };
 
   const filteredClasses =
     selectedCourse === "all"
@@ -49,7 +69,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
         </p>
         <select
           value={selectedCourse}
-          onChange={(e) => setSelectedCourse(e.target.value)}
+          onChange={handleSelect}
           className="w-full md:w-auto max-w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="all">Semua Kelas</option>

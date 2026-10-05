@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { DashboardChrome } from "@/components/layout/DashboardChrome";
 import { auth } from "@/lib/session";
 import { getUserById } from "@/lib/db/users.queries";
@@ -18,5 +19,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
   }
 
-  return <DashboardChrome user={user}>{children}</DashboardChrome>;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#fafafa]">Loading...</div>}>
+      <DashboardChrome user={user}>{children}</DashboardChrome>
+    </Suspense>
+  );
 }
