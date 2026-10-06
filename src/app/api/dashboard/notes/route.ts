@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
     const note = await getLessonNote(Number(session.user.id), lessonId);
     return NextResponse.json({ note });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("GET /api/dashboard/notes error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
     const note = await saveLessonNote(Number(session.user.id), lessonId, content || "");
     return NextResponse.json({ note });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("POST /api/dashboard/notes error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

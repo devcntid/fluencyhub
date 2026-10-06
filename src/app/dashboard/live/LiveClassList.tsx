@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+ 
 "use client";
 
 import { useState } from "react";
@@ -67,18 +69,25 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
         <p className="text-sm font-medium text-zinc-500">
           Menampilkan {filteredClasses.length} sesi
         </p>
-        <select
-          value={selectedCourse}
-          onChange={handleSelect}
-          className="w-full md:w-auto max-w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="all">Semua Kelas</option>
-          {courses.map((course) => (
-            <option key={course} value={course}>
-              Kelas: {course}
-            </option>
-          ))}
-        </select>
+        <div className="relative w-full md:w-auto min-w-[200px]">
+          <select
+            value={selectedCourse}
+            onChange={handleSelect}
+            className="w-full appearance-none rounded-xl border border-zinc-200 bg-white py-2.5 pl-4 pr-10 text-sm font-semibold text-zinc-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none transition-all hover:bg-zinc-50 focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-50)] cursor-pointer"
+          >
+            <option value="all">Semua Kelas</option>
+            {courses.map((course) => (
+              <option key={course} value={course}>
+                Kelas: {course}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -162,3 +171,4 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
     </div>
   );
 }
+ 

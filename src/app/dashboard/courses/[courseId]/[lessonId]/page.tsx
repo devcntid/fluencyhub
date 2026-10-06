@@ -34,6 +34,7 @@ export default async function LessonPage({
   const withinWindow =
     current.contentType === "live_class" &&
     current.liveClassDatetime &&
+    // eslint-disable-next-line react-hooks/purity
     Date.now() >= current.liveClassDatetime.getTime() - 30 * 60 * 1000;
   const liveJoinUrl = current.contentType === "live_class" && (access.preview || withinWindow) ? current.liveClassUrl : null;
 

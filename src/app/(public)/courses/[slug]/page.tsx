@@ -13,7 +13,8 @@ export default async function PublicCoursePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const course = await getCourseBySlug(slug);
+  const decodedSlug = decodeURIComponent(slug);
+  const course = await getCourseBySlug(decodedSlug);
   if (!course || course.status !== "published") notFound();
 
   const [curriculum, lessonCount, instructor, session] = await Promise.all([
@@ -29,7 +30,7 @@ export default async function PublicCoursePage({
   const checkoutPath = `/checkout?courseId=${course.id}`;
   let buyHref = `/auth/signin?callbackUrl=${encodeURIComponent(checkoutPath)}`;
   if (session?.user) {
-    buyHref = isEnrolled ? `/dashboard/courses/${course.id}` : checkoutPath;
+    buyHref = isEnrolled ? `/dashboard/videos?c=${course.id}` : checkoutPath;
   }
 
   return (
@@ -133,11 +134,22 @@ export default async function PublicCoursePage({
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="card flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
-            {course.originalPrice ? (
-              <p className="text-sm text-[var(--text-4)] line-through">{formatIdr(course.originalPrice)}</p>
-            ) : null}
-            <p className="text-3xl font-extrabold text-[var(--brand)]">{formatIdr(course.price)}</p>
-            <p className="mt-1 text-sm text-[var(--text-3)]">Lifetime access after payment is confirmed</p>
+            {isEnrolled ? (
+              <>
+                <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-blue-600 border border-blue-100">
+                  Sudah Terdaftar
+                </span>
+                <p className="mt-2 text-sm text-[var(--text-3)]">Anda sudah memiliki akses ke kelas ini</p>
+              </>
+            ) : (
+              <>
+                {course.originalPrice ? (
+                  <p className="text-sm text-[var(--text-4)] line-through">{formatIdr(course.originalPrice)}</p>
+                ) : null}
+                <p className="text-3xl font-extrabold text-[var(--brand)]">{formatIdr(course.price)}</p>
+                <p className="mt-1 text-sm text-[var(--text-3)]">Lifetime access after payment is confirmed</p>
+              </>
+            )}
           </div>
           <Link href={buyHref} className="btn btn-primary btn-lg">
             {!session?.user 

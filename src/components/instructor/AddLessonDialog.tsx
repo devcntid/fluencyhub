@@ -63,7 +63,7 @@ export function AddLessonDialog({
         contentType: type,
         youtubeUrl: type === "youtube_video" ? url || null : null,
         liveClassUrl: type === "live_class" ? url || null : null,
-        liveClassDatetime: type === "live_class" && dt ? dt : null,
+        liveClassDatetime: type === "live_class" && dt ? new Date(dt).toISOString() : null,
         liveClassPlatform: type === "live_class" ? "zoom" : null,
         documentUrl: type === "document" ? url || null : null,
         textContent: type === "text" ? text || null : null,

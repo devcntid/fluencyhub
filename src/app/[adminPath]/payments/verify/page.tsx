@@ -82,8 +82,8 @@ export default async function VerifyPaymentsPage() {
                 <div className="flex flex-col gap-4">
                   <div className="flex min-h-[140px] flex-1 flex-col items-center justify-center rounded-xl border border-gray-200 bg-gray-50 p-2 text-center overflow-hidden">
                     {p.fileUrl.match(/\.(png|jpe?g|webp)$/i) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <a href={p.fileUrl} target="_blank" rel="noreferrer" className="block w-full h-full cursor-zoom-in">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={p.fileUrl} alt="Bukti Transfer" className="max-h-[220px] w-full object-contain rounded-lg transition-transform hover:scale-105" />
                       </a>
                     ) : (

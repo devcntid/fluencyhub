@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { auth } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { listEnrollmentsForUser } from "@/lib/db/enrollments.queries";
@@ -29,9 +30,9 @@ export default async function ElearningPage() {
             <p className="mb-6 text-base text-zinc-700">
               Ayo berlangganan sekarang untuk akses ratusan materi e-learning FluencyHub!
             </p>
-            <a href="/#harga" className="flex w-max items-center justify-center rounded bg-[var(--brand)] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--brand-600)]">
+            <Link href="/#harga" className="flex w-max items-center justify-center rounded bg-[var(--brand)] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--brand-600)]">
               Mulai Berlangganan
-            </a>
+            </Link>
           </div>
           <hr className="border-zinc-200" />
         </>

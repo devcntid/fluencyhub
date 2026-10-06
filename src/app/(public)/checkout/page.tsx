@@ -11,7 +11,7 @@ import { getUserById } from "@/lib/db/users.queries";
 export default async function CheckoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ courseId?: string }>;
+  searchParams: Promise<{ courseId?: string; editMethod?: string }>;
 }) {
   const params = await searchParams;
   const courseId = Number(params.courseId);
@@ -56,6 +56,7 @@ export default async function CheckoutPage({
       midtransClientKey={midtransClientKey()}
       midtransSnapScriptUrl={midtransSnapScriptUrl()}
       initialOrder={existingOrder}
+      initialStep={params.editMethod === '1' ? 3 : undefined}
     />
   );
 }

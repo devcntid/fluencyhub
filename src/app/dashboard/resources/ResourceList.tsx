@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 
 // Based on the type inferred from page.tsx
@@ -17,7 +17,7 @@ export type ResourceItem = {
 };
 
 export function ResourceList({ resources }: { resources: ResourceItem[] }) {
-  const router = useRouter();
+
   const searchParams = useSearchParams();
   const c = searchParams.get("c");
   
@@ -33,10 +33,10 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
     const title = e.target.value;
     setSelectedCourse(title);
     if (title === "all") {
-      router.push("/dashboard/resources");
+      window.history.replaceState(null, '', "/dashboard/resources");
     } else {
       const cid = resources.find((r) => r.courseTitle === title)?.courseId;
-      if (cid) router.push(`/dashboard/resources?c=${cid}`);
+      if (cid) window.history.replaceState(null, '', `/dashboard/resources?c=${cid}`);
     }
   };
 
@@ -86,18 +86,25 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
         <p className="text-sm font-medium text-zinc-500">
           Menampilkan {filteredResources.length} dokumen
         </p>
-        <select
-          value={selectedCourse}
-          onChange={handleSelect}
-          className="w-full md:w-auto max-w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="all">Semua Kelas</option>
-          {courses.map((course) => (
-            <option key={course} value={course}>
-              Kelas: {course}
-            </option>
-          ))}
-        </select>
+        <div className="relative w-full md:w-auto min-w-[200px]">
+          <select
+            value={selectedCourse}
+            onChange={handleSelect}
+            className="w-full appearance-none rounded-xl border border-zinc-200 bg-white py-2.5 pl-4 pr-10 text-sm font-semibold text-zinc-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none transition-all hover:bg-zinc-50 focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-50)] cursor-pointer"
+          >
+            <option value="all">Semua Kelas</option>
+            {courses.map((course) => (
+              <option key={course} value={course}>
+                Kelas: {course}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       {filteredResources.length === 0 ? (
@@ -117,11 +124,9 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
                   <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${meta.bg}`}>
                     <LandingIcon name={meta.icon} color={meta.color} />
                   </div>
-                  {selectedCourse === "all" && (
-                    <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-indigo-600 border border-indigo-100 text-right line-clamp-2 max-w-[65%] leading-tight shrink break-words">
-                      {res.courseTitle}
-                    </span>
-                  )}
+                  <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-indigo-600 border border-indigo-100 text-right line-clamp-2 max-w-[65%] leading-tight shrink break-words">
+                    {res.courseTitle}
+                  </span>
                 </div>
                 
                 <h3 className="mb-1 font-[family-name:var(--font-heading)] text-sm font-bold text-zinc-900 leading-snug">

@@ -156,7 +156,7 @@ export function AdminMethodsClient({ initialMethods }: { initialMethods: Payment
                   <select
                     className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
                     value={formData.type || ""}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value as PaymentMethod["type"] })}
                   >
                     <option value="">-- Pilih --</option>
                     <option value="e_wallet">E-Wallet</option>
@@ -174,7 +174,7 @@ export function AdminMethodsClient({ initialMethods }: { initialMethods: Payment
                   <select
                     className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
                     value={formData.provider || ""}
-                    onChange={(e) => setFormData({ ...formData, provider: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, provider: e.target.value as PaymentMethod["provider"] })}
                   >
                     <option value="">-- Pilih --</option>
                     <option value="midtrans">Midtrans</option>

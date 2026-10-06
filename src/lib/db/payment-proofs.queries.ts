@@ -30,6 +30,31 @@ export async function getPaymentProofById(id: number): Promise<PaymentProof | nu
   return rows[0] ? mapPaymentProof(rows[0] as Record<string, unknown>) : null;
 }
 
+export async function getPaymentProofDetailsById(id: number): Promise<
+  (PaymentProof & { orderNumber: string; userName: string; courseTitle: string; amount: string; whatsappNumber: string | null; bankName: string | null; }) | null
+> {
+  const rows = await sql`
+    SELECT p.*, o.order_number, u.name AS user_name, u.whatsapp_number, c.title AS course_title, o.total_amount, pm.name AS bank_name
+    FROM payment_proofs p
+    JOIN orders o ON o.id = p.order_id
+    JOIN users u ON u.id = o.user_id
+    JOIN courses c ON c.id = o.course_id
+    LEFT JOIN payment_methods pm ON pm.id = o.payment_method_id
+    WHERE p.id = ${id}
+  `;
+  if (!rows[0]) return null;
+  const row = rows[0] as Record<string, unknown>;
+  return {
+    ...mapPaymentProof(row),
+    orderNumber: String(row.order_number),
+    userName: String(row.user_name),
+    whatsappNumber: row.whatsapp_number ? String(row.whatsapp_number) : null,
+    courseTitle: String(row.course_title),
+    amount: String(row.total_amount),
+    bankName: row.bank_name ? String(row.bank_name) : null,
+  };
+}
+
 export async function listPendingProofs(): Promise<
   Array<PaymentProof & { orderNumber: string; userName: string; courseTitle: string; amount: string; whatsappNumber: string | null; bankName: string | null; }>
 > {

@@ -23,3 +23,19 @@ export async function updateProfileInfo(formData: FormData) {
   revalidatePath("/", "layout");
   return { success: true };
 }
+
+export async function updateAvatar(avatarUrl: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  await updateUserProfile(Number(session.user.id), {
+    avatarUrl,
+  });
+
+  revalidatePath("/dashboard/profile");
+  revalidatePath("/fh-admin/users");
+  revalidatePath("/", "layout");
+  return { success: true };
+}

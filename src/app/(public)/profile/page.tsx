@@ -3,6 +3,7 @@ import { LandingIcon } from "@/components/landing/LandingIcon";
 import Link from "next/link";
 import { getUserById } from "@/lib/db/users.queries";
 import { ProfileForm } from "@/app/dashboard/profile/ProfileForm";
+import { AvatarUploader } from "@/app/dashboard/profile/AvatarUploader";
 
 export default async function PublicProfilePage() {
   const session = await auth();
@@ -39,7 +40,10 @@ export default async function PublicProfilePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {dbUser?.avatarUrl || session?.user?.image ? (
-              <img src={dbUser?.avatarUrl || session?.user?.image || ""} alt={userName} className="h-24 w-24 rounded-full border-4 border-white shadow-sm object-cover" />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={dbUser?.avatarUrl || session?.user?.image || ""} alt={userName} className="h-24 w-24 rounded-full border-4 border-white shadow-sm object-cover" />
+              </>
             ) : (
               <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-sm bg-zinc-100 text-3xl font-bold text-zinc-500">
                 {userName[0]?.toUpperCase()}
@@ -52,9 +56,7 @@ export default async function PublicProfilePage() {
           </div>
           
           <div>
-            <button type="button" className="rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 transition">
-              Ubah Foto
-            </button>
+            <AvatarUploader />
           </div>
         </div>
 

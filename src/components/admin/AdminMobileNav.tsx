@@ -11,6 +11,7 @@ export function AdminMobileNav({ base, groups }: { base: string; groups: AdminNa
 
   // Close when pathname changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpen(false);
   }, [pathname]);
 

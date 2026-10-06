@@ -6,8 +6,6 @@ import { useState } from "react";
 export function ProofVerifyActions({ proofId }: { proofId: number }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState("");
-  const [error, setError] = useState("");
 
   const [showModal, setShowModal] = useState<"reject" | "cancel" | null>(null);
   const [reason, setReason] = useState("");

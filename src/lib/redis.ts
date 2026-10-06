@@ -13,7 +13,7 @@ export const ratelimit = redis
       prefix: "fh",
     })
   : {
-      async limit(_key: string) {
+      async limit() {
         return { success: true, limit: 10, remaining: 10, reset: Date.now() + 60_000 };
       },
     };

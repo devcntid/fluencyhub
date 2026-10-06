@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id" className={`${heading.variable} ${body.variable} h-full`}>
-      <body className="min-h-full">
+      <body className="min-h-full overflow-y-scroll">
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>

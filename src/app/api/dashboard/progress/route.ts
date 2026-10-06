@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db/client";
 import { getEnrollment } from "@/lib/db/enrollments.queries";
 import { auth } from "@/lib/session";
@@ -59,11 +60,10 @@ export async function POST(req: Request) {
       WHERE id = ${enrollment.id}
     `;
 
-    const { revalidatePath } = require("next/cache");
     revalidatePath("/dashboard", "layout");
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Progress API Error:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

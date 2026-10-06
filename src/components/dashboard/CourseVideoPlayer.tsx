@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { PlayerSection, PlayerLesson } from "@/lib/db/lessons.queries";
 
@@ -25,23 +26,16 @@ export function CourseVideoPlayer({
 
   // Find the active lesson object
   let activeLesson: PlayerLesson | null = null;
-  let activeSectionTitle = "";
   if (activeLessonId) {
     for (const sec of curriculum) {
       const lesson = sec.lessons.find((l) => l.id === activeLessonId);
       if (lesson) {
         activeLesson = lesson;
-        activeSectionTitle = sec.title;
         break;
       }
     }
   }
 
-  // Load note when lesson changes
-  import("react").then(({ useEffect }) => {
-    // We import useEffect dynamically because it wasn't imported at top level
-    // Wait, let's just add it to the top level import later.
-  });
 
 
   async function handleToggleComplete() {
@@ -69,11 +63,10 @@ export function CourseVideoPlayer({
 
   // Load note content
   useEffect(() => {
-    if (!activeLessonId) return;
+    if (!activeLessonId) {
+      return;
+    }
     let isMounted = true;
-    
-    setNoteContent("");
-    setNoteStatus("");
     
     fetch(`/api/dashboard/notes?lessonId=${activeLessonId}`)
       .then((res) => res.json())
@@ -333,10 +326,11 @@ export function CourseVideoPlayer({
                   >
                     <div className="relative aspect-video w-full bg-zinc-900 overflow-hidden">
                       {course.thumbnail_url && !isLocked && (
-                        <img
+                        <Image
                           src={course.thumbnail_url}
                           alt={l.title}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       )}
                       

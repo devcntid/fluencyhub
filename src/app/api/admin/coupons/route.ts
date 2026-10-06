@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     }).catch(console.error);
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("POST /api/admin/coupons error:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

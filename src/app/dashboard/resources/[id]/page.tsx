@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/session";
 import { getLessonById } from "@/lib/db/lessons.queries";
-import { getFirstLessonIdForCourse } from "@/lib/db/lessons.queries";
+
 import { LandingIcon } from "@/components/landing/LandingIcon";
 
 export default async function ResourceDetailPage({

@@ -1,8 +1,11 @@
+/* eslint-disable @next/next/no-img-element */
+ 
 import { auth } from "@/lib/session";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import Link from "next/link";
 import { getUserById } from "@/lib/db/users.queries";
 import { ProfileForm } from "./ProfileForm";
+import { AvatarUploader } from "./AvatarUploader";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -51,9 +54,7 @@ export default async function ProfilePage() {
         </div>
         
         <div>
-          <button type="button" className="rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 transition">
-            Ubah Foto
-          </button>
+          <AvatarUploader />
         </div>
       </div>
 

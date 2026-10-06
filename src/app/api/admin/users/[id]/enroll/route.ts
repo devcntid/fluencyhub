@@ -85,8 +85,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     });
 
     return NextResponse.json({ data: enrollment });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to enroll user:", error);
-    return NextResponse.json({ error: error.message || "Failed to enroll user" }, { status: 500 });
+    return NextResponse.json({ error: (error instanceof Error ? error.message : String(error)) || "Failed to enroll user" }, { status: 500 });
   }
 }

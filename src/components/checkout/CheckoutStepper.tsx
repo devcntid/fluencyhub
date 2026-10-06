@@ -1,6 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable jsx-a11y/alt-text */
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PaymentMethodLogo } from "@/components/checkout/PaymentMethodLogo";
 import { SnapModal } from "@/components/checkout/SnapModal";
@@ -14,10 +18,19 @@ type Props = {
   user: { name: string; email: string; whatsappNumber: string | null } | null;
   midtransClientKey: string;
   midtransSnapScriptUrl: string;
-  initialOrder?: any;
+  initialOrder?: {
+    id: number;
+    orderNumber: string;
+    paymentMethodId: number | null;
+    couponCode: string | null;
+    discountAmount: string | number | null;
+  } | null;
+  initialStep?: number;
 };
 
 const STEPS = ["Kelas", "Data Diri", "Bayar", "Konfirmasi"];
+const MAX_PROOF_SIZE = 5 * 1024 * 1024; // 5 MB
+const FILE_TOO_LARGE_MSG = "Ukuran file yang diunggah tidak boleh melebihi 5 MB.";
 
 export function CheckoutStepper({
   course,
@@ -26,8 +39,10 @@ export function CheckoutStepper({
   midtransClientKey,
   midtransSnapScriptUrl,
   initialOrder,
+  initialStep,
 }: Props) {
-  const [step, setStep] = useState(initialOrder ? 4 : 1);
+  const router = useRouter();
+  const [step, setStep] = useState(initialStep ?? (initialOrder ? 4 : 1));
   const [methodId, setMethodId] = useState<number | null>(initialOrder?.paymentMethodId ?? null);
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -51,7 +66,6 @@ export function CheckoutStepper({
 
   useEffect(() => {
     if (!methodId) {
-      setInstructions([]);
       return;
     }
     let cancelled = false;
@@ -91,16 +105,16 @@ export function CheckoutStepper({
         if (contentType && contentType.indexOf("application/json") !== -1) {
           const json = await res.json();
           if (json.data?.status === "paid") {
-            window.location.href = `/checkout/success?orderNumber=${orderNumber}`;
+            router.push(`/checkout/success?orderNumber=${orderNumber}`);
           }
         }
-      } catch (err) {
+      } catch {
         // Ignore network errors during polling
       }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [step, orderId, method, orderNumber]);
+  }, [step, orderId, method, orderNumber, router]);
 
   async function applyCoupon() {
     setError("");
@@ -125,6 +139,11 @@ export function CheckoutStepper({
     }
     if ((method.type === 'manual_transfer' || method.provider === 'manual') && !file) {
       setError("Pilih foto bukti transfer terlebih dahulu sebelum membayar");
+      return;
+    }
+    if ((method.type === 'manual_transfer' || method.provider === 'manual') && file && file.size > MAX_PROOF_SIZE) {
+      alert(FILE_TOO_LARGE_MSG);
+      setError(FILE_TOO_LARGE_MSG);
       return;
     }
     
@@ -180,6 +199,12 @@ export function CheckoutStepper({
         form.set("file", file!);
         form.set("folder", "proofs");
         const up = await fetch("/api/upload", { method: "POST", body: form });
+        if (up.status === 413) throw new Error(FILE_TOO_LARGE_MSG);
+        const upContentType = up.headers.get("content-type") ?? "";
+        if (!upContentType.includes("application/json")) {
+          console.error("API /upload non-JSON response:", await up.text());
+          throw new Error("Upload bukti transfer gagal. Silakan coba lagi.");
+        }
         const uploaded = await up.json();
         if (!up.ok) throw new Error(uploaded.error ?? "Upload gagal");
   
@@ -196,7 +221,7 @@ export function CheckoutStepper({
         });
         const proved = await proof.json();
         if (!proof.ok) throw new Error(proved.error ?? "Gagal menyimpan bukti transfer");
-        window.location.href = `/checkout/success?orderNumber=${created.data.orderNumber}`;
+        router.push(`/checkout/success?orderNumber=${created.data.orderNumber}`);
         return;
       }
       if (path === "snap" && paid.data?.snapToken) {
@@ -219,7 +244,7 @@ export function CheckoutStepper({
         window.location.href = paid.data.checkoutUrl as string;
         return;
       }
-      window.location.href = `/checkout/success?orderNumber=${created.data.orderNumber}`;
+      router.push(`/checkout/success?orderNumber=${created.data.orderNumber}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Checkout failed");
     } finally {
@@ -239,10 +264,10 @@ export function CheckoutStepper({
         return;
       }
       if (orderNumber) {
-        window.location.href = `/checkout/success?orderNumber=${orderNumber}`;
+        router.push(`/checkout/success?orderNumber=${orderNumber}`);
       }
     },
-    [orderNumber],
+    [orderNumber, router],
   );
 
   return (
@@ -254,10 +279,10 @@ export function CheckoutStepper({
             Kembali
           </button>
         ) : (
-          <a href="/#harga" className="btn btn-secondary btn-sm flex items-center gap-2">
+          <Link href="/#harga" className="btn btn-secondary btn-sm flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             Kembali
-          </a>
+          </Link>
         )}
         <div className="flex flex-1 items-center justify-center gap-2 md:gap-3">
           {STEPS.map((s, i) => (
@@ -441,12 +466,21 @@ export function CheckoutStepper({
                 </div>
               </div>
 
-              <div className="mb-4 flex items-center gap-3 rounded-[var(--r)] border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3">
-                {method ? <PaymentMethodLogo src={method.logoUrl} name={method.name} code={method.code} /> : null}
-                <div className="flex flex-col">
-                  <span className="text-[14px] font-semibold text-[var(--text)]">{method?.name || '—'}</span>
-                  <span className="text-[11px] font-bold text-[var(--text-4)] uppercase tracking-wider">{method?.provider || '—'}</span>
+              <div className="mb-4 flex items-center justify-between rounded-[var(--r)] border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3">
+                <div className="flex items-center gap-3">
+                  {method ? <PaymentMethodLogo src={method.logoUrl} name={method.name} code={method.code} /> : null}
+                  <div className="flex flex-col">
+                    <span className="text-[14px] font-semibold text-[var(--text)]">{method?.name || '—'}</span>
+                    <span className="text-[11px] font-bold text-[var(--text-4)] uppercase tracking-wider">{method?.provider || '—'}</span>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="btn btn-secondary btn-sm text-[12px]"
+                >
+                  Ubah
+                </button>
               </div>
 
               {(method?.type === 'manual_transfer' || method?.provider === 'manual') && (
@@ -498,7 +532,18 @@ export function CheckoutStepper({
                         type="file"
                         accept="image/jpeg,image/png,application/pdf"
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                        onChange={(e) => {
+                          const selected = e.target.files?.[0] ?? null;
+                          if (selected && selected.size > MAX_PROOF_SIZE) {
+                            alert(FILE_TOO_LARGE_MSG);
+                            setError(FILE_TOO_LARGE_MSG);
+                            setFile(null);
+                            e.target.value = "";
+                            return;
+                          }
+                          setError("");
+                          setFile(selected);
+                        }}
                       />
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2.5 text-[var(--text-4)]"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                       {file ? (
@@ -541,12 +586,21 @@ export function CheckoutStepper({
               <p className="mb-5 text-[14px] leading-relaxed text-[var(--text-3)]">
                 Silakan selesaikan pembayaran sesuai instruksi di atas.
               </p>
-              <a
-                href={`/checkout/success?orderNumber=${orderNumber}`}
-                className="btn btn-primary btn-lg btn-full"
-              >
-                Cek Status Pembayaran <svg className="ml-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              </a>
+              <div className="flex flex-col gap-3">
+                <a
+                  href={`/checkout/success?orderNumber=${orderNumber}`}
+                  className="btn btn-primary btn-lg btn-full"
+                >
+                  Cek Status Pembayaran <svg className="ml-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="btn btn-secondary btn-lg btn-full"
+                >
+                  Ubah Metode Pembayaran
+                </button>
+              </div>
             </div>
           )}
         </div>

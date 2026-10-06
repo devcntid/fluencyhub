@@ -116,7 +116,7 @@ export function UserAdminTable({
     });
     setBusy(false);
     if (!res.ok) {
-      const json = (await res.json().catch(() => ({}))) as any;
+      const json = (await res.json().catch(() => ({}))) as { error?: string | { fieldErrors?: Record<string, string[]> } };
       if (json.error && typeof json.error === "object" && json.error.fieldErrors) {
         // Zod error
         const firstField = Object.keys(json.error.fieldErrors)[0];

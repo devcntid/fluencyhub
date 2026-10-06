@@ -44,7 +44,6 @@ export function CoursePlayer({
     0
   );
   const index = sections.flatMap((s) => s.lessons).findIndex((l) => l.id === current.id);
-  const pct = total ? Math.round(((index + 1) / total) * 100) : 0;
   const progressPct = total ? Math.round((completedCount / total) * 100) : 0;
 
   async function handleToggleComplete() {

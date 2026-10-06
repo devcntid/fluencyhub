@@ -63,7 +63,10 @@ export function DashboardChrome({
         {/* Profile Sidebar */}
         <Link href="/dashboard/profile" className="mb-8 flex items-center gap-3 px-2 text-left hover:opacity-80 transition">
           {user?.image ? (
-            <img src={user.image} alt={user.name || "User"} className="h-10 w-10 rounded-full border-2 border-zinc-700 object-cover" />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={user.image} alt={user.name || "User"} className="h-10 w-10 rounded-full border-2 border-zinc-700 object-cover" />
+            </>
           ) : (
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-zinc-700 bg-zinc-800 text-sm font-bold text-white">
               {user?.name?.[0]?.toUpperCase() || "U"}
@@ -78,7 +81,8 @@ export function DashboardChrome({
         {/* Navigation */}
         <nav className="flex flex-1 flex-col gap-1">
           {menu.map((m) => {
-            const isActive = pathname === m.href;
+            const basePath = m.href.split('?')[0];
+            const isActive = m.id === "dashboard" ? pathname === basePath : pathname.startsWith(basePath);
             return (
               <Link
                 key={m.id}
@@ -149,7 +153,10 @@ export function DashboardChrome({
               
               <Link href="/dashboard/profile" className="mb-8 flex items-center gap-3 px-2 text-left hover:opacity-80 transition" onClick={() => setOpen(false)}>
                 {user?.image ? (
-                  <img src={user.image} alt={user.name || "User"} className="h-10 w-10 rounded-full border-2 border-zinc-700 object-cover" />
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={user.image} alt={user.name || "User"} className="h-10 w-10 rounded-full border-2 border-zinc-700 object-cover" />
+                  </>
                 ) : (
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-zinc-700 bg-zinc-800 text-sm font-bold text-white">
                     {user?.name?.[0]?.toUpperCase() || "U"}
@@ -163,7 +170,8 @@ export function DashboardChrome({
 
               <nav className="flex flex-1 flex-col gap-1">
                 {menu.map((m) => {
-                  const isActive = pathname === m.href;
+                  const basePath = m.href.split('?')[0];
+                  const isActive = m.id === "dashboard" ? pathname === basePath : pathname.startsWith(basePath);
                   return (
                     <Link
                       key={m.id}

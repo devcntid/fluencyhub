@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { updatePaymentMethod } from "@/lib/db/payment-methods.queries";
-import type { PaymentMethodType, PaymentProvider } from "@/types/db";
+
 import { createAuditLog } from "@/lib/db/audit-logs.queries";
 
 const Schema = z.object({

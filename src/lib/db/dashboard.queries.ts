@@ -1,5 +1,5 @@
 import { sql, asNum } from "./client";
-import { mapCourse, mapLesson, mapSection } from "./mappers";
+import { mapLesson, mapSection } from "./mappers";
 
 export async function getUserDashboardStats(userId: number) {
   // Total completed lessons

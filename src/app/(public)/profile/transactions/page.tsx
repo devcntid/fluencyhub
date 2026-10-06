@@ -53,9 +53,9 @@ export default async function TransactionsPage() {
           <p className="mb-6 text-sm text-zinc-500 max-w-md">
             Kamu belum pernah melakukan pembelian kelas apapun. Yuk mulai eksplorasi kelas dan tingkatkan keahlianmu!
           </p>
-          <a href="/#harga" className="btn btn-primary rounded-lg font-semibold px-6 py-2.5">
+          <Link href="/#harga" className="btn btn-primary rounded-lg font-semibold px-6 py-2.5">
             Lihat Kelas Tersedia
-          </a>
+          </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">

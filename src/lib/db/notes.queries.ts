@@ -28,15 +28,15 @@ export async function getLessonNote(userId: number, lessonId: number): Promise<L
     SELECT * FROM lesson_notes
     WHERE user_id = ${userId} AND lesson_id = ${lessonId}
   `;
-  const r = rows[0] as any;
+  const r = rows[0] as Record<string, unknown>;
   if (!r) return null;
   return {
-    id: r.id,
-    userId: r.user_id,
-    lessonId: r.lesson_id,
-    content: r.content,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
+    id: Number(r.id),
+    userId: Number(r.user_id),
+    lessonId: Number(r.lesson_id),
+    content: String(r.content),
+    createdAt: r.created_at as Date,
+    updatedAt: r.updated_at as Date,
   };
 }
 
@@ -54,13 +54,13 @@ export async function saveLessonNote(userId: number, lessonId: number, content: 
       updated_at = CURRENT_TIMESTAMP
     RETURNING *
   `;
-  const r = rows[0] as any;
+  const r = rows[0] as Record<string, unknown>;
   return {
-    id: r.id,
-    userId: r.user_id,
-    lessonId: r.lesson_id,
-    content: r.content,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
+    id: Number(r.id),
+    userId: Number(r.user_id),
+    lessonId: Number(r.lesson_id),
+    content: String(r.content),
+    createdAt: r.created_at as Date,
+    updatedAt: r.updated_at as Date,
   };
 }

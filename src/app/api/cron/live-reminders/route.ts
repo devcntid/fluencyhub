@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db/client";
 import { sendFonnteWhatsApp } from "@/lib/notifications";
 
-export async function GET(req: Request) {
+export async function GET() {
   // In a real Vercel Cron, you'd secure this with an Authorization header
   // e.g. if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
       return target;
     };
 
-    const formatDate = (date: any) => {
+    const formatDate = (date: Date | string | number) => {
       return new Date(date).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'short' });
     };
 
@@ -91,8 +91,8 @@ export async function GET(req: Request) {
       h1Count: h1Rows.length 
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Cron] Live Reminders Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+ 
 import Link from "next/link";
 import { listEnrollmentsForUser } from "@/lib/db/enrollments.queries";
 import { listPublishedCoursesWithInstructor } from "@/lib/db/courses.queries";
@@ -29,6 +31,9 @@ export default async function DashboardHomePage() {
     { icon: "Video", bg: "bg-blue-50", c: "#2563eb", lbl: "Sesi Live", val: `${statsData.totalLiveClasses}` },
     { icon: "FileText", bg: "bg-purple-50", c: "#7c3aed", lbl: "Resources", val: `${statsData.totalResources}` },
   ];
+
+  const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId));
+  const otherCourses = allCourses.filter((c) => !enrolledCourseIds.has(c.id));
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 flex flex-col gap-8">
@@ -200,37 +205,41 @@ export default async function DashboardHomePage() {
       )}
 
       {/* Semua Kelas */}
-      <hr className="border-zinc-100 my-4" />
-      <div>
-        <h2 className="mb-4 text-xl font-extrabold text-zinc-900">Jelajahi Kelas Lainnya</h2>
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {allCourses.map((c) => (
-            <Link key={c.id} href={`/courses/${c.slug}`} className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:shadow-md">
-              <div className="relative h-32 w-full bg-zinc-100">
-                {c.thumbnailUrl ? (
-                  <img src={c.thumbnailUrl} alt={c.title} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center bg-zinc-200">
-                    <LandingIcon name="BookOpen" color="#9ca3af" />
+      {otherCourses.length > 0 && (
+        <>
+          <hr className="border-zinc-100 my-4" />
+          <div>
+            <h2 className="mb-4 text-xl font-extrabold text-zinc-900">Jelajahi Kelas Lainnya</h2>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {otherCourses.map((c) => (
+                <Link key={c.id} href={`/courses/${c.slug}`} className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:shadow-md">
+                  <div className="relative h-32 w-full bg-zinc-100">
+                    {c.thumbnailUrl ? (
+                      <img src={c.thumbnailUrl} alt={c.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-zinc-200">
+                        <LandingIcon name="BookOpen" color="#9ca3af" />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col justify-between p-4">
-                <div>
-                  <h4 className="mb-1 font-bold text-zinc-900 line-clamp-2">{c.title}</h4>
-                  <p className="mb-3 text-xs text-zinc-500 line-clamp-2">{c.shortDescription}</p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-600">{c.instructorName}</span>
-                  <span className="text-sm font-bold text-[var(--brand)]">
-                    {c.isFree ? "Gratis" : `Rp ${Number(c.price).toLocaleString("id-ID")}`}
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+                  <div className="flex flex-1 flex-col justify-between p-4">
+                    <div>
+                      <h4 className="mb-1 font-bold text-zinc-900 line-clamp-2">{c.title}</h4>
+                      <p className="mb-3 text-xs text-zinc-500 line-clamp-2">{c.shortDescription}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-zinc-600">{c.instructorName}</span>
+                      <span className="text-sm font-bold text-[var(--brand)]">
+                        {c.isFree ? "Gratis" : `Rp ${Number(c.price).toLocaleString("id-ID")}`}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <hr className="border-zinc-100 my-4" />
 

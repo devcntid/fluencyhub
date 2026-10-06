@@ -176,9 +176,18 @@ export async function updateUserProfile(
   const rows = await sql`
     UPDATE users
     SET
-      name = COALESCE(${data.name ?? null}, name),
-      whatsapp_number = COALESCE(${data.whatsappNumber ?? null}, whatsapp_number),
-      avatar_url = COALESCE(${data.avatarUrl ?? null}, avatar_url),
+      name = CASE
+        WHEN ${data.name !== undefined} THEN ${data.name ?? null}
+        ELSE name
+      END,
+      whatsapp_number = CASE
+        WHEN ${data.whatsappNumber !== undefined} THEN ${data.whatsappNumber ?? null}
+        ELSE whatsapp_number
+      END,
+      avatar_url = CASE
+        WHEN ${data.avatarUrl !== undefined} THEN ${data.avatarUrl ?? null}
+        ELSE avatar_url
+      END,
       updated_at = NOW()
     WHERE id = ${id}
     RETURNING *

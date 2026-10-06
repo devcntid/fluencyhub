@@ -3,18 +3,32 @@ import { LandingIcon } from "@/components/landing/LandingIcon";
 import { ProfileDropdown } from "@/components/auth/ProfileDropdown";
 import { auth } from "@/lib/session";
 import { listEnrollmentsForUser } from "@/lib/db/enrollments.queries";
+import { getUserById } from "@/lib/db/users.queries";
 
 export const dynamic = "force-dynamic";
 
 export async function PublicNavbar() {
   const session = await auth();
+  
+  let user = session?.user;
+  if (session?.user?.id) {
+    const dbUser = await getUserById(Number(session.user.id));
+    if (dbUser) {
+      user = {
+        ...session.user,
+        name: dbUser.name,
+        email: dbUser.email,
+        image: dbUser.avatarUrl,
+      };
+    }
+  }
 
   let hasDashboardAccess = false;
-  if (session?.user) {
-    if (session.user.role === "admin" || session.user.role === "instructor") {
+  if (user) {
+    if (user.role === "admin" || user.role === "instructor") {
       hasDashboardAccess = true;
     } else {
-      const enrollments = await listEnrollmentsForUser(Number(session.user.id));
+      const enrollments = await listEnrollmentsForUser(Number(user.id));
       hasDashboardAccess = enrollments.length > 0;
     }
   }
@@ -37,8 +51,8 @@ export async function PublicNavbar() {
           <Link href="/#testimoni" className="nav-link">Testimoni</Link>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {session?.user ? (
-            <ProfileDropdown user={session.user} profileUrl="/profile" hasDashboardAccess={hasDashboardAccess} />
+          {user ? (
+            <ProfileDropdown user={user} profileUrl="/profile" hasDashboardAccess={hasDashboardAccess} />
           ) : (
             <>
               <Link href="/auth/signin" className="btn btn-secondary btn-default hidden md:inline-flex">

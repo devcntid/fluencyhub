@@ -7,7 +7,8 @@ export default async function AdminPaymentsPage() {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-extrabold">Transaksi</h1>
-        <a href="/api/admin/export-orders" className="btn btn-secondary btn-sm">
+        { }
+        <a href="/api/admin/export-orders" className="btn btn-secondary btn-sm" target="_blank" download>
           Export CSV
         </a>
       </div>

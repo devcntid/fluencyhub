@@ -51,8 +51,8 @@ export function NotificationSettingsForm({ settings }: { settings: Settings }) {
       if (!res.ok) throw new Error("Failed to save settings");
       alert("Settings saved!");
       router.refresh();
-    } catch (err: any) {
-      alert("Error: " + err.message);
+    } catch (err: unknown) {
+      alert("Error: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsSaving(false);
     }
@@ -73,8 +73,8 @@ export function NotificationSettingsForm({ settings }: { settings: Settings }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal mengirim test");
       alert("Test sent successfully!");
-    } catch (err: any) {
-      alert("Error: " + err.message);
+    } catch (err: unknown) {
+      alert("Error: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsTesting(false);
     }

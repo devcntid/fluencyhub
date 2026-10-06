@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { updateProfileInfo } from "./actions";
 
 interface ProfileFormProps {
@@ -12,6 +13,8 @@ export function ProfileForm({ initialName, initialWhatsapp }: ProfileFormProps) 
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
+  const router = useRouter();
+  
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -28,6 +31,7 @@ export function ProfileForm({ initialName, initialWhatsapp }: ProfileFormProps) 
       await updateProfileInfo(formData);
       
       setShowToast(true);
+      router.refresh();
       setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
       console.error("Gagal memperbarui profil:", error);

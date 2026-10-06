@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { LandingIcon } from "@/components/landing/LandingIcon";
+
 import { auth } from "@/lib/session";
 import { listUpcomingLiveClasses } from "@/lib/db/lessons.queries";
 import { LiveClassList } from "./LiveClassList";

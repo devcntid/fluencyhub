@@ -34,7 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     });
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("PATCH /api/admin/coupons/[id] error:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
