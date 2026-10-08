@@ -5,13 +5,41 @@ import { listEnrollmentsForUser } from "@/lib/db/enrollments.queries";
 import Link from "next/link";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 
-export default async function ElearningPage() {
+export default async function ElearningPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; page?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/auth/signin");
   }
 
-  const enrollments = await listEnrollmentsForUser(Number(session.user.id));
+  const resolvedParams = await searchParams;
+  const currentTab = resolvedParams.tab || "recent";
+  const currentPage = parseInt(resolvedParams.page || "1", 10) || 1;
+  const itemsPerPage = 6;
+
+  const allEnrollments = await listEnrollmentsForUser(Number(session.user.id));
+
+  // Filter based on tabs
+  let filteredEnrollments = allEnrollments;
+  if (currentTab === "recent") {
+    filteredEnrollments = allEnrollments.filter(e => Number(e.progressPct) < 100);
+  } else if (currentTab === "completed") {
+    filteredEnrollments = allEnrollments.filter(e => Number(e.progressPct) >= 100);
+  } else if (currentTab === "saved") {
+    filteredEnrollments = []; // Not implemented yet in DB
+  }
+
+  const totalItems = filteredEnrollments.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const pageIdx = Math.min(Math.max(1, currentPage), totalPages) - 1;
+  
+  const displayEnrollments = filteredEnrollments.slice(pageIdx * itemsPerPage, (pageIdx + 1) * itemsPerPage);
+
+  const hasNextPage = currentPage < totalPages;
+  const hasPrevPage = currentPage > 1;
 
   return (
     <main className="w-full flex flex-col gap-10">
@@ -23,7 +51,7 @@ export default async function ElearningPage() {
         </p>
       </div>
 
-      {enrollments.length === 0 && (
+      {allEnrollments.length === 0 && (
         <>
           <div className="flex flex-col items-start text-left">
             <h2 className="mb-2 text-2xl font-bold text-zinc-900">Ups, Sepertinya Kamu Tidak Memiliki Langganan Aktif</h2>
@@ -43,20 +71,24 @@ export default async function ElearningPage() {
         
         {/* Tabs */}
         <div className="flex w-full items-center gap-2 rounded-lg bg-zinc-100 p-1 md:w-max">
-          <button className="rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-[var(--brand)] shadow-sm">
+          <Link href="?tab=recent" className={`rounded-md px-5 py-2.5 text-sm transition ${currentTab === "recent" ? "bg-white font-semibold text-[var(--brand)] shadow-sm" : "font-medium text-zinc-600 hover:text-zinc-900"}`}>
             Terakhir Dipelajari
-          </button>
-          <button className="rounded-md px-5 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition">
+          </Link>
+          <Link href="?tab=saved" className={`rounded-md px-5 py-2.5 text-sm transition ${currentTab === "saved" ? "bg-white font-semibold text-[var(--brand)] shadow-sm" : "font-medium text-zinc-600 hover:text-zinc-900"}`}>
             Materi Tersimpan
-          </button>
-          <button className="rounded-md px-5 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition">
+          </Link>
+          <Link href="?tab=completed" className={`rounded-md px-5 py-2.5 text-sm transition ${currentTab === "completed" ? "bg-white font-semibold text-[var(--brand)] shadow-sm" : "font-medium text-zinc-600 hover:text-zinc-900"}`}>
             Materi Selesai
-          </button>
+          </Link>
         </div>
 
-        {enrollments.length > 0 ? (
+        {currentTab === "saved" ? (
+          <p className="mt-4 text-[15px] italic text-zinc-500">
+            Fitur materi tersimpan belum tersedia.
+          </p>
+        ) : displayEnrollments.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {enrollments.map((e) => (
+            {displayEnrollments.map((e) => (
               <Link 
                 key={e.id} 
                 href={`/dashboard/videos?c=${e.courseId}`} 
@@ -106,17 +138,38 @@ export default async function ElearningPage() {
           </p>
         )}
 
-        {/* Pagination Placeholder */}
-        <div className="mt-16 flex items-center justify-between border-t border-zinc-100 pt-6">
-          <button className="flex items-center gap-2 rounded-lg border border-[var(--brand-200)] px-4 py-2 text-sm font-bold text-[var(--brand-300)] cursor-not-allowed">
-            <LandingIcon name="ChevronLeft" size={16} color="currentColor" />
-            Sebelumnya
-          </button>
-          <button className="flex items-center gap-2 rounded-lg border border-[var(--brand-200)] px-4 py-2 text-sm font-bold text-[var(--brand-300)] cursor-not-allowed">
-            Selanjutnya
-            <LandingIcon name="ChevronRight" size={16} color="currentColor" />
-          </button>
-        </div>
+        {/* Pagination */}
+        {totalItems > itemsPerPage && (
+          <div className="mt-16 flex items-center justify-between border-t border-zinc-100 pt-6">
+            {hasPrevPage ? (
+              <Link href={`?tab=${currentTab}&page=${currentPage - 1}`} className="flex items-center gap-2 rounded-lg border border-[var(--brand-200)] px-4 py-2 text-sm font-bold text-[var(--brand)] transition hover:bg-[var(--brand-50)]">
+                <LandingIcon name="ChevronLeft" size={16} color="currentColor" />
+                Sebelumnya
+              </Link>
+            ) : (
+              <button disabled className="flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm font-bold text-zinc-400 cursor-not-allowed">
+                <LandingIcon name="ChevronLeft" size={16} color="currentColor" />
+                Sebelumnya
+              </button>
+            )}
+            
+            <span className="text-sm font-medium text-zinc-500">
+              Halaman {currentPage} dari {totalPages}
+            </span>
+
+            {hasNextPage ? (
+              <Link href={`?tab=${currentTab}&page=${currentPage + 1}`} className="flex items-center gap-2 rounded-lg border border-[var(--brand-200)] px-4 py-2 text-sm font-bold text-[var(--brand)] transition hover:bg-[var(--brand-50)]">
+                Selanjutnya
+                <LandingIcon name="ChevronRight" size={16} color="currentColor" />
+              </Link>
+            ) : (
+              <button disabled className="flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm font-bold text-zinc-400 cursor-not-allowed">
+                Selanjutnya
+                <LandingIcon name="ChevronRight" size={16} color="currentColor" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

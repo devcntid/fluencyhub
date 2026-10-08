@@ -151,20 +151,40 @@ export default function PrivateSessionsPage() {
             </h2>
             
             {instructors.length > 0 && (
-              <div className="w-full md:w-64">
-                <select 
-                  className="input w-full bg-white shadow-sm border-zinc-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl" 
-                  value={selectedInstructorId} 
-                  onChange={(e) => setSelectedInstructorId(e.target.value)}
+              <div className="w-full mt-4 md:mt-0 flex overflow-x-auto pb-2 gap-2 snap-x hide-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setSelectedInstructorId("")}
+                  className={`snap-start shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
+                    selectedInstructorId === ""
+                      ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                      : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                  }`}
                 >
-                  <option value="">Semua Instruktur Saya</option>
-                  {instructors.map(inst => (
-                    <option key={inst.instructorId} value={inst.instructorId}>{inst.instructorName}</option>
-                  ))}
-                </select>
+                  Semua Instruktur Saya
+                </button>
+                {instructors.map((inst) => (
+                  <button
+                    key={inst.instructorId}
+                    type="button"
+                    onClick={() => setSelectedInstructorId(String(inst.instructorId))}
+                    className={`snap-start shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
+                      selectedInstructorId === String(inst.instructorId)
+                        ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                        : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                    }`}
+                  >
+                    {inst.instructorName}
+                  </button>
+                ))}
               </div>
             )}
           </div>
+          
+          <style dangerouslySetInnerHTML={{__html: `
+            .hide-scrollbar::-webkit-scrollbar { display: none; }
+            .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+          `}} />
         
           {instructors.length === 0 ? (
             <div className="p-8">
@@ -209,13 +229,21 @@ export default function PrivateSessionsPage() {
                         <span className={`text-[10px] md:text-xs font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30' : 'text-zinc-700'} ${daySlots.length > 0 ? 'mb-0.5' : ''}`}>
                           {format(day, "d")}
                         </span>
-                        {daySlots.length > 0 && (
+                        {daySlots.length > 0 ? (
                           <div className="w-full mt-0.5">
                             <div className="bg-emerald-100 text-emerald-700 text-[8px] md:text-[9px] px-0.5 md:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-sm border border-emerald-200/50 leading-none md:leading-normal">
                               <span className="md:hidden">{daySlots.length} Free</span>
                               <span className="hidden md:inline">{daySlots.length} Jam Free</span>
                             </div>
                           </div>
+                        ) : (
+                          day >= new Date(new Date().setHours(0,0,0,0)) && (
+                            <div className="w-full mt-0.5">
+                              <div className="bg-zinc-100 text-zinc-500 text-[8px] md:text-[9px] px-0.5 md:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-sm border border-zinc-200/50 leading-none md:leading-normal">
+                                <span>Penuh</span>
+                              </div>
+                            </div>
+                          )
                         )}
                       </button>
                     );

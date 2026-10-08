@@ -67,7 +67,7 @@ export function AdminDataGrid({
           <button type="button" className="btn btn-secondary btn-sm" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>
             Prev
           </button>
-          <span>
+          <span className="whitespace-nowrap">
             Page {safePage} / {totalPages}
           </span>
           <button type="button" className="btn btn-secondary btn-sm" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>

@@ -8,9 +8,11 @@ import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
 export type CmsField = {
   name: string;
   label: string;
-  type?: "text" | "textarea" | "number" | "checkbox" | "select";
+  type?: "text" | "textarea" | "number" | "checkbox" | "select" | "color";
   options?: string[];
   hideInTable?: boolean;
+  min?: number;
+  max?: number;
 };
 
 function cellValue(item: Record<string, unknown>, field: CmsField) {
@@ -183,6 +185,8 @@ function FieldGrid({
             <input
               className="input"
               type="number"
+              min={f.min}
+              max={f.max}
               value={Number(values[f.name] ?? 0)}
               onChange={(e) => onChange({ ...values, [f.name]: Number(e.target.value) })}
             />
@@ -198,6 +202,21 @@ function FieldGrid({
                 </option>
               ))}
             </select>
+          ) : f.type === "color" ? (
+            <div className="flex gap-3 items-center">
+              <input
+                className="h-10 w-14 cursor-pointer rounded border border-zinc-200 bg-white p-1"
+                type="color"
+                value={String(values[f.name] ?? "#000000")}
+                onChange={(e) => onChange({ ...values, [f.name]: e.target.value })}
+              />
+              <input
+                className="input flex-1 font-mono text-sm uppercase"
+                type="text"
+                value={String(values[f.name] ?? "")}
+                onChange={(e) => onChange({ ...values, [f.name]: e.target.value })}
+              />
+            </div>
           ) : (
             <input
               className="input"

@@ -86,24 +86,32 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
         <p className="text-sm font-medium text-zinc-500">
           Menampilkan {filteredResources.length} dokumen
         </p>
-        <div className="relative w-full md:w-auto min-w-[200px]">
-          <select
-            value={selectedCourse}
-            onChange={handleSelect}
-            className="w-full appearance-none rounded-xl border border-zinc-200 bg-white py-2.5 pl-4 pr-10 text-sm font-semibold text-zinc-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none transition-all hover:bg-zinc-50 focus:border-[var(--brand)] focus:ring-4 focus:ring-[var(--brand-50)] cursor-pointer"
+        <div className="w-full mt-4 md:mt-0 flex overflow-x-auto pb-2 gap-2 snap-x hide-scrollbar">
+          <button
+            type="button"
+            onClick={() => handleSelect({ target: { value: "all" } } as any)}
+            className={`snap-start shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
+              selectedCourse === "all"
+                ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+            }`}
           >
-            <option value="all">Semua Kelas</option>
-            {courses.map((course) => (
-              <option key={course} value={course}>
-                Kelas: {course}
-              </option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </div>
+            Semua Kelas
+          </button>
+          {courses.map((course) => (
+            <button
+              key={course}
+              type="button"
+              onClick={() => handleSelect({ target: { value: course } } as any)}
+              className={`snap-start shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
+                selectedCourse === course
+                  ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                  : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+              }`}
+            >
+              Kelas: {course}
+            </button>
+          ))}
         </div>
       </div>
 

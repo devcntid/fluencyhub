@@ -3,6 +3,7 @@ import { listWebhookLogsRecent } from "@/lib/db/webhook-logs.queries";
 import { formatIdr } from "@/lib/utils/cn";
 import { AdminIcon } from "@/components/admin/AdminIcon";
 import { formatDistanceToNow } from "date-fns";
+import { AdminRecentTransactionsTable } from "@/components/admin/AdminRecentTransactionsTable";
 
 function badgeClass(status: string) {
   if (status === "paid" || status === "processed") return "badge-success";
@@ -48,32 +49,14 @@ export default async function AdminOverviewPage() {
           <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>
             Recent Transactions
           </h3>
-          <div className="tbl-wrap border-none md:border-solid">
-            <table className="tbl !min-w-full md:!min-w-[520px]">
-              <thead>
-                <tr>
-                  <th className="hidden md:table-cell">Order</th>
-                  <th>Buyer</th>
-                  <th className="hidden sm:table-cell">Method</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr key={o.id}>
-                    <td className="hidden md:table-cell" style={{ fontWeight: 700, fontSize: 12, color: "var(--brand)" }}>{o.orderNumber}</td>
-                    <td style={{ fontSize: 13 }}>{o.buyerName}</td>
-                    <td className="hidden sm:table-cell" style={{ fontSize: 12, color: "var(--text-3)" }}>{o.methodName ?? "Unknown"}</td>
-                    <td style={{ fontWeight: 700, fontSize: 13 }}>{formatIdr(o.totalAmount)}</td>
-                    <td>
-                      <span className={`badge ${badgeClass(o.status)}`}>{o.status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AdminRecentTransactionsTable orders={orders.map(o => ({
+            id: o.id,
+            orderNumber: o.orderNumber,
+            buyerName: o.buyerName,
+            methodName: o.methodName,
+            totalAmount: o.totalAmount,
+            status: o.status
+          }))} />
         </div>
         <div className="card">
           <h3 style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>

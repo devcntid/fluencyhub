@@ -301,6 +301,12 @@ export async function getStudentAvailableSlotsAll(learnerId: number): Promise<an
     JOIN users u ON s.instructor_id = u.id
     WHERE s.status = 'available'
       AND s.start_at > CURRENT_TIMESTAMP
+      AND s.instructor_id IN (
+        SELECT c.instructor_id
+        FROM enrollments e
+        JOIN courses c ON e.course_id = c.id
+        WHERE e.user_id = ${learnerId} AND e.status = 'active'
+      )
     ORDER BY s.start_at ASC
   `;
   return rows;

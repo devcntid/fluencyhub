@@ -14,8 +14,8 @@ export default async function TestimonialsCmsPage() {
           { name: "role", label: "Role" },
           { name: "quote", label: "Quote", type: "textarea" },
           { name: "avatarUrl", label: "Avatar URL" },
-          { name: "rating", label: "Rating", type: "number" },
-          { name: "sortOrder", label: "Sort", type: "number" },
+          { name: "rating", label: "Rating", type: "number", min: 1, max: 5 },
+          { name: "sortOrder", label: "Sort", type: "number", min: 1 },
           { name: "isActive", label: "Active", type: "checkbox" },
         ]}
         items={items}

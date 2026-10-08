@@ -10,7 +10,7 @@ const Schema = z.object({
   iconColor: z.string().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
-  sortOrder: z.number().int().optional(),
+  sortOrder: z.number().int().min(1).optional(),
   isActive: z.boolean().optional(),
 });
 

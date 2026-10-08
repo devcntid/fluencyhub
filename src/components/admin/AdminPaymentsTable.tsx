@@ -88,7 +88,7 @@ export function AdminPaymentsTable({ orders }: { orders: Row[] }) {
       <AdminDataGrid columns={["Order", "Buyer", "Course", "Method", "Amount", "Status", "Date", "Actions"]} rowCount={filteredOrders.length}>
         {({ start, end }) =>
           filteredOrders.slice(start, end).map((o, i) => {
-            const canApprove = o.status !== "paid" && o.status !== "cancelled" && o.status !== "refunded";
+            const canApprove = !["paid", "cancelled", "refunded", "failed", "expired"].includes(o.status);
             return (
               <tr key={o.id}>
                 <td className="text-[var(--text-3)]">{start + i + 1}</td>

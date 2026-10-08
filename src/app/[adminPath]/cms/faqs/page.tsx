@@ -12,7 +12,7 @@ export default async function FaqsCmsPage() {
         fields={[
           { name: "question", label: "Question" },
           { name: "answer", label: "Answer", type: "textarea" },
-          { name: "sortOrder", label: "Sort", type: "number" },
+          { name: "sortOrder", label: "Sort", type: "number", min: 1 },
           { name: "isActive", label: "Active", type: "checkbox" },
         ]}
         items={items}

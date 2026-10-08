@@ -110,6 +110,11 @@ export async function createPainPoint(data: {
   sortOrder: number;
   isActive: boolean;
 }): Promise<LandingPainPoint> {
+  const existing = await sql`SELECT 1 FROM landing_pain_points WHERE sort_order = ${data.sortOrder} LIMIT 1`;
+  if (existing.length > 0) {
+    throw new Error("Sort order already exists");
+  }
+
   const rows = await sql`
     INSERT INTO landing_pain_points (icon, icon_bg, icon_color, title, description, sort_order, is_active)
     VALUES (${data.icon}, ${data.iconBg}, ${data.iconColor}, ${data.title}, ${data.description}, ${data.sortOrder}, ${data.isActive})
@@ -130,6 +135,13 @@ export async function updatePainPoint(
     isActive: boolean;
   }>,
 ): Promise<LandingPainPoint> {
+  if (data.sortOrder !== undefined) {
+    const existing = await sql`SELECT 1 FROM landing_pain_points WHERE sort_order = ${data.sortOrder} AND id != ${id} LIMIT 1`;
+    if (existing.length > 0) {
+      throw new Error("Sort order already exists");
+    }
+  }
+
   const rows = await sql`
     UPDATE landing_pain_points SET
       icon = COALESCE(${data.icon ?? null}, icon),
@@ -165,6 +177,11 @@ export async function createMethodItem(data: {
   sortOrder: number;
   isActive: boolean;
 }): Promise<LandingMethodItem> {
+  const existing = await sql`SELECT 1 FROM landing_method_items WHERE tab = ${data.tab} AND sort_order = ${data.sortOrder} LIMIT 1`;
+  if (existing.length > 0) {
+    throw new Error("Sort order already exists for this tab");
+  }
+
   const rows = await sql`
     INSERT INTO landing_method_items (tab, icon, title, description, sort_order, is_active)
     VALUES (${data.tab}, ${data.icon}, ${data.title}, ${data.description}, ${data.sortOrder}, ${data.isActive})
@@ -184,6 +201,18 @@ export async function updateMethodItem(
     isActive: boolean;
   }>,
 ): Promise<LandingMethodItem> {
+  if (data.sortOrder !== undefined || data.tab !== undefined) {
+    const current = await sql`SELECT tab, sort_order FROM landing_method_items WHERE id = ${id}`;
+    if (current.length > 0) {
+      const targetTab = data.tab ?? current[0].tab;
+      const targetSort = data.sortOrder ?? current[0].sort_order;
+      const existing = await sql`SELECT 1 FROM landing_method_items WHERE tab = ${targetTab} AND sort_order = ${targetSort} AND id != ${id} LIMIT 1`;
+      if (existing.length > 0) {
+        throw new Error("Sort order already exists for this tab");
+      }
+    }
+  }
+
   const rows = await sql`
     UPDATE landing_method_items SET
       tab = COALESCE(${data.tab ?? null}, tab),
@@ -219,6 +248,11 @@ export async function createTestimonial(data: {
   sortOrder: number;
   isActive: boolean;
 }): Promise<Testimonial> {
+  const existing = await sql`SELECT 1 FROM testimonials WHERE sort_order = ${data.sortOrder} LIMIT 1`;
+  if (existing.length > 0) {
+    throw new Error("Sort order already exists");
+  }
+
   const rows = await sql`
     INSERT INTO testimonials (name, role, quote, avatar_url, rating, sort_order, is_active)
     VALUES (${data.name}, ${data.role}, ${data.quote}, ${data.avatarUrl}, ${data.rating}, ${data.sortOrder}, ${data.isActive})
@@ -239,6 +273,13 @@ export async function updateTestimonial(
     isActive: boolean;
   }>,
 ): Promise<Testimonial> {
+  if (data.sortOrder !== undefined) {
+    const existing = await sql`SELECT 1 FROM testimonials WHERE sort_order = ${data.sortOrder} AND id != ${id} LIMIT 1`;
+    if (existing.length > 0) {
+      throw new Error("Sort order already exists");
+    }
+  }
+
   const rows = await sql`
     UPDATE testimonials SET
       name = COALESCE(${data.name ?? null}, name),
@@ -272,6 +313,11 @@ export async function createFaq(data: {
   sortOrder: number;
   isActive: boolean;
 }): Promise<Faq> {
+  const existing = await sql`SELECT 1 FROM faqs WHERE sort_order = ${data.sortOrder} LIMIT 1`;
+  if (existing.length > 0) {
+    throw new Error("Sort order already exists");
+  }
+
   const rows = await sql`
     INSERT INTO faqs (question, answer, sort_order, is_active)
     VALUES (${data.question}, ${data.answer}, ${data.sortOrder}, ${data.isActive})
@@ -284,6 +330,13 @@ export async function updateFaq(
   id: number,
   data: Partial<{ question: string; answer: string; sortOrder: number; isActive: boolean }>,
 ): Promise<Faq> {
+  if (data.sortOrder !== undefined) {
+    const existing = await sql`SELECT 1 FROM faqs WHERE sort_order = ${data.sortOrder} AND id != ${id} LIMIT 1`;
+    if (existing.length > 0) {
+      throw new Error("Sort order already exists");
+    }
+  }
+
   const rows = await sql`
     UPDATE faqs SET
       question = COALESCE(${data.question ?? null}, question),

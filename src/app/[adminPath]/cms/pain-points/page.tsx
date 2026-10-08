@@ -13,9 +13,9 @@ export default async function PainPointsCmsPage() {
           { name: "title", label: "Title" },
           { name: "description", label: "Description", type: "textarea" },
           { name: "icon", label: "Icon" },
-          { name: "iconBg", label: "Icon background" },
-          { name: "iconColor", label: "Icon color" },
-          { name: "sortOrder", label: "Sort", type: "number" },
+          { name: "iconBg", label: "Icon background", type: "color" },
+          { name: "iconColor", label: "Icon color", type: "color" },
+          { name: "sortOrder", label: "Sort", type: "number", min: 1 },
           { name: "isActive", label: "Active", type: "checkbox" },
         ]}
         items={items}

@@ -14,7 +14,7 @@ export default async function MethodsCmsPage() {
           { name: "tab", label: "Tab", type: "select", options: ["online", "hybrid"] },
           { name: "icon", label: "Icon" },
           { name: "description", label: "Description", type: "textarea" },
-          { name: "sortOrder", label: "Sort", type: "number" },
+          { name: "sortOrder", label: "Sort", type: "number", min: 1 },
           { name: "isActive", label: "Active", type: "checkbox" },
         ]}
         items={items}
