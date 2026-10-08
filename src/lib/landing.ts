@@ -31,7 +31,6 @@ export async function getLandingBundle(): Promise<LandingBundle> {
 }
 
 export async function revalidateLanding() {
-  revalidateTag("landing", "max");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   await cacheInvalidate(CACHE_KEYS.landing);
 }

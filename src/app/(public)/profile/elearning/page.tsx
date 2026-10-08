@@ -74,19 +74,12 @@ export default async function ElearningPage({
           <Link href="?tab=recent" className={`rounded-md px-5 py-2.5 text-sm transition ${currentTab === "recent" ? "bg-white font-semibold text-[var(--brand)] shadow-sm" : "font-medium text-zinc-600 hover:text-zinc-900"}`}>
             Terakhir Dipelajari
           </Link>
-          <Link href="?tab=saved" className={`rounded-md px-5 py-2.5 text-sm transition ${currentTab === "saved" ? "bg-white font-semibold text-[var(--brand)] shadow-sm" : "font-medium text-zinc-600 hover:text-zinc-900"}`}>
-            Materi Tersimpan
-          </Link>
           <Link href="?tab=completed" className={`rounded-md px-5 py-2.5 text-sm transition ${currentTab === "completed" ? "bg-white font-semibold text-[var(--brand)] shadow-sm" : "font-medium text-zinc-600 hover:text-zinc-900"}`}>
             Materi Selesai
           </Link>
         </div>
 
-        {currentTab === "saved" ? (
-          <p className="mt-4 text-[15px] italic text-zinc-500">
-            Fitur materi tersimpan belum tersedia.
-          </p>
-        ) : displayEnrollments.length > 0 ? (
+        {displayEnrollments.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {displayEnrollments.map((e) => (
               <Link 

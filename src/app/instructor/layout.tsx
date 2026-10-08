@@ -44,7 +44,7 @@ export default async function InstructorLayout({ children }: { children: React.R
             <TopbarSignOut />
           </div>
         </div>
-        <div className="dash-content">{children}</div>
+        <div className="dash-content pb-24 md:pb-0">{children}</div>
       </div>
     </div>
   );

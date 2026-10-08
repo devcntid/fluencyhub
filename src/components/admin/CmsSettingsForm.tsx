@@ -46,31 +46,63 @@ export function CmsSettingsForm({ initial }: { initial: Record<string, string> }
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
     });
+    
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      if (json?.error) {
+        setMsg("Gagal menyimpan: Beberapa kolom tidak boleh kosong");
+      } else {
+        setMsg("Save failed");
+      }
+    } else {
+      setMsg("Saved successfully");
+    }
     setBusy(false);
-    setMsg(res.ok ? "Saved" : "Save failed");
   }
 
   return (
-    <div className="card max-w-3xl">
+    <form className="card w-full" onSubmit={(e) => { e.preventDefault(); save(); }}>
       {GROUPS.map((g) => (
         <fieldset key={g.title} className="mb-6 border-0 p-0">
           <legend className="mb-3 font-[family-name:var(--font-heading)] text-base font-extrabold">{g.title}</legend>
           <div className="grid gap-3">
             {g.keys.map((f) => (
-              <label key={f.key}>
-                <span className="label">{f.label}</span>
+              <label key={f.key} className="relative flex flex-col">
+                <span className="label mb-1">{f.label}</span>
                 {f.area ? (
-                  <textarea
-                    className="input min-h-20"
-                    value={values[f.key]}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  />
+                  <div className="flex flex-col">
+                    <textarea
+                      className="input min-h-20 peer invalid:border-red-500 invalid:focus:ring-red-200"
+                      value={values[f.key]}
+                      onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                      required
+                    />
+                    {!values[f.key] && (
+                      <span className="text-xs text-red-500 mt-1 font-medium">Kotak ini tidak boleh kosong</span>
+                    )}
+                  </div>
                 ) : (
-                  <input
-                    className="input"
-                    value={values[f.key]}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  />
+                  <div className="flex flex-col">
+                    <div className="flex gap-4 items-start">
+                      <input
+                        className="input flex-1 peer invalid:border-red-500 invalid:focus:ring-red-200"
+                        value={values[f.key]}
+                        onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                        required
+                      />
+                      {f.key.includes("image_url") && values[f.key] && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={values[f.key]}
+                          alt="Preview"
+                          className="h-10 w-16 object-cover rounded border border-[var(--border)]"
+                        />
+                      )}
+                    </div>
+                    {!values[f.key] && (
+                      <span className="text-xs text-red-500 mt-1 font-medium">Kotak ini tidak boleh kosong</span>
+                    )}
+                  </div>
                 )}
               </label>
             ))}
@@ -78,9 +110,9 @@ export function CmsSettingsForm({ initial }: { initial: Record<string, string> }
         </fieldset>
       ))}
       {msg ? <p className="mb-3 text-sm text-[var(--text-3)]">{msg}</p> : null}
-      <button type="button" className="btn btn-primary btn-default" disabled={busy} onClick={save}>
+      <button type="submit" className="btn btn-primary btn-default" disabled={busy}>
         {busy ? "Saving..." : "Save settings"}
       </button>
-    </div>
+    </form>
   );
 }

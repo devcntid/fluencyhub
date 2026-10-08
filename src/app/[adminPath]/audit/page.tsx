@@ -77,32 +77,32 @@ export default async function AuditLogsPage(props: { params: Promise<{ adminPath
       </div>
       
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-[var(--text-3)]">
-            Menampilkan {offset + 1}-{Math.min(offset + limit, totalCount)} dari {totalCount} log
-          </div>
-          <div className="flex gap-2">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-3)]">
+          <span>
+            {totalCount === 0 ? "0 rows" : `${offset + 1}–${Math.min(offset + limit, totalCount)} of ${totalCount}`}
+          </span>
+          <div className="flex items-center gap-2">
             {page > 1 ? (
               <Link href={`/${adminPath}/audit?page=${page - 1}`} className="btn btn-secondary btn-sm">
-                ← Sebelumnya
+                Prev
               </Link>
             ) : (
               <button disabled className="btn btn-secondary btn-sm opacity-50 cursor-not-allowed">
-                ← Sebelumnya
+                Prev
               </button>
             )}
             
-            <div className="flex items-center px-4 font-medium text-sm">
-              Halaman {page} / {totalPages}
-            </div>
+            <span className="whitespace-nowrap">
+              Page {page} / {totalPages}
+            </span>
 
             {page < totalPages ? (
               <Link href={`/${adminPath}/audit?page=${page + 1}`} className="btn btn-secondary btn-sm">
-                Selanjutnya →
+                Next
               </Link>
             ) : (
               <button disabled className="btn btn-secondary btn-sm opacity-50 cursor-not-allowed">
-                Selanjutnya →
+                Next
               </button>
             )}
           </div>

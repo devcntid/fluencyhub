@@ -52,7 +52,7 @@ export default async function VideosPage({
   return (
     <main className="min-h-[calc(100vh-72px)] w-full p-6 pb-20 md:p-8">
       {enrollments.length > 1 && (
-        <div className="mb-6 mx-auto max-w-4xl">
+        <div className="mb-6 w-full">
           <label className="text-sm font-semibold text-zinc-500 mb-2 block">Pilih Kelas:</label>
           <div className="flex gap-2 overflow-x-auto pb-2">
              {enrollments.map((e) => (

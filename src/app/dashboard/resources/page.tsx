@@ -14,7 +14,7 @@ export default async function ResourcesPage() {
   const resources = await listUserResources(userId);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
+    <main className="w-full px-4 py-8">
       <div className="mb-8 border-b border-zinc-200 pb-4">
         <h1 className="mb-1 font-[family-name:var(--font-heading)] text-xl font-extrabold text-zinc-900 md:text-2xl">
           Resource Library

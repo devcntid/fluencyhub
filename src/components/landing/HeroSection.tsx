@@ -39,7 +39,7 @@ export function HeroSection({ settings }: { settings: Record<string, string> }) 
             <span className="font-medium">{settings.hero_social_proof}</span>
           </div>
         </div>
-        <div className="relative hidden md:block">
+        <div className="relative block mt-10 md:mt-0">
           <div className="hero-image-wrap">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={settings.hero_image_url} alt="" className="aspect-[4/3] w-full object-cover" />

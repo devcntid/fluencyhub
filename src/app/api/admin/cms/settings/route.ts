@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/admin";
 import { upsertSiteSettings } from "@/lib/db/landing.queries";
 import { revalidateLanding } from "@/lib/landing";
 
-const Schema = z.record(z.string(), z.string());
+const Schema = z.record(z.string(), z.string().min(1, "Tidak boleh kosong"));
 
 export async function PUT(req: Request) {
   const gate = await requireAdmin();

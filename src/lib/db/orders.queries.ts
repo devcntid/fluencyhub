@@ -166,9 +166,13 @@ export async function listOrdersForAdmin(limit = 50): Promise<AdminOrderRow[]> {
   });
 }
 
-export async function listOrdersWithDetailsForUser(userId: number): Promise<(Order & { courseTitle: string; methodName: string | null; methodType: string | null })[]> {
+export async function listOrdersWithDetailsForUser(userId: number): Promise<(Order & { courseTitle: string; methodName: string | null; methodType: string | null; proofStatus: string | null })[]> {
   const rows = await sql`
-    SELECT o.*, c.title AS course_title, pm.name AS method_name, pm.type AS method_type
+    SELECT o.*, 
+           c.title AS course_title, 
+           pm.name AS method_name, 
+           pm.type AS method_type,
+           (SELECT status FROM payment_proofs WHERE order_id = o.id ORDER BY payment_proofs.uploaded_at DESC LIMIT 1) AS proof_status
     FROM orders o
     JOIN courses c ON c.id = o.course_id
     LEFT JOIN payment_methods pm ON pm.id = o.payment_method_id
@@ -182,6 +186,7 @@ export async function listOrdersWithDetailsForUser(userId: number): Promise<(Ord
       courseTitle: String(row.course_title ?? ""),
       methodName: row.method_name == null ? null : String(row.method_name),
       methodType: row.method_type == null ? null : String(row.method_type),
+      proofStatus: row.proof_status == null ? null : String(row.proof_status),
     };
   });
 }

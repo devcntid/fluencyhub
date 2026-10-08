@@ -114,6 +114,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
             return (
               <div
                 key={session.id}
+                id={`live-${session.id}`}
                 className={`relative flex flex-col items-center gap-6 overflow-hidden rounded-2xl border bg-white p-6 transition-all md:flex-row ${
                   isActive ? "border-blue-200 shadow-sm" : "border-zinc-200"
                 }`}

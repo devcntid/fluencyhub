@@ -200,7 +200,7 @@ export function NotificationSettingsForm({ settings }: { settings: Settings }) {
         </div>
 
         <div className="flex justify-end pt-4 border-t border-zinc-200">
-          <button type="submit" disabled={isSaving} className="btn btn-primary">
+          <button type="submit" disabled={isSaving} className="btn btn-primary px-6 py-2.5">
             {isSaving ? "Saving..." : "Save Configuration"}
           </button>
         </div>
@@ -249,7 +249,7 @@ export function NotificationSettingsForm({ settings }: { settings: Settings }) {
               type="button"
               onClick={handleTest}
               disabled={isTesting || (!testTarget.email && !testTarget.phone)}
-              className="btn btn-secondary w-full"
+              className="btn btn-secondary w-full py-2.5"
             >
               {isTesting ? "Sending..." : "Send Test"}
             </button>

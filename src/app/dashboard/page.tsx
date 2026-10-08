@@ -96,7 +96,16 @@ export default async function DashboardHomePage() {
           </div>
           
           {activeEnrollment && activeEnrollment.nextLesson ? (
-            <Link href={`/dashboard/courses/${activeEnrollment.course.id}/${activeEnrollment.nextLesson.id}`} className="group block">
+            <Link 
+              href={
+                activeEnrollment.nextLesson.contentType === "live_class" 
+                  ? `/dashboard/live#live-${activeEnrollment.nextLesson.id}` 
+                  : (activeEnrollment.nextLesson.contentType === "document" || activeEnrollment.nextLesson.contentType === "text")
+                  ? `/dashboard/resources/${activeEnrollment.nextLesson.id}`
+                  : `/dashboard/courses/${activeEnrollment.course.id}/${activeEnrollment.nextLesson.id}`
+              } 
+              className="group block"
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="relative h-24 w-40 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
                   {activeEnrollment.course.thumbnailUrl ? (

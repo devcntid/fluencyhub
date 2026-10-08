@@ -9,6 +9,7 @@ export type UserResource = {
   contentType: string;
   courseTitle: string;
   courseId: number;
+  isCompleted: boolean;
 };
 
 export async function listUserResources(userId: number): Promise<UserResource[]> {
@@ -21,11 +22,13 @@ export async function listUserResources(userId: number): Promise<UserResource[]>
       l.text_content,
       l.content_type, 
       c.title as course_title,
-      c.id as course_id
+      c.id as course_id,
+      COALESCE(lp.is_completed, false) as is_completed
     FROM lessons l
     JOIN sections s ON l.section_id = s.id
     JOIN courses c ON s.course_id = c.id
     JOIN enrollments e ON c.id = e.course_id
+    LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = e.user_id
     WHERE e.user_id = ${userId}
       AND l.content_type IN ('document', 'text')
       AND e.status IN ('active', 'completed')
@@ -41,5 +44,6 @@ export async function listUserResources(userId: number): Promise<UserResource[]>
     contentType: String(r.content_type),
     courseTitle: String(r.course_title),
     courseId: Number(r.course_id),
+    isCompleted: Boolean(r.is_completed),
   }));
 }

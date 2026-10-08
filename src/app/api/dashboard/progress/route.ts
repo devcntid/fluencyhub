@@ -25,16 +25,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden: Not enrolled" }, { status: 403 });
     }
 
-    // Upsert lesson progress
-    await sql`
-      INSERT INTO lesson_progress (user_id, lesson_id, enrollment_id, is_completed, completed_at, updated_at)
-      VALUES (${userId}, ${lessonId}, ${enrollment.id}, ${isCompleted}, ${isCompleted ? new Date() : null}, NOW())
-      ON CONFLICT (user_id, lesson_id)
-      DO UPDATE SET
-        is_completed = EXCLUDED.is_completed,
-        completed_at = EXCLUDED.completed_at,
-        updated_at = EXCLUDED.updated_at
+    // Check if progress already exists
+    const existing = await sql`
+      SELECT id FROM lesson_progress 
+      WHERE user_id = ${userId} AND lesson_id = ${lessonId} 
+      LIMIT 1
     `;
+
+    if (existing.length > 0) {
+      await sql`
+        UPDATE lesson_progress SET
+          is_completed = ${isCompleted},
+          completed_at = ${isCompleted ? new Date().toISOString() : null},
+          updated_at = NOW()
+        WHERE id = ${existing[0].id}
+      `;
+    } else {
+      await sql`
+        INSERT INTO lesson_progress (user_id, lesson_id, enrollment_id, is_completed, completed_at, updated_at)
+        VALUES (${userId}, ${lessonId}, ${enrollment.id}, ${isCompleted}, ${isCompleted ? new Date().toISOString() : null}, NOW())
+      `;
+    }
 
     // Recalculate and update enrollment progress_pct
     const countRes = await sql`
@@ -48,7 +59,7 @@ export async function POST(req: Request) {
       SELECT COUNT(l.id) as total_count
       FROM lessons l
       JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = ${courseId}
+      WHERE s.course_id = ${courseId} AND l.content_type != 'live_class'
     `;
     const totalCount = Number(totalRes[0].total_count);
     

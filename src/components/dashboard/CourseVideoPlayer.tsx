@@ -285,7 +285,7 @@ export function CourseVideoPlayer({
   const totalVideos = curriculum.reduce((acc, sec) => acc + sec.lessons.length, 0);
 
   return (
-    <div className="mx-auto w-full max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8 flex items-center justify-between border-b border-zinc-200 pb-5">
         <div>
           <h1 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-zinc-900 md:text-3xl">

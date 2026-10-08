@@ -68,7 +68,7 @@ export default async function TransactionsPage() {
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-bold text-zinc-400">#{o.orderNumber}</span>
                     <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${badgeClass(o.status)}`}>
-                      {translateStatus(o.status)}
+                      {o.status === "pending" && o.proofStatus === "rejected" ? "Menunggu Unggah Ulang" : translateStatus(o.status)}
                     </span>
                   </div>
                   

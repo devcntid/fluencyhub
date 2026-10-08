@@ -17,7 +17,7 @@ export default async function LivePage() {
   const liveClasses = await listUpcomingLiveClasses(Number(session.user.id));
   
   return (
-    <main className="mx-auto w-full max-w-4xl p-6 md:p-10">
+    <main className="w-full p-6 md:p-10">
       <div className="mb-10 mt-4 text-center md:text-left">
         <h1 className="text-3xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)]">
           Live Mentoring

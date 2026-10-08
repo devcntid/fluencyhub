@@ -39,6 +39,7 @@ export function LandingIcon({
       {name === "Video" && <path d="M4 7h10v10H4zM14 11l6-3v8l-6-3z" />}
       {name === "Users" && <path d="M9 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm8 0a2.5 2.5 0 1 0-2.5-2.5A2.5 2.5 0 0 0 17 11zM4 19a5 5 0 0 1 10 0M15 19a4 4 0 0 1 6 0" />}
       {name === "Building2" && <path d="M4 20V6h8v14M12 10h8v10M7 20v-3M16 20v-3M7 10h2M7 14h2" />}
+      {name === "Bell" && <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />}
       {name === "CheckCircle" && (
         <>
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />

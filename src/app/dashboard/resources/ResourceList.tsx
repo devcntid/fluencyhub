@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 
 // Based on the type inferred from page.tsx
@@ -14,9 +14,11 @@ export type ResourceItem = {
   courseId: number;
   documentUrl: string | null;
   textContent: string | null;
+  isCompleted: boolean;
 };
 
 export function ResourceList({ resources }: { resources: ResourceItem[] }) {
+  const router = useRouter();
 
   const searchParams = useSearchParams();
   const c = searchParams.get("c");
@@ -62,6 +64,31 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
     // Default / general
     return { icon: "Layers", bg: "bg-blue-50", color: "#2563eb" }; // blue
   };
+
+  const [submittingId, setSubmittingId] = useState<number | null>(null);
+
+  async function handleToggleComplete(courseId: number, lessonId: number, currentStatus: boolean) {
+    if (submittingId !== null) return;
+    setSubmittingId(lessonId);
+    try {
+      const res = await fetch("/api/dashboard/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId,
+          lessonId,
+          isCompleted: !currentStatus,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update progress");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan saat mengupdate progress. Silakan coba lagi.");
+    } finally {
+      setSubmittingId(null);
+    }
+  }
 
   if (resources.length === 0) {
     return (
@@ -186,6 +213,21 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
                     </button>
                   </div>
                 )}
+                
+                <div className="mt-2">
+                  <button
+                    disabled={submittingId === res.id}
+                    onClick={() => handleToggleComplete(res.courseId, res.id, res.isCompleted)}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold text-white shadow-sm transition active:scale-95 ${
+                      res.isCompleted
+                        ? "bg-zinc-600 hover:bg-zinc-700"
+                        : "bg-green-600 hover:bg-green-700"
+                    }`}
+                  >
+                    <LandingIcon name={res.isCompleted ? "X" : "CheckCircle"} size={14} color="#fff" />
+                    {res.isCompleted ? "Batal Tandai Selesai" : "Tandai Selesai"}
+                  </button>
+                </div>
               </div>
             );
           })}

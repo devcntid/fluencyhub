@@ -63,7 +63,9 @@ export async function getActiveEnrollment(userId: number) {
   let nextLesson = null;
   let nextSection = null;
 
-  for (const l of lessonsRes) {
+  const completableLessons = lessonsRes.filter(l => (l as any).content_type !== 'live_class');
+
+  for (const l of completableLessons) {
     if (!completedIds.has(l.id)) {
       nextLesson = mapLesson(l as Record<string, unknown>);
       nextSection = mapSection(sectionsRes.find(s => s.id === l.section_id) as Record<string, unknown>);
@@ -71,13 +73,12 @@ export async function getActiveEnrollment(userId: number) {
     }
   }
 
-  if (!nextLesson && lessonsRes.length > 0) {
-    nextLesson = mapLesson(lessonsRes[0] as Record<string, unknown>);
-    nextSection = mapSection(sectionsRes.find(s => s.id === lessonsRes[0].section_id) as Record<string, unknown>);
+  if (!nextLesson && completableLessons.length > 0) {
+    nextLesson = mapLesson(completableLessons[0] as Record<string, unknown>);
+    nextSection = mapSection(sectionsRes.find(s => s.id === completableLessons[0].section_id) as Record<string, unknown>);
   }
 
-  const totalLessons = lessonsRes.length;
-  const progressPct = totalLessons > 0 ? Math.round((completedIds.size / totalLessons) * 100) : 0;
+  const progressPct = enrollment.progressPct;
 
   return {
     enrollment,
