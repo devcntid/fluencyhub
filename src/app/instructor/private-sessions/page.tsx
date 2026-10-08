@@ -39,11 +39,14 @@ export default function InstructorPrivateSessionsPage() {
     fetchData();
   }, []);
 
+  const [zoomLink, setZoomLink] = useState("");
+
   async function fetchData() {
     try {
-      const [slotsRes, sessRes] = await Promise.all([
+      const [slotsRes, sessRes, profileRes] = await Promise.all([
         fetch("/api/instructor/slots"),
-        fetch("/api/instructor/sessions")
+        fetch("/api/instructor/sessions"),
+        fetch("/api/instructor/profile")
       ]);
       
       if (slotsRes.ok) {
@@ -54,6 +57,11 @@ export default function InstructorPrivateSessionsPage() {
       if (sessRes.ok) {
         const sessJson = await sessRes.json();
         if (sessJson.data) setSessions(sessJson.data);
+      }
+
+      if (profileRes.ok) {
+        const profileJson = await profileRes.json();
+        if (profileJson.data?.zoomLink) setZoomLink(profileJson.data.zoomLink);
       }
     } catch (e) {
       console.error(e);
@@ -425,7 +433,7 @@ export default function InstructorPrivateSessionsPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
-                    {groupedSlots[format(selectedCalendarDate, "yyyy-MM-dd")].sort((a,b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()).map(slot => (
+                    {groupedSlots[format(selectedCalendarDate, "yyyy-MM-dd")].sort((a: any, b: any) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()).map((slot: any) => (
                       <div key={slot.id} className="border border-zinc-200 rounded-xl px-4 py-3 bg-white shadow-sm flex items-center justify-between group hover:border-red-200 transition-colors">
                         <span className="text-sm font-bold text-zinc-800">
                           {format(new Date(slot.startAt), "HH:mm")} - {format(new Date(slot.endAt), "HH:mm")}

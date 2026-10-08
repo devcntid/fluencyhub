@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getLessonCourseOwner, softDeleteLesson, updateLessonForSection } from "@/lib/db/lessons.queries";
 import { getSectionById } from "@/lib/db/sections.queries";
 import { assertCourseAccess, requireInstructor } from "@/lib/instructor";
+import { sql } from "@/lib/db/client";
 
 const Schema = z.object({
   sectionId: z.number().int().positive().optional(),
