@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createLessonForSection } from "@/lib/db/lessons.queries";
 import { getSectionById } from "@/lib/db/sections.queries";
 import { assertCourseAccess, requireInstructor } from "@/lib/instructor";
+import { sql } from "@/lib/db/client";
 
 const Schema = z.object({
   sectionId: z.number().int().positive(),
@@ -27,6 +28,17 @@ export async function POST(req: Request) {
   if (!section) return NextResponse.json({ error: "Section not found" }, { status: 404 });
   const access = await assertCourseAccess(section.courseId, gate.userId, gate.isAdmin);
   if (access.error) return access.error;
+
+  const existing = await sql`
+    SELECT id FROM lessons 
+    WHERE section_id = ${parsed.data.sectionId} 
+      AND title = ${parsed.data.title}
+      AND deleted_at IS NULL
+  `;
+  if (existing.length > 0) {
+    return NextResponse.json({ error: "Duplikat nama tidak diizinkan." }, { status: 400 });
+  }
+
   const lesson = await createLessonForSection({
     sectionId: parsed.data.sectionId,
     title: parsed.data.title,

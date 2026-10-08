@@ -34,9 +34,19 @@ export default async function PublicCoursePage({
   }
 
   return (
-    <main>
+    <main className="pb-32">
+      {/* Sticky Back Bar */}
+      <div className="sticky top-[62px] z-40 bg-white/95 backdrop-blur-md border-b border-zinc-200 shadow-sm">
+        <div className="mx-auto max-w-6xl px-4 py-3 md:py-4">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-[var(--brand)] transition-colors group">
+            <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Kembali
+          </Link>
+        </div>
+      </div>
+
       <section className="bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+        <div className="mx-auto max-w-6xl px-4 pt-6 pb-12 md:pt-8 md:pb-16">
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-[var(--brand)]">
             {course.level.replace("_", " ")} · {course.language.toUpperCase()}
           </p>
@@ -131,29 +141,29 @@ export default async function PublicCoursePage({
         </section>
       ) : null}
 
-      <section className="mx-auto max-w-6xl px-4 py-12">
-        <div className="card flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <div>
+      <section className="fixed bottom-0 left-0 right-0 w-full z-50 bg-white/95 backdrop-blur-md border-t border-zinc-200 py-4 shadow-[0_-15px_30px_-15px_rgba(0,0,0,0.1)]">
+        <div className="mx-auto max-w-6xl px-4 flex flex-row items-center justify-between gap-4">
+          <div className="flex-1">
             {isEnrolled ? (
               <>
-                <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-blue-600 border border-blue-100">
+                <span className="inline-block rounded-full bg-blue-50 px-2 py-0.5 md:px-3 md:py-1 text-xs md:text-sm font-bold text-blue-600 border border-blue-100">
                   Sudah Terdaftar
                 </span>
-                <p className="mt-2 text-sm text-[var(--text-3)]">Anda sudah memiliki akses ke kelas ini</p>
+                <p className="hidden md:block mt-1 text-sm text-[var(--text-3)]">Anda sudah memiliki akses ke kelas ini</p>
               </>
             ) : (
               <>
                 {course.originalPrice ? (
-                  <p className="text-sm text-[var(--text-4)] line-through">{formatIdr(course.originalPrice)}</p>
+                  <p className="text-xs text-[var(--text-4)] line-through">{formatIdr(course.originalPrice)}</p>
                 ) : null}
-                <p className="text-3xl font-extrabold text-[var(--brand)]">{formatIdr(course.price)}</p>
-                <p className="mt-1 text-sm text-[var(--text-3)]">Lifetime access after payment is confirmed</p>
+                <p className="text-xl md:text-3xl font-extrabold text-[var(--brand)]">{formatIdr(course.price)}</p>
+                <p className="hidden md:block mt-1 text-xs text-[var(--text-3)]">Lifetime access after payment is confirmed</p>
               </>
             )}
           </div>
-          <Link href={buyHref} className="btn btn-primary btn-lg">
+          <Link href={buyHref} className="btn btn-primary whitespace-nowrap px-6 py-3">
             {!session?.user 
-              ? "Daftar / Beli dengan Google" 
+              ? "Daftar & Beli" 
               : isEnrolled 
                 ? "Lanjut Belajar" 
                 : "Beli sekarang"}

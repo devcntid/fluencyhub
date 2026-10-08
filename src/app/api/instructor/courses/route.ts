@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/session";
 import { createCourseAdmin } from "@/lib/db/courses.queries";
+import { sql } from "@/lib/db/client";
 
 const Schema = z.object({
   title: z.string().min(1),
@@ -21,6 +22,15 @@ export async function POST(req: Request) {
 
   const parsed = Schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
+
+  const existing = await sql`
+    SELECT id FROM courses 
+    WHERE (slug = ${parsed.data.slug} OR title = ${parsed.data.title}) 
+      AND deleted_at IS NULL
+  `;
+  if (existing.length > 0) {
+    return NextResponse.json({ error: "Duplikat nama atau slug tidak diizinkan." }, { status: 400 });
+  }
 
   // Instructor default settings for new course:
   // - status is "draft"

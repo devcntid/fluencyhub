@@ -1,6 +1,7 @@
 import {
   bigint,
   bigserial,
+  serial,
   boolean,
   check,
   index,
@@ -26,6 +27,7 @@ export const users = pgTable(
     passwordHash: varchar("password_hash", { length: 255 }),
     role: varchar("role", { length: 50 }).notNull().default("user"),
     avatarUrl: text("avatar_url"),
+    zoomLink: text("zoom_link"),
     isActive: boolean("is_active").notNull().default(true),
     revenueSharePct: numeric("revenue_share_pct", { precision: 5, scale: 2 }).default("70.00"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
@@ -443,3 +445,76 @@ export const faqs = pgTable("faqs", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const lessonNotes = pgTable(
+  "lesson_notes",
+  {
+    id: serial("id").primaryKey(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lessonId: bigint("lesson_id", { mode: "number" })
+      .notNull()
+      .references(() => lessons.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("unq_lesson_notes_user_lesson").on(t.userId, t.lessonId),
+  ]
+);
+
+export const instructorSlots = pgTable(
+  "instructor_slots",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    instructorId: bigint("instructor_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+    endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("available"), // available, pending, booked, cancelled
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("instructor_slots_dates_check", sql`${t.endAt} > ${t.startAt}`),
+    check("instructor_slots_status_check", sql`${t.status} IN ('available', 'pending', 'booked', 'cancelled')`),
+    index("idx_instructor_slots_instructor_start").on(t.instructorId, t.startAt),
+  ]
+);
+
+export const privateSessions = pgTable(
+  "private_sessions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    slotId: bigint("slot_id", { mode: "number" })
+      .notNull()
+      .references(() => instructorSlots.id, { onDelete: "restrict" }),
+    learnerId: bigint("learner_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    instructorId: bigint("instructor_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: bigint("course_id", { mode: "number" })
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    topic: text("topic"),
+    instructorNotes: text("instructor_notes"),
+    rejectReason: text("reject_reason"),
+    zoomLink: text("zoom_link"), // override per session, fallback to users.zoom_link
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, confirmed, completed, no_show, rejected, cancelled
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("private_sessions_status_check", sql`${t.status} IN ('pending', 'confirmed', 'completed', 'no_show', 'rejected', 'cancelled')`),
+    index("idx_private_sessions_learner").on(t.learnerId),
+    index("idx_private_sessions_instructor").on(t.instructorId),
+    uniqueIndex("unq_private_sessions_active_slot").on(t.slotId).where(sql`${t.status} IN ('pending', 'confirmed')`),
+    uniqueIndex("unq_private_sessions_active_learner_instructor").on(t.learnerId, t.instructorId).where(sql`${t.status} IN ('pending', 'confirmed')`),
+  ]
+);

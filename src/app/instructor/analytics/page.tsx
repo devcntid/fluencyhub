@@ -47,6 +47,7 @@ export default async function InstructorAnalyticsPage() {
           <table className="tbl">
             <thead>
               <tr>
+                <th className="w-12 text-center">No.</th>
                 <th>Course</th>
                 <th>Enrolled</th>
                 <th>Gross (est.)</th>
@@ -54,11 +55,12 @@ export default async function InstructorAnalyticsPage() {
               </tr>
             </thead>
             <tbody>
-              {courses.map((c) => {
+              {courses.map((c, i) => {
                 const shareAmt = Number(c.revenue);
                 const gross = share > 0 ? shareAmt / share : shareAmt;
                 return (
                   <tr key={c.id}>
+                    <td className="text-center text-[var(--text-4)]">{i + 1}</td>
                     <td className="max-w-[150px] truncate font-semibold">{c.title}</td>
                     <td>{c.enrollmentCount}</td>
                     <td>{shareAmt > 0 ? formatIdr(gross) : "—"}</td>

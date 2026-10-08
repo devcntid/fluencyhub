@@ -25,6 +25,7 @@ export type LessonFormValue = {
   textContent: string | null;
   durationMinutes: number;
   isFreePreview: boolean;
+  sortOrder?: number;
 };
 
 function toLocalInput(iso: string | null) {
@@ -56,6 +57,7 @@ export function LessonFormDialog({
   const [text, setText] = useState("");
   const [dur, setDur] = useState(0);
   const [free, setFree] = useState(false);
+  const [sortOrder, setSortOrder] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -84,6 +86,7 @@ export function LessonFormDialog({
     setText(v?.textContent ?? "");
     setDur(v?.durationMinutes ?? 0);
     setFree(Boolean(v?.isFreePreview));
+    setSortOrder(v?.sortOrder ?? 1);
     setError("");
   }
 
@@ -110,6 +113,7 @@ export function LessonFormDialog({
       textContent: type === "text" ? text || null : null,
       durationMinutes: dur,
       isFreePreview: free,
+      sortOrder: initial?.id ? sortOrder : undefined,
     };
     const res = await fetch(initial?.id ? `/api/instructor/lessons/${initial.id}` : "/api/instructor/lessons", {
       method: initial?.id ? "PATCH" : "POST",
@@ -118,7 +122,8 @@ export function LessonFormDialog({
     });
     setBusy(false);
     if (!res.ok) {
-      setError("Save failed");
+      const err = await res.json().catch(() => ({}));
+      setError(err.error || "Save failed");
       return;
     }
     setOpen(false);
@@ -225,12 +230,18 @@ export function LessonFormDialog({
           ) : null}
           <label>
             <span className="label">Duration (min)</span>
-            <input className="input" type="number" value={dur} onChange={(e) => setDur(Number(e.target.value))} />
+            <input className="input" type="number" min="0" value={dur} onChange={(e) => setDur(Math.max(0, parseInt(e.target.value) || 0))} />
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} />
             <span className="text-sm font-semibold">Free Preview</span>
           </label>
+          {initial?.id ? (
+            <label>
+              <span className="label">Sort order</span>
+              <input className="input" type="number" min="1" value={sortOrder} onChange={(e) => setSortOrder(Math.max(1, Number(e.target.value) || 1))} />
+            </label>
+          ) : null}
         </div>
         {error ? <p className="mt-3 text-sm text-[var(--red)]">{error}</p> : null}
         <div className="mt-4 flex justify-end gap-2">

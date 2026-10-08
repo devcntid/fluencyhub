@@ -35,7 +35,8 @@ export default async function TransactionsPage() {
   const orders = await listOrdersWithDetailsForUser(Number(session.user.id));
 
   return (
-    <main className="w-full flex flex-col gap-10">
+    <div className="min-h-screen bg-zinc-50/30 w-full py-8 md:py-12">
+      <main className="mx-auto w-full max-w-4xl px-4 flex flex-col gap-10">
       {/* Header */}
       <div className="w-full flex flex-col gap-1">
         <h1 className="text-2xl font-extrabold text-zinc-900">Riwayat Transaksi</h1>
@@ -120,5 +121,6 @@ export default async function TransactionsPage() {
         </div>
       )}
     </main>
+    </div>
   );
 }

@@ -78,6 +78,13 @@ export function ProfileDropdown({
             >
               Profil
             </Link>
+            <Link
+              href="/transactions"
+              onClick={() => setIsOpen(false)}
+              className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+            >
+              Riwayat Transaksi
+            </Link>
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"

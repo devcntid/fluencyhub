@@ -42,7 +42,8 @@ export function SectionFormDialog({
     });
     setBusy(false);
     if (!res.ok) {
-      setError("Save failed");
+      const err = await res.json().catch(() => ({}));
+      setError(err.error || "Save failed");
       return;
     }
     setOpen(false);
@@ -62,7 +63,7 @@ export function SectionFormDialog({
         {section ? (
           <label className="mb-3 block">
             <span className="label">Sort order</span>
-            <input className="input" type="number" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} />
+            <input className="input" type="number" min="1" value={sortOrder} onChange={(e) => setSortOrder(Math.max(1, Number(e.target.value) || 1))} />
           </label>
         ) : null}
         {error ? <p className="mb-3 text-sm text-[var(--red)]">{error}</p> : null}

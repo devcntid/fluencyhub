@@ -41,18 +41,26 @@ export function CurriculumManager({
         </div>
         {courses.length > 0 ? (
           <div className="flex flex-col items-end gap-2">
-            <CoursePicker selectedId={selectedId} courses={courses} hrefTemplate={hrefTemplate} />
-            <div className="flex flex-wrap justify-end gap-2">
-              <Link href={`/dashboard/courses/${selectedId}`} className="btn btn-secondary btn-sm">
-                View as student
-              </Link>
-              <SectionFormDialog courseId={selectedId} triggerLabel="Add section" />
-              <LessonFormDialog sections={sectionOptions} triggerLabel="Add Lesson" />
-            </div>
+            <CoursePicker selectedId={allowed ? selectedId : (courses[0]?.id || 0)} courses={courses} hrefTemplate={hrefTemplate} />
+            {allowed && (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Link href={`/dashboard/courses/${selectedId}`} className="btn btn-secondary btn-sm">
+                  View as student
+                </Link>
+                <SectionFormDialog courseId={selectedId} triggerLabel="Add section" />
+                <LessonFormDialog sections={sectionOptions} triggerLabel="Add Lesson" />
+              </div>
+            )}
           </div>
         ) : null}
       </div>
       {courses.length === 0 ? <p className="text-sm text-[var(--text-3)]">Create a course first.</p> : null}
+      {!allowed && courses.length > 0 ? (
+        <div className="p-8 text-center text-red-600 bg-red-50 rounded-xl border border-red-200">
+          <h2 className="text-lg font-bold mb-1">Access Denied / Course Not Found</h2>
+          <p className="text-sm">You do not have permission to view or edit this course's curriculum.</p>
+        </div>
+      ) : null}
       {allowed && curriculum.length === 0 ? (
         <p className="mb-4 text-sm text-[var(--text-3)]">No sections yet. Use Add section, then Add Lesson.</p>
       ) : null}
@@ -106,6 +114,7 @@ export function CurriculumManager({
                       textContent: l.textContent,
                       durationMinutes: l.durationMinutes ?? 0,
                       isFreePreview: l.isFreePreview,
+                      sortOrder: l.sortOrder,
                     }}
                   />
                   <LessonDeleteButton id={l.id} />

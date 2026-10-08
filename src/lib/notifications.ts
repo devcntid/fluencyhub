@@ -91,7 +91,7 @@ export async function notifyPaymentSuccess(orderId: number) {
       for (const [key, value] of Object.entries(vars)) {
         result = result.replaceAll(key, value);
       }
-      return result;
+      return result.replaceAll('\\n', '\n');
     }
 
     // Default Templates (Fallbacks)
@@ -174,7 +174,7 @@ export async function notifyPaymentRejected(orderId: number, note: string) {
       for (const [key, value] of Object.entries(vars)) {
         result = result.replaceAll(key, value);
       }
-      return result;
+      return result.replaceAll('\\n', '\n');
     }
 
     // Default Templates (Fallbacks)
@@ -224,5 +224,81 @@ export async function notifyPaymentRejected(orderId: number, note: string) {
 
   } catch (error) {
     console.error("[Notifications] Error saat memproses notifikasi rejection:", error);
+  }
+}
+
+// --- PRIVATE ZOOM NOTIFICATIONS ---
+
+function formatPhone(phone: string) {
+  let p = phone.replace(/[^0-9]/g, "");
+  if (p.startsWith("0")) p = "62" + p.slice(1);
+  else if (p.startsWith("8")) p = "62" + p;
+  return p;
+}
+
+export async function notifyZoomSessionRequested(instructor: any, learner: any, sessionDate: Date, topic: string) {
+  try {
+    const dStr = sessionDate.toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" });
+    
+    if (instructor.whatsappNumber) {
+      const wa = `Halo ${instructor.name},\n\nAda permintaan *Sesi Privat* baru dari *${learner.name}*!\n\n📅 Waktu: ${dStr} WIB\n📝 Topik: ${topic}\n\nSilakan cek dashboard instructor Anda untuk menyetujui atau menolak sesi ini.\n\nFluencyHub Team`;
+      await sendFonnteWhatsApp(formatPhone(instructor.whatsappNumber), wa);
+    }
+    
+    if (instructor.email) {
+      const html = `<p>Halo ${instructor.name},</p><p>Ada permintaan <strong>Sesi Privat</strong> baru dari <strong>${learner.name}</strong>!</p><ul><li>Waktu: ${dStr} WIB</li><li>Topik: ${topic}</li></ul><p>Silakan login ke dashboard Anda untuk merespons.</p>`;
+      await sendEmail({ to: instructor.email, subject: "Permintaan Sesi Privat Baru - FluencyHub", html });
+    }
+  } catch (err) {
+    console.error("Notif Error:", err);
+  }
+}
+
+export async function notifyZoomSessionStatus(learner: any, instructor: any, sessionDate: Date, status: string, notesOrLink: string | null) {
+  try {
+    const dStr = sessionDate.toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" });
+    const isConfirmed = status === 'confirmed';
+    const statusTxt = isConfirmed ? 'DISETUJUI' : 'DITOLAK';
+    
+    if (learner.whatsappNumber) {
+      let wa = `Halo ${learner.name},\n\nPermintaan Sesi Privat Anda dengan *${instructor.name}* pada tanggal *${dStr} WIB* telah *${statusTxt}*.`;
+      if (isConfirmed && notesOrLink) {
+        wa += `\n\n🔗 Link Zoom: ${notesOrLink}`;
+      } else if (!isConfirmed && notesOrLink) {
+        wa += `\n\n📝 Alasan: ${notesOrLink}`;
+      }
+      await sendFonnteWhatsApp(formatPhone(learner.whatsappNumber), wa);
+    }
+    
+    if (learner.email) {
+      let html = `<p>Halo ${learner.name},</p><p>Permintaan Sesi Privat Anda dengan <strong>${instructor.name}</strong> pada tanggal <strong>${dStr} WIB</strong> telah <strong>${statusTxt}</strong>.</p>`;
+      if (isConfirmed && notesOrLink) {
+        html += `<p><strong>Link Zoom:</strong> <a href="${notesOrLink}">${notesOrLink}</a></p>`;
+      } else if (!isConfirmed && notesOrLink) {
+        html += `<p><strong>Alasan:</strong> ${notesOrLink}</p>`;
+      }
+      await sendEmail({ to: learner.email, subject: `Sesi Privat ${statusTxt} - FluencyHub`, html });
+    }
+  } catch (err) {
+    console.error("Notif Error:", err);
+  }
+}
+
+export async function notifyZoomSessionCancelled(user: any, otherUser: any, sessionDate: Date, role: string) {
+  try {
+    const dStr = sessionDate.toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" });
+    const roleStr = role === 'instructor' ? 'Instruktur' : 'Siswa';
+    
+    if (user.whatsappNumber) {
+      const wa = `Halo ${user.name},\n\nSesi Privat Anda pada tanggal *${dStr} WIB* telah *DIBATALKAN* oleh ${roleStr} (${otherUser.name}).\n\nMohon maklum,\nFluencyHub Team`;
+      await sendFonnteWhatsApp(formatPhone(user.whatsappNumber), wa);
+    }
+    
+    if (user.email) {
+      const html = `<p>Halo ${user.name},</p><p>Sesi Privat Anda pada tanggal <strong>${dStr} WIB</strong> telah <strong>DIBATALKAN</strong> oleh ${roleStr} (${otherUser.name}).</p>`;
+      await sendEmail({ to: user.email, subject: "Sesi Privat Dibatalkan - FluencyHub", html });
+    }
+  } catch (err) {
+    console.error("Notif Error:", err);
   }
 }

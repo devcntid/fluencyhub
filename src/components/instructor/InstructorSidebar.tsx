@@ -11,6 +11,7 @@ const NAV = [
   { href: "/instructor/curriculum", label: "Kurikulum" },
   { href: "/instructor/students", label: "Students" },
   { href: "/instructor/analytics", label: "Analytics" },
+  { href: "/instructor/private-sessions", label: "Sesi Privat" },
 ];
 
 export function InstructorSidebar({
@@ -38,15 +39,17 @@ export function InstructorSidebar({
           </span>
         </Link>
       </div>
-      <div className="sidebar-profile">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={avatarUrl || "https://i.pravatar.cc/80?img=15"} alt="" className="avatar avatar-ring-i h-9 w-9" />
-        <div className="min-w-0">
-          <p className="truncate font-[family-name:var(--font-heading)] text-xs font-bold text-white">{name}</p>
-          <p className="text-[10px] font-medium text-[var(--sidebar-active-inst)]">Instructor · {sharePct}% Revenue</p>
-          <p className="truncate text-[10px] text-zinc-500">{email}</p>
+      <Link href="/instructor/profile" className="sidebar-profile hover:bg-white/5 transition-colors cursor-pointer block">
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={avatarUrl || "https://i.pravatar.cc/80?img=15"} alt="" className="avatar avatar-ring-i h-9 w-9" />
+          <div className="min-w-0">
+            <p className="truncate font-[family-name:var(--font-heading)] text-xs font-bold text-white">{name}</p>
+            <p className="text-[10px] font-medium text-[var(--sidebar-active-inst)]">Instructor · {sharePct}% Revenue</p>
+            <p className="truncate text-[10px] text-zinc-500">{email}</p>
+          </div>
         </div>
-      </div>
+      </Link>
       <nav className="sidebar-nav">
         {NAV.map((item) => {
           const active = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -127,15 +130,17 @@ export function InstructorMobileNav({
               </button>
             </div>
             
-            <div className="sidebar-profile border-b border-white/10">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={avatarUrl || "https://i.pravatar.cc/80?img=15"} alt="" className="avatar avatar-ring-i h-9 w-9" />
-              <div className="min-w-0">
-                <p className="truncate font-[family-name:var(--font-heading)] text-xs font-bold text-white">{name}</p>
-                <p className="text-[10px] font-medium text-[var(--sidebar-active-inst)]">Instructor · {sharePct}% Revenue</p>
-                <p className="truncate text-[10px] text-zinc-500">{email}</p>
+            <Link href="/instructor/profile" className="sidebar-profile border-b border-white/10 hover:bg-white/5 transition-colors cursor-pointer block" onClick={() => setOpen(false)}>
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={avatarUrl || "https://i.pravatar.cc/80?img=15"} alt="" className="avatar avatar-ring-i h-9 w-9" />
+                <div className="min-w-0">
+                  <p className="truncate font-[family-name:var(--font-heading)] text-xs font-bold text-white">{name}</p>
+                  <p className="text-[10px] font-medium text-[var(--sidebar-active-inst)]">Instructor · {sharePct}% Revenue</p>
+                  <p className="truncate text-[10px] text-zinc-500">{email}</p>
+                </div>
               </div>
-            </div>
+            </Link>
 
             <nav className="flex-1 p-2 sidebar-nav">
               {NAV.map((item) => {

@@ -161,6 +161,7 @@ export async function updateLessonForSection(
     textContent?: string | null;
     durationMinutes?: number | null;
     isFreePreview?: boolean;
+    sortOrder?: number;
   },
 ): Promise<Lesson> {
   const youtubeId = data.youtubeUrl ? extractYoutubeId(data.youtubeUrl) : null;
@@ -178,6 +179,7 @@ export async function updateLessonForSection(
       text_content = CASE WHEN ${data.textContent !== undefined} THEN ${data.textContent ?? null} ELSE text_content END,
       duration_minutes = COALESCE(${data.durationMinutes ?? null}, duration_minutes),
       is_free_preview = COALESCE(${data.isFreePreview ?? null}, is_free_preview),
+      sort_order = COALESCE(${data.sortOrder ?? null}, sort_order),
       updated_at = NOW()
     WHERE id = ${id} AND deleted_at IS NULL
     RETURNING *

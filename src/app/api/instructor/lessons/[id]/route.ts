@@ -16,6 +16,7 @@ const Schema = z.object({
   textContent: z.string().nullable().optional(),
   durationMinutes: z.number().int().nonnegative().optional(),
   isFreePreview: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +36,42 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const access = await assertCourseAccess(section.courseId, gate.userId, gate.isAdmin);
     if (access.error) return access.error;
   }
+
+  // Duplicate check
+  if (parsed.data.title) {
+    const lessonData = await sql`SELECT section_id FROM lessons WHERE id = ${Number(id)}`;
+    const currentSectionId = lessonData[0] ? Number(lessonData[0].section_id) : 0;
+    const targetSectionId = parsed.data.sectionId || currentSectionId;
+    
+    const existing = await sql`
+      SELECT id FROM lessons 
+      WHERE section_id = ${targetSectionId} 
+        AND title = ${parsed.data.title}
+        AND id != ${Number(id)}
+        AND deleted_at IS NULL
+    `;
+    if (existing.length > 0) {
+      return NextResponse.json({ error: "Duplikat nama tidak diizinkan." }, { status: 400 });
+    }
+  }
+
+  if (parsed.data.sortOrder !== undefined) {
+    const lessonData = await sql`SELECT section_id FROM lessons WHERE id = ${Number(id)}`;
+    const currentSectionId = lessonData[0] ? Number(lessonData[0].section_id) : 0;
+    const targetSectionId = parsed.data.sectionId || currentSectionId;
+
+    const existingSort = await sql`
+      SELECT id FROM lessons 
+      WHERE section_id = ${targetSectionId} 
+        AND sort_order = ${parsed.data.sortOrder}
+        AND id != ${Number(id)}
+        AND deleted_at IS NULL
+    `;
+    if (existingSort.length > 0) {
+      return NextResponse.json({ error: "Duplikat nomor urut (sort order) tidak diizinkan." }, { status: 400 });
+    }
+  }
+
   const lesson = await updateLessonForSection(Number(id), {
     ...parsed.data,
     youtubeUrl: parsed.data.youtubeUrl,

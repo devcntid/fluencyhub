@@ -10,7 +10,6 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
   const menuItems = [
     { label: "Profil", href: "/profile", icon: "User" },
     { label: "E-learning", href: "/profile/elearning", icon: "BookOpen" },
-    { label: "Riwayat Transaksi", href: "/profile/transactions", icon: "FileText" },
   ];
 
   return (

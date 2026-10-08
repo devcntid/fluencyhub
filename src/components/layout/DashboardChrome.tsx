@@ -44,6 +44,7 @@ export function DashboardChrome({
     { id: "videos", icon: "Play", label: "Videos", href: `/dashboard/videos${suffix}` },
     { id: "live", icon: "Video", label: "Live", href: `/dashboard/live${suffix}` },
     { id: "resources", icon: "BookOpen", label: "Resources", href: `/dashboard/resources${suffix}` },
+    { id: "private", icon: "Calendar", label: "Sesi Privat", href: `/dashboard/private-sessions${suffix}` },
   ];
 
   return (

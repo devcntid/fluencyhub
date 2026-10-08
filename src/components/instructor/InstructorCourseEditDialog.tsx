@@ -12,24 +12,35 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
-export function InstructorCourseCreateButton() {
+export function InstructorCourseEditDialog({
+  course,
+}: {
+  course: {
+    id: number;
+    title: string;
+    slug: string;
+    shortDescription: string | null;
+    price: string;
+    thumbnailUrl: string | null;
+  };
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [shortDescription, setShortDescription] = useState("");
-  const [price, setPrice] = useState("0");
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [title, setTitle] = useState(course.title);
+  const [slug, setSlug] = useState(course.slug);
+  const [shortDescription, setShortDescription] = useState(course.shortDescription || "");
+  const [price, setPrice] = useState(course.price);
+  const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnailUrl || "");
 
-  function startCreate() {
-    setTitle("");
-    setSlug("");
-    setShortDescription("");
-    setPrice("0");
-    setThumbnailUrl("");
+  function startEdit() {
+    setTitle(course.title);
+    setSlug(course.slug);
+    setShortDescription(course.shortDescription || "");
+    setPrice(course.price);
+    setThumbnailUrl(course.thumbnailUrl || "");
     setError("");
     setOpen(true);
   }
@@ -57,8 +68,8 @@ export function InstructorCourseCreateButton() {
       price,
       thumbnailUrl: thumbnailUrl || null,
     };
-    const res = await fetch("/api/instructor/courses", {
-      method: "POST",
+    const res = await fetch(`/api/instructor/courses/${course.id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
@@ -74,11 +85,11 @@ export function InstructorCourseCreateButton() {
 
   return (
     <>
-      <button type="button" className="btn btn-primary btn-sm" onClick={startCreate}>
-        Create New Course
+      <button type="button" className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center" onClick={startEdit}>
+        Edit Details
       </button>
 
-      <AdminFormDialog title="Create New Course" open={open} onClose={() => setOpen(false)}>
+      <AdminFormDialog title="Edit Course Details" open={open} onClose={() => setOpen(false)}>
         <div className="grid gap-3">
           <label>
             <span className="label">Title</span>
@@ -123,9 +134,6 @@ export function InstructorCourseCreateButton() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={thumbnailUrl} alt="" className="h-24 w-40 rounded-[var(--r)] object-cover" />
           ) : null}
-          <p className="text-xs text-[var(--text-4)] mt-2">
-            New courses are saved as &quot;Draft&quot; by default. An admin can publish them later.
-          </p>
         </div>
         {error ? <p className="mt-3 text-sm text-[var(--red)]">{error}</p> : null}
         <div className="mt-4 flex justify-end gap-2">
@@ -133,7 +141,7 @@ export function InstructorCourseCreateButton() {
             Cancel
           </button>
           <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={save}>
-            Create
+            Save Changes
           </button>
         </div>
       </AdminFormDialog>

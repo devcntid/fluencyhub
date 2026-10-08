@@ -98,8 +98,10 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
         ) : (
           filteredClasses.map((session) => {
             const sessionTime = session.liveClassDatetime ? session.liveClassDatetime.getTime() : 0;
+            const twoHours = 2 * 60 * 60 * 1000;
+            const isCompleted = sessionTime > 0 && now.getTime() > sessionTime + twoHours;
             const isToday = session.liveClassDatetime?.toDateString() === now.toDateString();
-            const isActive = isToday || (sessionTime - now.getTime() < 2 * 60 * 60 * 1000 && sessionTime > now.getTime());
+            const isActive = !isCompleted && (isToday || (sessionTime - now.getTime() < twoHours && sessionTime > now.getTime()));
 
             return (
               <div
@@ -146,7 +148,12 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                 </div>
 
                 <div className="mt-4 min-w-[120px] md:mt-0 md:text-right">
-                  {isActive ? (
+                  {isCompleted ? (
+                    <div className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-50 px-5 py-2.5 font-semibold text-green-600 border border-green-200 md:w-auto">
+                      <LandingIcon name="CheckCircle" size={16} color="currentColor" />
+                      Selesai
+                    </div>
+                  ) : isActive ? (
                     <a
                       href={session.liveClassUrl || "#"}
                       target="_blank"

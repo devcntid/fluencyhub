@@ -3,6 +3,8 @@ import { listInstructorCoursesWithRevenue } from "@/lib/db/courses.queries";
 import { instructorScopeId } from "@/lib/instructor-scope";
 import { auth } from "@/lib/session";
 import { InstructorCourseCreateButton } from "@/components/instructor/InstructorCourseCreateButton";
+import { InstructorCourseEditDialog } from "@/components/instructor/InstructorCourseEditDialog";
+import { InstructorCourseDeleteButton } from "@/components/instructor/InstructorCourseDeleteButton";
 
 export default async function InstructorCoursesPage() {
   const session = await auth();
@@ -40,8 +42,16 @@ export default async function InstructorCoursesPage() {
               </div>
             </div>
             <div className="flex shrink-0 gap-2 flex-wrap md:flex-nowrap">
+              <InstructorCourseEditDialog course={{
+                id: c.id,
+                title: c.title,
+                slug: c.slug,
+                shortDescription: c.shortDescription,
+                price: c.price,
+                thumbnailUrl: c.thumbnailUrl
+              }} />
               <Link href={`/instructor/curriculum?courseId=${c.id}`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center">
-                Edit
+                Curriculum
               </Link>
               <Link href={`/instructor/students`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center">
                 Students
@@ -49,6 +59,7 @@ export default async function InstructorCoursesPage() {
               <Link href={`/dashboard/courses/${c.id}`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center">
                 Preview
               </Link>
+              <InstructorCourseDeleteButton id={c.id} />
             </div>
           </div>
         ))}
