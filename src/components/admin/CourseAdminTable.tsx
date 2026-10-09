@@ -21,6 +21,7 @@ type CourseRow = {
   isFeatured: boolean;
   marketingTag: string | null;
   thumbnailUrl: string | null;
+  level: string;
 };
 
 type Draft = {
@@ -34,6 +35,7 @@ type Draft = {
   isFeatured: boolean;
   marketingTag: string;
   thumbnailUrl: string;
+  level: string;
 };
 
 function slugify(value: string) {
@@ -66,6 +68,7 @@ export function CourseAdminTable({
     isFeatured: false,
     marketingTag: "",
     thumbnailUrl: "",
+    level: "beginner",
   };
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -103,6 +106,7 @@ export function CourseAdminTable({
       isFeatured: c.isFeatured,
       marketingTag: c.marketingTag ?? "",
       thumbnailUrl: c.thumbnailUrl ?? "",
+      level: c.level,
     });
     setError("");
     setOpen(true);
@@ -122,6 +126,7 @@ export function CourseAdminTable({
       isFeatured: values.isFeatured,
       marketingTag: values.marketingTag || null,
       thumbnailUrl: values.thumbnailUrl || null,
+      level: values.level,
     };
     const res = await fetch(editId == null ? "/api/admin/courses" : `/api/admin/courses/${editId}`, {
       method: editId == null ? "POST" : "PATCH",
@@ -273,6 +278,19 @@ export function CourseAdminTable({
           <label>
             <span className="label">Marketing tag</span>
             <input className="input" value={values.marketingTag} onChange={(e) => setValues((v) => ({ ...v, marketingTag: e.target.value }))} />
+          </label>
+          <label>
+            <span className="label">Level</span>
+            <select
+              className="input"
+              value={values.level}
+              onChange={(e) => setValues((v) => ({ ...v, level: e.target.value }))}
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="all_levels">All Levels</option>
+            </select>
           </label>
           <label>
             <span className="label">Thumbnail</span>

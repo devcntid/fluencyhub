@@ -21,6 +21,7 @@ export default async function AdminCoursesPage() {
         isFeatured: c.isFeatured,
         marketingTag: c.marketingTag,
         thumbnailUrl: c.thumbnailUrl,
+        level: c.level,
       }))}
       instructors={instructors}
     />

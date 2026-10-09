@@ -15,6 +15,7 @@ const Schema = z.object({
   isFeatured: z.boolean().optional(),
   marketingTag: z.string().nullable().optional(),
   thumbnailUrl: z.string().url().nullable().optional(),
+  level: z.enum(["beginner", "intermediate", "advanced", "all_levels"]).optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

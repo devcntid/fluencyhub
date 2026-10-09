@@ -42,7 +42,8 @@ export async function listInstructorCoursesWithRevenue(instructorId: number | nu
         FROM orders o
         JOIN users u ON u.id = c.instructor_id
         WHERE o.course_id = c.id AND o.status = 'paid'
-      ), 0) AS revenue
+      ), 0) AS revenue,
+      (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS actual_enrollments
     FROM courses c
     WHERE c.deleted_at IS NULL
       AND (${instructorId}::bigint IS NULL OR c.instructor_id = ${instructorId})
@@ -50,7 +51,9 @@ export async function listInstructorCoursesWithRevenue(instructorId: number | nu
   `;
   return rows.map((r) => {
     const row = r as Record<string, unknown>;
-    return { ...mapCourse(row), revenue: String(row.revenue ?? "0") };
+    const course = mapCourse(row);
+    course.enrollmentCount = Number(row.actual_enrollments ?? 0);
+    return { ...course, revenue: String(row.revenue ?? "0") };
   });
 }
 
@@ -71,8 +74,9 @@ export async function getInstructorOverview(instructorId: number | null): Promis
         AND (${instructorId}::bigint IS NULL OR c.instructor_id = ${instructorId})
     `,
     sql`
-      SELECT COALESCE(SUM(c.enrollment_count), 0) AS n
-      FROM courses c
+      SELECT COUNT(e.id) AS n
+      FROM enrollments e
+      JOIN courses c ON c.id = e.course_id
       WHERE c.deleted_at IS NULL
         AND (${instructorId}::bigint IS NULL OR c.instructor_id = ${instructorId})
     `,
