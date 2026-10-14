@@ -10,8 +10,7 @@ import { auth } from "@/lib/session";
 import { formatIdr } from "@/lib/utils/cn";
 
 import { AdminIcon } from "@/components/admin/AdminIcon";
-import { format } from "date-fns";
-import { id as localeId } from "date-fns/locale";
+import { formatTimeWIB, formatDateDayWIB, formatDateMonthWIB } from "@/lib/utils/date";
 
 export default async function InstructorHomePage() {
   const session = await auth();
@@ -89,14 +88,14 @@ export default async function InstructorHomePage() {
                     isLive ? "border-red-200 bg-red-50/30 ring-1 ring-red-100" : "border-zinc-100 bg-zinc-50/50"
                   }`}>
                     <div className="text-center w-12 shrink-0">
-                      <div className="text-sm font-bold text-zinc-900">{format(startDate, "d")}</div>
-                      <div className="text-[10px] font-semibold text-zinc-500 uppercase">{format(startDate, "MMM", { locale: localeId })}</div>
+                      <div className="text-sm font-bold text-zinc-900">{formatDateDayWIB(startDate)}</div>
+                      <div className="text-[10px] font-semibold text-zinc-500 uppercase">{formatDateMonthWIB(startDate)}</div>
                     </div>
                     <div className="w-px h-8 bg-zinc-200" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className={`text-xs font-semibold ${isLive ? "text-red-600 font-bold" : "text-[var(--brand)]"}`}>
-                          {format(startDate, "HH:mm")} - {format(endDate, "HH:mm")} WIB
+                          {formatTimeWIB(startDate)} - {formatTimeWIB(endDate)} WIB
                         </span>
                         <span className="text-[10px] text-zinc-400 font-medium">({dur} min)</span>
                         {isLive && (

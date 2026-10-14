@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { UpcomingLiveClass } from "@/lib/db/lessons.queries";
+import { formatTimeWIB, formatFullDateWIB, formatDayLabelWIB } from "@/lib/utils/date";
 
 export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[] }) {
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
@@ -17,35 +18,6 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
     }, 10000);
     return () => clearInterval(timer);
   }, []);
-
-  const formatDayLabel = (d: Date | null, now: Date) => {
-    if (!d) return "TBA";
-    if (d.toDateString() === now.toDateString()) return "HARI INI";
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    if (d.toDateString() === tomorrow.toDateString()) return "BESOK";
-    return d
-      .toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" })
-      .toUpperCase()
-      .replace(".", "");
-  };
-
-  const formatFullDate = (d: Date | null) => {
-    if (!d) return "Tanggal belum ditentukan";
-    return d.toLocaleDateString("id-ID", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (d: Date | null) => {
-    if (!d) return "--:--";
-    const h = String(d.getHours()).padStart(2, "0");
-    const m = String(d.getMinutes()).padStart(2, "0");
-    return `${h}:${m}`;
-  };
 
   if (liveClasses.length === 0) {
     return (
@@ -248,12 +220,12 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                           : "text-zinc-500"
                       }`}
                     >
-                      {formatDayLabel(startDate, currentTime)}
+                      {formatDayLabelWIB(startDate, currentTime)}
                     </span>
                     <div className="flex items-center gap-1 font-extrabold font-[family-name:var(--font-heading)] text-zinc-900">
-                      <span className="text-xl md:text-2xl">{formatTime(startDate)}</span>
+                      <span className="text-xl md:text-2xl">{formatTimeWIB(startDate)}</span>
                       <span className="text-xs text-zinc-400 font-normal">-</span>
-                      <span className="text-xl md:text-2xl">{formatTime(endDate)}</span>
+                      <span className="text-xl md:text-2xl">{formatTimeWIB(endDate)}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-1.5">
                       <span className="text-[11px] font-bold text-zinc-400">WIB</span>
@@ -264,7 +236,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                       </span>
                     </div>
                     <span className="mt-1.5 text-[10px] text-zinc-400 hidden sm:block">
-                      {formatFullDate(startDate)}
+                      {formatFullDateWIB(startDate)}
                     </span>
                   </div>
 

@@ -11,8 +11,7 @@ import {
   getUpcomingLiveClass,
 } from "@/lib/db/dashboard.queries";
 import { listUserCertificates } from "@/lib/db/certificates.queries";
-import { format } from "date-fns";
-import { id as localeId } from "date-fns/locale";
+import { formatTimeWIB, formatDateDayWIB, formatDateMonthWIB } from "@/lib/utils/date";
 
 export default async function DashboardHomePage() {
   const session = await auth();
@@ -167,17 +166,17 @@ export default async function DashboardHomePage() {
                 }`}>
                   <div className="text-center px-2">
                     <div className="text-sm font-bold text-zinc-900">
-                      {format(startDate, "d")}
+                      {formatDateDayWIB(startDate)}
                     </div>
                     <div className="text-xs font-semibold text-zinc-500 uppercase">
-                      {format(startDate, "MMM", { locale: localeId })}
+                      {formatDateMonthWIB(startDate)}
                     </div>
                   </div>
                   <div className="h-8 w-px bg-zinc-100" />
                   <div className="flex-1 px-3 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                       <span className={`text-xs font-bold ${isLiveNow ? "text-red-600" : "text-blue-600"}`}>
-                        {format(startDate, "HH:mm")} - {format(endDate, "HH:mm")} WIB
+                        {formatTimeWIB(startDate)} - {formatTimeWIB(endDate)} WIB
                       </span>
                       <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
                         {durationMin} mnt
