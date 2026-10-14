@@ -153,32 +153,60 @@ export default async function DashboardHomePage() {
             <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Live Mendatang</span>
           </div>
           
-          {upcomingLive && upcomingLive.datetime ? (
-            <>
-              <div className="mb-4 flex items-center justify-between rounded-xl bg-white p-3 shadow-sm border border-zinc-100">
-                <div className="text-center px-2">
-                  <div className="text-sm font-bold text-zinc-900">
-                    {format(new Date(upcomingLive.datetime), "d")}
+          {upcomingLive && upcomingLive.datetime ? (() => {
+            const startDate = new Date(upcomingLive.datetime);
+            const durationMin = upcomingLive.durationMinutes || 60;
+            const endDate = new Date(startDate.getTime() + durationMin * 60 * 1000);
+            const now = new Date();
+            const isLiveNow = now >= startDate && now < endDate;
+
+            return (
+              <>
+                <div className={`mb-4 flex items-center justify-between rounded-xl bg-white p-3 shadow-sm border transition-all ${
+                  isLiveNow ? "border-red-300 ring-2 ring-red-100 shadow-red-50" : "border-zinc-100"
+                }`}>
+                  <div className="text-center px-2">
+                    <div className="text-sm font-bold text-zinc-900">
+                      {format(startDate, "d")}
+                    </div>
+                    <div className="text-xs font-semibold text-zinc-500 uppercase">
+                      {format(startDate, "MMM", { locale: localeId })}
+                    </div>
                   </div>
-                  <div className="text-xs font-semibold text-zinc-500 uppercase">
-                    {format(new Date(upcomingLive.datetime), "MMM", { locale: localeId })}
+                  <div className="h-8 w-px bg-zinc-100" />
+                  <div className="flex-1 px-3 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                      <span className={`text-xs font-bold ${isLiveNow ? "text-red-600" : "text-blue-600"}`}>
+                        {format(startDate, "HH:mm")} - {format(endDate, "HH:mm")} WIB
+                      </span>
+                      <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
+                        {durationMin} mnt
+                      </span>
+                      {isLiveNow && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-red-600 bg-red-50 border border-red-200 rounded px-1.5 py-0.5 animate-pulse">
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping inline-block" />
+                          LIVE
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-sm font-bold text-zinc-900" title={upcomingLive.title}>
+                      {upcomingLive.title}
+                    </div>
                   </div>
                 </div>
-                <div className="h-8 w-px bg-zinc-100" />
-                <div className="flex-1 px-3 min-w-0">
-                  <div className="text-xs font-semibold text-blue-600">
-                    {format(new Date(upcomingLive.datetime), "HH:mm")} WIB
-                  </div>
-                  <div className="truncate text-sm font-bold text-zinc-900" title={upcomingLive.title}>
-                    {upcomingLive.title}
-                  </div>
-                </div>
-              </div>
-              <button className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-700">
-                Lihat Detail
-              </button>
-            </>
-          ) : (
+                <Link
+                  href={`/dashboard/classroom?tab=live&c=all#live-${upcomingLive.lessonId}`}
+                  className={`block w-full text-center rounded-xl py-3 text-sm font-bold text-white transition shadow-sm ${
+                    isLiveNow
+                      ? "bg-red-600 hover:bg-red-700 shadow-red-200 animate-pulse"
+                      : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
+                  }`}
+                >
+                  {isLiveNow ? "Join Live Room Sekarang" : "Lihat Jadwal Live"}
+                </Link>
+              </>
+            );
+          })() : (
             <div className="flex h-20 items-center justify-center text-sm text-zinc-500">
               Tidak ada jadwal live terdekat.
             </div>

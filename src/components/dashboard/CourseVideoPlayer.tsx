@@ -11,7 +11,7 @@ export function CourseVideoPlayer({
   course,
   curriculum,
 }: {
-  course: { id: number; title: string; thumbnail_url?: string | null };
+  course: { id: number; title: string; thumbnail_url?: string | null; thumbnailUrl?: string | null };
   curriculum: PlayerSection[];
 }) {
   const router = useRouter();
@@ -47,7 +47,7 @@ export function CourseVideoPlayer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          courseId: course.id,
+          courseId: activeLesson.courseId || course.id,
           lessonId: activeLesson.id,
           isCompleted: !activeLesson.isCompleted,
         }),
@@ -137,7 +137,7 @@ export function CourseVideoPlayer({
         <div className="player-shell border border-[var(--border)] rounded-[var(--r-lg)] overflow-hidden shadow-sm" style={{ minHeight: 'auto' }}>
           <div className="player-top">
             <div className="min-w-0">
-              <p className="truncate font-[family-name:var(--font-heading)] text-sm font-extrabold">{course.title}</p>
+              <p className="truncate font-[family-name:var(--font-heading)] text-sm font-extrabold">{activeLesson.courseTitle || course.title}</p>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-[var(--text-3)]">
@@ -247,6 +247,11 @@ export function CourseVideoPlayer({
               <div className="max-h-[500px] overflow-y-auto pr-2">
                 {curriculum.map((sec) => (
                   <div key={sec.id} className="mb-4">
+                    {sec.courseTitle && (
+                      <span className="text-[10px] font-bold text-[var(--brand)] uppercase tracking-wider block mb-0.5">
+                        {sec.courseTitle}
+                      </span>
+                    )}
                     <p className="mb-2 text-xs font-bold text-[var(--text-3)]">{sec.title}</p>
                     {sec.lessons.map((l) => {
                       const isPlaying = l.id === activeLessonId;
@@ -308,7 +313,7 @@ export function CourseVideoPlayer({
             </div>
           </div>
           <Link
-            href={`/dashboard/classroom?tab=exam&c=${course.id}`}
+            href={course.id ? `/dashboard/classroom?tab=exam&c=${course.id}` : `/dashboard/classroom?tab=exam&c=all`}
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition shrink-0"
           >
             <LandingIcon name="Award" size={14} color="#fff" />
@@ -359,13 +364,13 @@ export function CourseVideoPlayer({
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href={`/dashboard/classroom?tab=live&c=${course.id}`}
+              href={course.id ? `/dashboard/classroom?tab=live&c=${course.id}` : `/dashboard/classroom?tab=live&c=all`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-xs transition"
             >
               <LandingIcon name="Video" size={14} color="currentColor" /> Buka Jadwal Live Zoom &rarr;
             </Link>
             <Link
-              href={`/dashboard/classroom?tab=resources&c=${course.id}`}
+              href={course.id ? `/dashboard/classroom?tab=resources&c=${course.id}` : `/dashboard/classroom?tab=resources&c=all`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-xs transition"
             >
               <LandingIcon name="BookOpen" size={14} color="currentColor" /> Buka Dokumen & Resources &rarr;
@@ -375,9 +380,16 @@ export function CourseVideoPlayer({
       ) : (
         curriculum.map((sec) => (
           <div key={sec.id} className="mb-8">
-            <h2 className="mb-4 flex items-center gap-2 font-[family-name:var(--font-heading)] text-base font-bold text-[var(--brand)]">
-              <LandingIcon name="PlayCircle" size={18} color="currentColor" /> {sec.title}
-            </h2>
+            <div className="mb-4">
+              {sec.courseTitle && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-[var(--brand)] border border-blue-100 mb-1.5">
+                  <LandingIcon name="GraduationCap" size={12} color="currentColor" /> {sec.courseTitle}
+                </span>
+              )}
+              <h2 className="flex items-center gap-2 font-[family-name:var(--font-heading)] text-base font-bold text-[var(--brand)]">
+                <LandingIcon name="PlayCircle" size={18} color="currentColor" /> {sec.title}
+              </h2>
+            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               {sec.lessons.map((l) => {
                 const isLocked = false;
@@ -392,11 +404,12 @@ export function CourseVideoPlayer({
                     }`}
                   >
                     <div className="relative aspect-video w-full bg-zinc-900 overflow-hidden">
-                      {course.thumbnail_url && !isLocked && (
+                      {(l.courseThumbnail || course.thumbnailUrl || course.thumbnail_url) && !isLocked && (
                         <Image
-                          src={course.thumbnail_url}
+                          src={l.courseThumbnail || course.thumbnailUrl || course.thumbnail_url!}
                           alt={l.title}
                           fill
+                          unoptimized
                           className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       )}
@@ -434,9 +447,14 @@ export function CourseVideoPlayer({
                     </div>
                     
                     <div className="flex flex-1 flex-col p-3">
-                      <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--brand)]">
-                        Lesson {l.id}
-                      </p>
+                      <div className="mb-1 flex items-center justify-between gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--brand)]">
+                        <span>Lesson {l.id}</span>
+                        {l.courseTitle && (
+                          <span className="truncate max-w-[130px] text-zinc-400 font-medium normal-case">
+                            {l.courseTitle}
+                          </span>
+                        )}
+                      </div>
                       <p
                         className={`font-[family-name:var(--font-heading)] text-sm font-semibold leading-tight ${
                           isLocked ? "text-zinc-500" : "text-zinc-900 group-hover:text-[var(--brand)]"

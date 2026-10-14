@@ -54,13 +54,27 @@ export function LessonFormDialog({
   const [sectionId, setSectionId] = useState(sections[0]?.id ?? 0);
   const [type, setType] = useState<ContentType>("youtube_video");
   const [url, setUrl] = useState("");
-  const [dt, setDt] = useState("");
+  const [liveDate, setLiveDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [text, setText] = useState("");
   const [dur, setDur] = useState(0);
   const [free, setFree] = useState(false);
   const [sortOrder, setSortOrder] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  const handleStartTimeChange = (val: string) => {
+    setStartTime(val);
+    if (val && !endTime) {
+      const [h, m] = val.split(":").map(Number);
+      if (!Number.isNaN(h) && !Number.isNaN(m)) {
+        const endH = (h + 1) % 24;
+        const endStr = `${String(endH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+        setEndTime(endStr);
+      }
+    }
+  };
 
   async function uploadDocument(file: File) {
     setBusy(true);
@@ -83,7 +97,27 @@ export function LessonFormDialog({
     setSectionId(v?.sectionId ?? sections[0]?.id ?? 0);
     setType(v?.contentType ?? "youtube_video");
     setUrl(v?.youtubeUrl || v?.liveClassUrl || v?.documentUrl || "");
-    setDt(toLocalInput(v?.liveClassDatetime ?? null));
+
+    if (v?.liveClassDatetime) {
+      const d = new Date(v.liveClassDatetime);
+      if (!Number.isNaN(d.getTime())) {
+        const pad = (n: number) => String(n).padStart(2, "0");
+        setLiveDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+        setStartTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+        const durMin = v?.durationMinutes ?? 60;
+        const endD = new Date(d.getTime() + durMin * 60000);
+        setEndTime(`${pad(endD.getHours())}:${pad(endD.getMinutes())}`);
+      } else {
+        setLiveDate("");
+        setStartTime("");
+        setEndTime("");
+      }
+    } else {
+      setLiveDate("");
+      setStartTime("");
+      setEndTime("");
+    }
+
     setText(v?.textContent ?? "");
     setDur(v?.durationMinutes ?? 0);
     setFree(Boolean(v?.isFreePreview));
@@ -102,17 +136,44 @@ export function LessonFormDialog({
       return;
     }
     setBusy(true);
+
+    let finalDuration = dur;
+    let liveDatetimeIso: string | null = null;
+
+    if (type === "live_class") {
+      if (!liveDate || !startTime || !endTime) {
+        setError("Tanggal pelaksanaan, waktu mulai, dan waktu selesai live class wajib diisi.");
+        setBusy(false);
+        return;
+      }
+      const [startH, startM] = startTime.split(":").map(Number);
+      const [endH, endM] = endTime.split(":").map(Number);
+      const startMin = startH * 60 + startM;
+      const endMin = endH * 60 + endM;
+
+      if (endMin <= startMin) {
+        setError("Waktu selesai harus lebih besar dari waktu mulai.");
+        setBusy(false);
+        return;
+      }
+      finalDuration = endMin - startMin;
+
+      const [year, month, day] = liveDate.split("-").map(Number);
+      const dateObj = new Date(year, month - 1, day, startH, startM, 0);
+      liveDatetimeIso = dateObj.toISOString();
+    }
+
     const body = {
       sectionId,
       title,
       contentType: type,
       youtubeUrl: type === "youtube_video" ? url || null : null,
       liveClassUrl: type === "live_class" ? url || null : null,
-      liveClassDatetime: type === "live_class" && dt ? new Date(dt).toISOString() : null,
+      liveClassDatetime: liveDatetimeIso,
       liveClassPlatform: type === "live_class" ? "zoom" : null,
       documentUrl: type === "document" ? url || null : null,
       textContent: type === "text" ? text || null : null,
-      durationMinutes: dur,
+      durationMinutes: finalDuration,
       isFreePreview: free,
       sortOrder: initial?.id ? sortOrder : undefined,
     };
@@ -185,12 +246,71 @@ export function LessonFormDialog({
             <>
               <label>
                 <span className="label">Zoom / Google Meet URL</span>
-                <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} />
+                <input
+                  className="input"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://zoom.us/j/... atau https://meet.google.com/..."
+                />
               </label>
+
               <label>
-                <span className="label">Scheduled Date & Time</span>
-                <input className="input" type="datetime-local" value={dt} onChange={(e) => setDt(e.target.value)} />
+                <span className="label">Tanggal Pelaksanaan</span>
+                <input
+                  className="input"
+                  type="date"
+                  value={liveDate}
+                  onChange={(e) => setLiveDate(e.target.value)}
+                />
               </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label>
+                  <span className="label">Waktu Mulai</span>
+                  <input
+                    className="input"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
+                  />
+                </label>
+                <label>
+                  <span className="label">Waktu Selesai (Sampai Jam)</span>
+                  <input
+                    className="input"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </label>
+              </div>
+
+              {startTime && endTime && (() => {
+                const [startH, startM] = startTime.split(":").map(Number);
+                const [endH, endM] = endTime.split(":").map(Number);
+                const diffMin = (endH * 60 + endM) - (startH * 60 + startM);
+                if (diffMin <= 0) {
+                  return (
+                    <p className="rounded-[var(--r)] border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
+                      ⚠️ Waktu selesai harus lebih lama dari waktu mulai.
+                    </p>
+                  );
+                }
+                const hours = Math.floor(diffMin / 60);
+                const mins = diffMin % 60;
+                const durLabel =
+                  hours > 0
+                    ? `${hours} jam ${mins > 0 ? `${mins} menit` : ""}`
+                    : `${mins} menit`;
+                return (
+                  <div className="flex items-center justify-between rounded-[var(--r)] border border-blue-200 bg-blue-50/80 px-3.5 py-2 text-xs font-semibold text-blue-700">
+                    <span>⏱️ Terhitung Durasi:</span>
+                    <span className="font-extrabold text-blue-900 bg-white px-2.5 py-0.5 rounded shadow-2xs">
+                      {diffMin} Menit ({durLabel.trim()})
+                    </span>
+                  </div>
+                );
+              })()}
             </>
           ) : null}
           {type === "document" ? (
@@ -229,10 +349,12 @@ export function LessonFormDialog({
               <textarea className="input min-h-24" value={text} onChange={(e) => setText(e.target.value)} />
             </label>
           ) : null}
-          <label>
-            <span className="label">Duration (min)</span>
-            <input className="input" type="number" min="0" value={dur} onChange={(e) => setDur(Math.max(0, parseInt(e.target.value) || 0))} />
-          </label>
+          {type !== "live_class" ? (
+            <label>
+              <span className="label">Duration (min)</span>
+              <input className="input" type="number" min="0" value={dur} onChange={(e) => setDur(Math.max(0, parseInt(e.target.value) || 0))} />
+            </label>
+          ) : null}
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} />
             <span className="text-sm font-semibold">Free Preview</span>

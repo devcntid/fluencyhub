@@ -152,17 +152,25 @@ export function CurriculumManager({
                     Tambahkan bab materi dan pelajaran interaktif (Video YouTube, Live Zoom, atau Dokumen PDF).
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <Link
                     href={`/dashboard/classroom?c=${selectedId}`}
                     target="_blank"
-                    className="btn btn-secondary btn-sm text-xs font-bold"
+                    className="btn btn-secondary h-9 px-3.5 text-xs font-bold rounded-xl shadow-xs inline-flex items-center gap-1.5"
                   >
                     <span>Preview Siswa</span>
-                    <LandingIcon name="ExternalLink" size={12} color="currentColor" />
+                    <LandingIcon name="ExternalLink" size={13} color="currentColor" />
                   </Link>
-                  <SectionFormDialog courseId={selectedId} triggerLabel="+ Tambah Section" />
-                  <LessonFormDialog sections={sectionOptions} triggerLabel="+ Tambah Materi" />
+                  <SectionFormDialog
+                    courseId={selectedId}
+                    triggerLabel="+ Tambah Section"
+                    triggerClassName="btn btn-secondary h-9 px-3.5 text-xs font-bold rounded-xl shadow-xs"
+                  />
+                  <LessonFormDialog
+                    sections={sectionOptions}
+                    triggerLabel="+ Tambah Materi"
+                    triggerClassName="btn btn-primary h-9 px-3.5 text-xs font-bold rounded-xl shadow-xs"
+                  />
                 </div>
               </div>
 

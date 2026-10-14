@@ -78,20 +78,39 @@ export default async function InstructorHomePage() {
           
           <div className="flex flex-col gap-3">
             {upcomingLive.length > 0 ? (
-              upcomingLive.map((lc) => (
-                <div key={lc.id} className="flex items-center gap-3 rounded-lg border border-zinc-100 p-3 bg-zinc-50/50">
-                  <div className="text-center w-12 shrink-0">
-                    <div className="text-sm font-bold text-zinc-900">{format(new Date(lc.datetime), "d")}</div>
-                    <div className="text-[10px] font-semibold text-zinc-500 uppercase">{format(new Date(lc.datetime), "MMM", { locale: localeId })}</div>
+              upcomingLive.map((lc) => {
+                const startDate = new Date(lc.datetime);
+                const dur = lc.durationMinutes || 60;
+                const endDate = new Date(startDate.getTime() + dur * 60 * 1000);
+                const isLive = new Date() >= startDate && new Date() < endDate;
+
+                return (
+                  <div key={lc.id} className={`flex items-center gap-3 rounded-lg border p-3 ${
+                    isLive ? "border-red-200 bg-red-50/30 ring-1 ring-red-100" : "border-zinc-100 bg-zinc-50/50"
+                  }`}>
+                    <div className="text-center w-12 shrink-0">
+                      <div className="text-sm font-bold text-zinc-900">{format(startDate, "d")}</div>
+                      <div className="text-[10px] font-semibold text-zinc-500 uppercase">{format(startDate, "MMM", { locale: localeId })}</div>
+                    </div>
+                    <div className="w-px h-8 bg-zinc-200" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-xs font-semibold ${isLive ? "text-red-600 font-bold" : "text-[var(--brand)]"}`}>
+                          {format(startDate, "HH:mm")} - {format(endDate, "HH:mm")} WIB
+                        </span>
+                        <span className="text-[10px] text-zinc-400 font-medium">({dur} min)</span>
+                        {isLive && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-red-600 bg-red-100 border border-red-200 rounded px-1.5 py-0.2 animate-pulse">
+                            LIVE
+                          </span>
+                        )}
+                      </div>
+                      <div className="truncate text-sm font-bold text-zinc-900" title={lc.title}>{lc.title}</div>
+                      <div className="truncate text-xs text-zinc-500">{lc.courseTitle}</div>
+                    </div>
                   </div>
-                  <div className="w-px h-8 bg-zinc-200" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-[var(--brand)]">{format(new Date(lc.datetime), "HH:mm")} WIB</div>
-                    <div className="truncate text-sm font-bold text-zinc-900" title={lc.title}>{lc.title}</div>
-                    <div className="truncate text-xs text-zinc-500">{lc.courseTitle}</div>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="flex h-32 flex-col items-center justify-center text-sm text-zinc-500">
                 Tidak ada jadwal live terdekat.

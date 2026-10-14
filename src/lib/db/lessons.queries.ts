@@ -7,6 +7,9 @@ export type InstructorCurriculumSection = Section & { lessons: Lesson[] };
 export type PlayerLesson = {
   id: number;
   sectionId: number;
+  courseId?: number;
+  courseTitle?: string;
+  courseThumbnail?: string | null;
   title: string;
   contentType: Lesson["contentType"];
   youtubeVideoId: string | null;
@@ -20,7 +23,14 @@ export type PlayerLesson = {
   isCompleted: boolean;
 };
 
-export type PlayerSection = { id: number; title: string; lessons: PlayerLesson[] };
+export type PlayerSection = {
+  id: number;
+  courseId?: number;
+  courseTitle?: string;
+  courseThumbnail?: string | null;
+  title: string;
+  lessons: PlayerLesson[];
+};
 
 export async function listCoursePlayerCurriculum(courseId: number, userId: number | null): Promise<PlayerSection[]> {
   const tree = await listInstructorCurriculum(courseId);
@@ -41,12 +51,14 @@ export async function listCoursePlayerCurriculum(courseId: number, userId: numbe
   return tree
     .map((s) => ({
       id: s.id,
+      courseId,
       title: s.title,
       lessons: s.lessons
         .filter((l) => l.contentType !== "live_class")
         .map((l) => ({
           id: l.id,
           sectionId: l.sectionId,
+          courseId,
           title: l.title,
           contentType: l.contentType,
           youtubeVideoId: l.youtubeVideoId,
@@ -212,6 +224,7 @@ export type UpcomingLiveClass = {
   title: string;
   liveClassDatetime: Date | null;
   liveClassUrl: string | null;
+  durationMinutes: number;
   moduleName: string;
   courseTitle: string;
   courseId: number;
@@ -226,6 +239,7 @@ export async function listUpcomingLiveClasses(userId: number): Promise<UpcomingL
       l.title,
       l.live_class_datetime,
       l.live_class_url,
+      COALESCE(l.duration_minutes, l.live_class_duration_min, 60) as duration_minutes,
       s.title as module_name,
       c.title as course_title,
       c.id as course_id,
@@ -248,6 +262,7 @@ export async function listUpcomingLiveClasses(userId: number): Promise<UpcomingL
       title: String(raw.title),
       liveClassDatetime: raw.live_class_datetime ? new Date(String(raw.live_class_datetime)) : null,
       liveClassUrl: raw.live_class_url ? String(raw.live_class_url) : null,
+      durationMinutes: Number(raw.duration_minutes ?? 60),
       moduleName: String(raw.module_name),
       courseTitle: String(raw.course_title),
       courseId: Number(raw.course_id),

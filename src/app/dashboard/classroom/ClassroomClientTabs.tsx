@@ -11,7 +11,7 @@ export function ClassroomClientTabs({
   isExamUnlocked = false,
 }: {
   currentTab: string;
-  courseId?: number;
+  courseId?: number | "all";
   hasExam?: boolean;
   isCertified?: boolean;
   isExamUnlocked?: boolean;

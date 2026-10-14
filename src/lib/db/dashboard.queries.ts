@@ -91,21 +91,27 @@ export async function getActiveEnrollment(userId: number) {
 
 export async function getUpcomingLiveClass(userId: number) {
   const upcomingRes = await sql`
-    SELECT l.id as lesson_id, l.title, l.live_class_datetime as datetime
+    SELECT 
+      l.id as lesson_id, 
+      l.title, 
+      l.live_class_datetime as datetime,
+      COALESCE(l.duration_minutes, l.live_class_duration_min, 60) as duration_minutes
     FROM lessons l
     JOIN sections s ON l.section_id = s.id
     JOIN enrollments e ON s.course_id = e.course_id
     WHERE e.user_id = ${userId}
       AND l.content_type = 'live_class'
-      AND l.live_class_datetime > NOW()
+      AND l.deleted_at IS NULL
+      AND (l.live_class_datetime + (COALESCE(l.duration_minutes, l.live_class_duration_min, 60) * INTERVAL '1 minute')) > NOW()
     ORDER BY l.live_class_datetime ASC
     LIMIT 1
   `;
 
   if (!upcomingRes[0]) return null;
   return {
-    lessonId: upcomingRes[0].lesson_id,
-    title: upcomingRes[0].title,
-    datetime: upcomingRes[0].datetime,
+    lessonId: Number(upcomingRes[0].lesson_id),
+    title: String(upcomingRes[0].title),
+    datetime: upcomingRes[0].datetime as Date | string,
+    durationMinutes: Number(upcomingRes[0].duration_minutes ?? 60),
   };
 }

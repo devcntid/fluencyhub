@@ -55,35 +55,126 @@ export default async function ClassroomPage({
   }
 
   // Handle course selection
+  const isAll = resolvedParams.c === "all";
+
   let selectedEnrollment = enrollments[0];
-  if (resolvedParams.c) {
+  if (resolvedParams.c && !isAll) {
     const cid = Number(resolvedParams.c);
     const found = enrollments.find((e) => e.courseId === cid);
     if (found) selectedEnrollment = found;
   }
-  const course = selectedEnrollment.course;
 
-  // Parallel fetch course-specific data: curriculum, exam, submission, certificate
-  const [curriculum, exam, certificate] = await Promise.all([
-    listCoursePlayerCurriculum(course.id, userId),
-    getExamForCourse(course.id),
-    getUserCertificateForCourse(userId, course.id),
-  ]);
+  const course = isAll
+    ? {
+        id: 0,
+        title: "Semua Materi Pembelajaran",
+        thumbnailUrl: null,
+      }
+    : selectedEnrollment.course;
 
-  const submission = exam
-    ? await getExamSubmission(exam.id, userId)
-    : await getExamSubmissionByCourse(course.id, userId);
+  // Data fetching based on whether "all" or specific course is selected
+  let curriculum: import("@/lib/db/lessons.queries").PlayerSection[] = [];
+  let exam: Awaited<ReturnType<typeof getExamForCourse>> = null;
+  let certificate: Awaited<ReturnType<typeof getUserCertificateForCourse>> = null;
+  let submission: Awaited<ReturnType<typeof getExamSubmission>> = null;
 
-  // Check course completion progress (must be 100% or certified to unlock exam)
+  type CourseExamStatus = {
+    courseId: number;
+    courseTitle: string;
+    thumbnailUrl: string | null;
+    totalLessons: number;
+    completedLessons: number;
+    progressPct: number;
+    isUnlocked: boolean;
+    isCertified: boolean;
+    hasExam: boolean;
+  };
+  let courseExamStatuses: CourseExamStatus[] = [];
+  let hasAnyUnlocked = false;
+  let hasAnyCert = false;
+  let hasAnyExam = false;
+
+  if (isAll) {
+    // Parallel fetch curriculum and exams across all enrolled courses
+    const allCurriculums = await Promise.all(
+      enrollments.map(async (e) => {
+        const cur = await listCoursePlayerCurriculum(e.courseId, userId);
+        return cur.map((sec) => ({
+          ...sec,
+          courseId: e.courseId,
+          courseTitle: e.course.title,
+          courseThumbnail: e.course.thumbnailUrl,
+          lessons: sec.lessons.map((l) => ({
+            ...l,
+            courseId: e.courseId,
+            courseTitle: e.course.title,
+            courseThumbnail: e.course.thumbnailUrl,
+          })),
+        }));
+      })
+    );
+    curriculum = allCurriculums.flat();
+
+    const allExamsAndCerts = await Promise.all(
+      enrollments.map(async (e) => {
+        const [cExam, cCert] = await Promise.all([
+          getExamForCourse(e.courseId),
+          getUserCertificateForCourse(userId, e.courseId),
+        ]);
+        return { courseId: e.courseId, exam: cExam, certificate: cCert };
+      })
+    );
+
+    courseExamStatuses = enrollments.map((e, idx) => {
+      const lessons = allCurriculums[idx].flatMap((s) => s.lessons);
+      const total = lessons.length;
+      const done = lessons.filter((l) => l.isCompleted).length;
+      const isUnlocked = (total > 0 && done >= total) || Boolean(allExamsAndCerts[idx]?.certificate);
+      const hasExam = Boolean(allExamsAndCerts[idx]?.exam && allExamsAndCerts[idx]?.exam?.content?.questionFileUrl);
+      const isCertified = Boolean(allExamsAndCerts[idx]?.certificate);
+
+      return {
+        courseId: e.courseId,
+        courseTitle: e.course.title,
+        thumbnailUrl: e.course.thumbnailUrl,
+        totalLessons: total,
+        completedLessons: done,
+        progressPct: total > 0 ? Math.round((done / total) * 100) : 0,
+        isUnlocked,
+        isCertified,
+        hasExam,
+      };
+    });
+
+    hasAnyUnlocked = courseExamStatuses.some((s) => s.isUnlocked);
+    hasAnyCert = courseExamStatuses.some((s) => s.isCertified);
+    hasAnyExam = courseExamStatuses.some((s) => s.hasExam);
+  } else {
+    const [cCurriculum, cExam, cCert] = await Promise.all([
+      listCoursePlayerCurriculum(course.id, userId),
+      getExamForCourse(course.id),
+      getUserCertificateForCourse(userId, course.id),
+    ]);
+    curriculum = cCurriculum;
+    exam = cExam;
+    certificate = cCert;
+    submission = exam
+      ? await getExamSubmission(exam.id, userId)
+      : await getExamSubmissionByCourse(course.id, userId);
+  }
+
+  // Check overall/course completion progress
   const allLessons = curriculum.flatMap((s) => s.lessons);
   const totalLessons = allLessons.length;
   const completedLessons = allLessons.filter((l) => l.isCompleted).length;
   const progressPct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-  const isExamUnlocked = (totalLessons > 0 && completedLessons >= totalLessons) || Boolean(certificate);
+  const isExamUnlocked = isAll
+    ? hasAnyUnlocked
+    : (totalLessons > 0 && completedLessons >= totalLessons) || Boolean(certificate);
 
-  // Filter Live Classes and Resources specifically for the selected course
-  const courseUpcomingLive = upcomingLive.filter((l) => l.courseId === course.id);
-  const courseResources = userResources.filter((r) => r.courseId === course.id);
+  // Live Classes and Resources
+  const courseUpcomingLive = isAll ? upcomingLive : upcomingLive.filter((l) => l.courseId === course.id);
+  const courseResources = isAll ? userResources : userResources.filter((r) => r.courseId === course.id);
 
   return (
     <main className="min-h-[calc(100vh-72px)] w-full bg-[#fafafa]">
@@ -101,13 +192,20 @@ export default async function ClassroomPage({
             <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)] tracking-tight">
               {course.title}
             </h1>
+            {isAll && (
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Menampilkan seluruh video materi, sesi live Zoom, dan dokumen dari <strong className="text-zinc-800">{enrollments.length} kelas</strong> yang Anda ikuti.
+              </p>
+            )}
           </div>
 
           {/* Progress Indicator */}
           <div className="flex items-center gap-3 bg-zinc-50 border border-zinc-200/80 rounded-xl px-3.5 py-2 self-start md:self-auto shrink-0 shadow-2xs">
             <div className="min-w-[110px]">
               <div className="flex items-center justify-between text-[11px] mb-1">
-                <span className="font-semibold text-zinc-500">Progres Materi</span>
+                <span className="font-semibold text-zinc-500">
+                  {isAll ? "Progres Gabungan" : "Progres Materi"}
+                </span>
                 <span className="font-extrabold text-zinc-900">{progressPct}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
@@ -124,7 +222,7 @@ export default async function ClassroomPage({
               {isExamUnlocked ? (
                 <div className="flex items-center gap-1 text-emerald-600 font-bold">
                   <LandingIcon name="CheckCircle" size={13} color="currentColor" />
-                  <span>Ujian Terbuka</span>
+                  <span>{isAll ? "Ujian Siap" : "Ujian Terbuka"}</span>
                 </div>
               ) : (
                 <div className="text-zinc-500">
@@ -136,10 +234,10 @@ export default async function ClassroomPage({
           </div>
         </div>
 
-        {enrollments.length > 1 && (
+        {enrollments.length > 0 && (
           <CourseSwitcher
             courses={enrollments.map((e) => ({ id: e.courseId, title: e.course.title }))}
-            currentCourseId={course.id}
+            currentCourseId={isAll ? "all" : course.id}
             currentTab={currentTab}
           />
         )}
@@ -148,9 +246,9 @@ export default async function ClassroomPage({
       {/* Classroom Navigation */}
       <ClassroomClientTabs
         currentTab={currentTab}
-        courseId={course.id}
-        hasExam={Boolean(exam && exam.content?.questionFileUrl)}
-        isCertified={Boolean(certificate)}
+        courseId={isAll ? "all" : course.id}
+        hasExam={isAll ? hasAnyExam : Boolean(exam && exam.content?.questionFileUrl)}
+        isCertified={isAll ? hasAnyCert : Boolean(certificate)}
         isExamUnlocked={isExamUnlocked}
       />
 
@@ -169,7 +267,11 @@ export default async function ClassroomPage({
                 Jadwal Live Mentoring Zoom
               </h2>
               <p className="text-xs text-zinc-500 mt-1">
-                Ikuti sesi praktik interaktif langsung dengan instruktur untuk kelas <strong className="text-zinc-800">{course.title}</strong>.
+                {isAll ? (
+                  <>Ikuti sesi praktik interaktif langsung dengan instruktur dari seluruh kelas yang Anda ikuti.</>
+                ) : (
+                  <>Ikuti sesi praktik interaktif langsung dengan instruktur untuk kelas <strong className="text-zinc-800">{course.title}</strong>.</>
+                )}
               </p>
             </div>
             <Suspense fallback={<div className="p-8 text-center text-zinc-400">Memuat jadwal live...</div>}>
@@ -185,7 +287,11 @@ export default async function ClassroomPage({
                 Dokumen & Materi Pembelajaran
               </h2>
               <p className="text-xs text-zinc-500 mt-1">
-                Unduh materi referensi, silabus, dan rangkuman penting untuk kelas <strong className="text-zinc-800">{course.title}</strong>.
+                {isAll ? (
+                  <>Unduh materi referensi, silabus, dan rangkuman penting dari seluruh kelas yang Anda ikuti.</>
+                ) : (
+                  <>Unduh materi referensi, silabus, dan rangkuman penting untuk kelas <strong className="text-zinc-800">{course.title}</strong>.</>
+                )}
               </p>
             </div>
             <Suspense fallback={<div className="p-8 text-center text-zinc-400">Memuat materi dokumen...</div>}>
@@ -196,7 +302,96 @@ export default async function ClassroomPage({
 
         {currentTab === "exam" && (
           <div className="w-full">
-            {isExamUnlocked ? (
+            {isAll ? (
+              <div className="w-full space-y-6">
+                <div className="border-b border-zinc-200/80 pb-4">
+                  <h2 className="text-xl sm:text-2xl font-black font-[family-name:var(--font-heading)] text-zinc-900 tracking-tight">
+                    Portal Ujian & Sertifikasi Kelas
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Pilih kelas yang telah Anda selesaikan 100% untuk memulai ujian sertifikasi atau mengunduh sertifikat kelulusan.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {courseExamStatuses.map((st) => (
+                    <div
+                      key={st.courseId}
+                      className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs flex flex-col justify-between gap-4 transition hover:shadow-md hover:border-zinc-300"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[var(--brand)] border border-blue-100">
+                            <LandingIcon name="GraduationCap" size={13} color="currentColor" /> Kursus
+                          </span>
+                          {st.isCertified ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                              <LandingIcon name="Award" size={12} color="currentColor" /> Bersertifikat
+                            </span>
+                          ) : st.isUnlocked ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
+                              <LandingIcon name="CheckCircle" size={12} color="currentColor" /> Ujian Terbuka
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-zinc-100 text-zinc-600">
+                              <LandingIcon name="Lock" size={12} color="currentColor" /> Belum 100%
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="font-[family-name:var(--font-heading)] text-base font-extrabold text-zinc-900 line-clamp-2">
+                          {st.courseTitle}
+                        </h3>
+
+                        {/* Progress */}
+                        <div className="bg-zinc-50 rounded-xl p-3 border border-zinc-100">
+                          <div className="flex items-center justify-between text-xs font-semibold text-zinc-600 mb-1.5">
+                            <span>Progres Belajar</span>
+                            <span className="font-bold text-zinc-900">{st.completedLessons}/{st.totalLessons} ({st.progressPct}%)</span>
+                          </div>
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                st.isUnlocked ? "bg-emerald-500" : "bg-[var(--brand)]"
+                              }`}
+                              style={{ width: `${st.progressPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-zinc-100 flex items-center justify-end">
+                        {st.isCertified ? (
+                          <Link
+                            href={`/dashboard/classroom?tab=exam&c=${st.courseId}`}
+                            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition"
+                          >
+                            <LandingIcon name="Award" size={14} color="#fff" />
+                            Lihat Sertifikat & Hasil &rarr;
+                          </Link>
+                        ) : st.isUnlocked ? (
+                          <Link
+                            href={`/dashboard/classroom?tab=exam&c=${st.courseId}`}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition"
+                          >
+                            <LandingIcon name="FileText" size={14} color="#fff" />
+                            Buka Lembar Ujian &rarr;
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/dashboard/classroom?tab=videos&c=${st.courseId}`}
+                            className="inline-flex items-center gap-2 rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-200 active:scale-95 transition"
+                          >
+                            <LandingIcon name="PlayCircle" size={14} color="currentColor" />
+                            Lanjutkan Materi Kelas &rarr;
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : isExamUnlocked ? (
               <ExamPortal
                 courseId={course.id}
                 courseTitle={course.title}
