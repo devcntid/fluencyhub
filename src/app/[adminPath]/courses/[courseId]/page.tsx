@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { CurriculumManager } from "@/components/course/CurriculumManager";
 import { getAdminPath } from "@/lib/auth";
 import { getCourseById, listAllCoursesAdmin } from "@/lib/db/courses.queries";
-import { listStudentsForCourse } from "@/lib/db/enrollments.queries";
 import { listInstructorCurriculum } from "@/lib/db/lessons.queries";
 
 export default async function AdminCourseCurriculumPage({
@@ -14,10 +13,9 @@ export default async function AdminCourseCurriculumPage({
   const id = Number(courseId);
   const course = await getCourseById(id);
   if (!course) notFound();
-  const [all, curriculum, students] = await Promise.all([
+  const [all, curriculum] = await Promise.all([
     listAllCoursesAdmin(),
     listInstructorCurriculum(id),
-    listStudentsForCourse(id),
   ]);
   const base = `/${getAdminPath()}/courses`;
 
@@ -27,7 +25,6 @@ export default async function AdminCourseCurriculumPage({
       selectedId={id}
       allowed
       curriculum={curriculum}
-      students={students}
       hrefTemplate={`${base}/{id}`}
     />
   );

@@ -34,7 +34,7 @@ export async function PublicNavbar() {
   }
 
   return (
-    <nav className="glass-nav sticky top-0 z-50">
+    <nav className="glass-nav sticky top-0 z-50 print:hidden">
       <div className="mx-auto flex h-[62px] max-w-[1200px] items-center justify-between gap-4 px-5">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-[var(--r-md)] bg-[var(--brand)]">

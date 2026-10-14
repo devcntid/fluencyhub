@@ -2,7 +2,7 @@ import { LandingIcon } from "@/components/landing/LandingIcon";
 
 export function PublicFooter() {
   return (
-    <footer className="px-5 py-8" style={{ background: "var(--sidebar)" }}>
+    <footer className="px-5 py-8 print:hidden" style={{ background: "var(--sidebar)" }}>
       <div className="mx-auto mb-4 flex max-w-[1200px] flex-wrap items-center justify-between gap-4 border-b border-white/[.07] pb-5">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-[var(--r)] bg-[var(--brand)]">

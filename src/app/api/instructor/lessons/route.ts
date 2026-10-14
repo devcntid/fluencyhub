@@ -8,7 +8,7 @@ import { sql } from "@/lib/db/client";
 const Schema = z.object({
   sectionId: z.number().int().positive(),
   title: z.string().min(1),
-  contentType: z.enum(["youtube_video", "live_class", "document", "text"]),
+  contentType: z.enum(["youtube_video", "live_class", "document", "text", "exam"]),
   youtubeUrl: z.string().nullable().optional(),
   liveClassUrl: z.string().nullable().optional(),
   liveClassDatetime: z.string().nullable().optional(),

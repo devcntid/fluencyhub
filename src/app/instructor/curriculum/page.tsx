@@ -1,14 +1,14 @@
 import { CurriculumManager } from "@/components/course/CurriculumManager";
 import { listInstructorCoursesWithRevenue } from "@/lib/db/courses.queries";
-import { listStudentsForCourse } from "@/lib/db/enrollments.queries";
 import { listInstructorCurriculum } from "@/lib/db/lessons.queries";
+import { listExamSubmissionsForCourse, getExamForCourse } from "@/lib/db/exams.queries";
 import { instructorScopeId } from "@/lib/instructor-scope";
 import { auth } from "@/lib/session";
 
 export default async function InstructorCurriculumPage({
   searchParams,
 }: {
-  searchParams: Promise<{ courseId?: string }>;
+  searchParams: Promise<{ courseId?: string; tab?: string }>;
 }) {
   const session = await auth();
   const params = await searchParams;
@@ -16,9 +16,15 @@ export default async function InstructorCurriculumPage({
   const courses = await listInstructorCoursesWithRevenue(scope);
   const selectedId = Number(params.courseId || courses[0]?.id || 0);
   const allowed = courses.some((c) => c.id === selectedId);
-  const [curriculum, students] = allowed
-    ? await Promise.all([listInstructorCurriculum(selectedId), listStudentsForCourse(selectedId)])
-    : [[], []];
+  const activeTab: "curriculum" | "exams" = params.tab === "exams" ? "exams" : "curriculum";
+
+  const [curriculum, exam, submissions] = allowed
+    ? await Promise.all([
+        listInstructorCurriculum(selectedId),
+        getExamForCourse(selectedId),
+        listExamSubmissionsForCourse(selectedId),
+      ])
+    : [[], null, []];
 
   return (
     <CurriculumManager
@@ -26,8 +32,10 @@ export default async function InstructorCurriculumPage({
       selectedId={selectedId}
       allowed={allowed}
       curriculum={curriculum}
-      students={students}
-      hrefTemplate="/instructor/curriculum?courseId={id}"
+      exam={exam}
+      submissions={submissions}
+      activeTab={activeTab}
+      hrefTemplate={`/instructor/curriculum?courseId={id}&tab=${activeTab}`}
     />
   );
 }

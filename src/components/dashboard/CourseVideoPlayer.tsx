@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { PlayerSection, PlayerLesson } from "@/lib/db/lessons.queries";
@@ -282,28 +283,94 @@ export function CourseVideoPlayer({
   }
 
   // --- GRID VIEW (Modules List) ---
-  const totalVideos = curriculum.reduce((acc, sec) => acc + sec.lessons.length, 0);
+  const allLessons = curriculum.flatMap((sec) => sec.lessons);
+  const totalLessons = allLessons.length;
+  const completedLessons = allLessons.filter((l) => l.isCompleted).length;
+  const is100Percent = totalLessons > 0 && completedLessons >= totalLessons;
+  const totalVideos = totalLessons;
 
   return (
     <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-8 flex items-center justify-between border-b border-zinc-200 pb-5">
+      {/* 100% Unlock Banner or Progress Motivation Banner */}
+      {is100Percent ? (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-xs">
+              <LandingIcon name="Award" size={22} color="currentColor" />
+            </div>
+            <div>
+              <h3 className="font-[family-name:var(--font-heading)] text-sm sm:text-base font-extrabold text-emerald-950">
+                🎉 Semua Materi Selesai 100%! Fitur Ujian Akhir Terbuka!
+              </h3>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                Selamat! Anda telah menyelesaikan seluruh {totalLessons} materi. Akses tab <strong>Ujian Akhir</strong> untuk mengunduh lembar soal & mengerjakan ujian sertifikasi.
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/dashboard/classroom?tab=exam&c=${course.id}`}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition shrink-0"
+          >
+            <LandingIcon name="Award" size={14} color="#fff" />
+            Buka Ujian Akhir &rarr;
+          </Link>
+        </div>
+      ) : totalLessons > 0 ? (
+        <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-zinc-600">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-[var(--brand)] font-bold">
+              <LandingIcon name="Lock" size={14} color="currentColor" />
+            </span>
+            <span>
+              Progres Materi: <strong className="text-zinc-900">{completedLessons}/{totalLessons} ({Math.round((completedLessons / totalLessons) * 100)}%)</strong>. Selesaikan 100% materi untuk membuka tab <strong>Ujian Akhir & Sertifikasi</strong>.
+            </span>
+          </div>
+          <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-full self-start sm:self-auto">
+            {totalLessons - completedLessons} materi lagi
+          </span>
+        </div>
+      ) : null}
+
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-4">
         <div>
-          <h1 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-zinc-900 md:text-3xl">
-            {course.title}
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Pelajari teori sebelum sesi Roleplay.
+          <h2 className="font-[family-name:var(--font-heading)] text-lg sm:text-xl font-bold text-zinc-900">
+            Daftar Modul & Video Pembelajaran
+          </h2>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            Pelajari seluruh video teori secara mandiri sebelum sesi Live Roleplay dan Ujian Sertifikasi.
           </p>
         </div>
-        <span className="hidden rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600 md:inline-flex">
-          {totalVideos} Videos
+        <span className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-xs">
+          <LandingIcon name="PlayCircle" size={14} color="var(--brand)" />
+          {totalVideos} Video Tersedia
         </span>
       </div>
 
       {curriculum.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-12 text-center">
-           <LandingIcon name="Video" size={32} color="#a1a1aa" className="mx-auto mb-4" />
-           <p className="font-semibold text-zinc-600">Belum ada video pada kelas ini.</p>
+        <div className="rounded-2xl border border-dashed border-zinc-300 bg-gradient-to-b from-white to-zinc-50/50 p-8 sm:p-14 text-center shadow-xs">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-[var(--brand)] shadow-xs">
+            <LandingIcon name="Video" size={32} color="currentColor" />
+          </div>
+          <h3 className="font-[family-name:var(--font-heading)] text-base sm:text-lg font-bold text-zinc-900 mb-1">
+            Materi Video Sedang Dipersiapkan
+          </h3>
+          <p className="max-w-md mx-auto text-xs sm:text-sm text-zinc-500 mb-6 leading-relaxed">
+            Instruktur sedang menyusun video pembelajaran untuk kursus ini. Sembari menunggu, Anda dapat mengikuti sesi interaktif di <strong className="text-zinc-700">Live Zoom</strong> atau mengunduh bahan bacaan di tab <strong className="text-zinc-700">Resources</strong>.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href={`/dashboard/classroom?tab=live&c=${course.id}`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-xs transition"
+            >
+              <LandingIcon name="Video" size={14} color="currentColor" /> Buka Jadwal Live Zoom &rarr;
+            </Link>
+            <Link
+              href={`/dashboard/classroom?tab=resources&c=${course.id}`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-xs transition"
+            >
+              <LandingIcon name="BookOpen" size={14} color="currentColor" /> Buka Dokumen & Resources &rarr;
+            </Link>
+          </div>
         </div>
       ) : (
         curriculum.map((sec) => (

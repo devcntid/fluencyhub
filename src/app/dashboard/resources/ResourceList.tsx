@@ -20,33 +20,6 @@ export type ResourceItem = {
 export function ResourceList({ resources }: { resources: ResourceItem[] }) {
   const router = useRouter();
 
-  const searchParams = useSearchParams();
-  const c = searchParams.get("c");
-  
-  const defaultSelectedCourse = c 
-    ? resources.find((r) => r.courseId === Number(c))?.courseTitle || "all" 
-    : "all";
-
-  const [selectedCourse, setSelectedCourse] = useState<string>(defaultSelectedCourse);
-
-  const courses = Array.from(new Set(resources.map((r) => r.courseTitle)));
-
-  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const title = e.target.value;
-    setSelectedCourse(title);
-    if (title === "all") {
-      window.history.replaceState(null, '', "/dashboard/resources");
-    } else {
-      const cid = resources.find((r) => r.courseTitle === title)?.courseId;
-      if (cid) window.history.replaceState(null, '', `/dashboard/resources?c=${cid}`);
-    }
-  };
-
-  const filteredResources =
-    selectedCourse === "all"
-      ? resources
-      : resources.filter((r) => r.courseTitle === selectedCourse);
-
   const getResourceMeta = (url: string | null) => {
     const isPdf = url?.toLowerCase().endsWith(".pdf");
     const isDoc = url?.toLowerCase().match(/\.(doc|docx)$/);
@@ -108,47 +81,19 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
 
   return (
     <div>
-      {/* Filter Dropdown */}
-      <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
-        <p className="text-sm font-medium text-zinc-500">
-          Menampilkan {filteredResources.length} dokumen
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xs font-semibold text-zinc-500">
+          Menampilkan {resources.length} materi dokumen
         </p>
-        <div className="w-full mt-4 md:mt-0 flex overflow-x-auto pb-2 gap-2 snap-x hide-scrollbar">
-          <button
-            type="button"
-            onClick={() => handleSelect({ target: { value: "all" } } as any)}
-            className={`snap-start shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
-              selectedCourse === "all"
-                ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-            }`}
-          >
-            Semua Kelas
-          </button>
-          {courses.map((course) => (
-            <button
-              key={course}
-              type="button"
-              onClick={() => handleSelect({ target: { value: course } } as any)}
-              className={`snap-start shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
-                selectedCourse === course
-                  ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                  : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-              }`}
-            >
-              Kelas: {course}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {filteredResources.length === 0 ? (
+      {resources.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-200 py-12 text-center text-zinc-500">
           Tidak ada resource untuk kelas ini.
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredResources.map((res) => {
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {resources.map((res) => {
             const meta = getResourceMeta(res.documentUrl);
             return (
               <div 

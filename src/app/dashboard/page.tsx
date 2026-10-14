@@ -10,6 +10,7 @@ import {
   getActiveEnrollment,
   getUpcomingLiveClass,
 } from "@/lib/db/dashboard.queries";
+import { listUserCertificates } from "@/lib/db/certificates.queries";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 
@@ -22,9 +23,12 @@ export default async function DashboardHomePage() {
   const allCourses = await listPublishedCoursesWithInstructor();
   
   const userId = session?.user.id ? Number(session.user.id) : null;
-  const statsData = userId ? await getUserDashboardStats(userId) : { totalCompletedLessons: 0, totalLessons: 0, totalLiveClasses: 0, totalResources: 0 };
-  const activeEnrollment = userId ? await getActiveEnrollment(userId) : null;
-  const upcomingLive = userId ? await getUpcomingLiveClass(userId) : null;
+  const [statsData, activeEnrollment, upcomingLive, certificates] = await Promise.all([
+    userId ? getUserDashboardStats(userId) : Promise.resolve({ totalCompletedLessons: 0, totalLessons: 0, totalLiveClasses: 0, totalResources: 0 }),
+    userId ? getActiveEnrollment(userId) : Promise.resolve(null),
+    userId ? getUpcomingLiveClass(userId) : Promise.resolve(null),
+    userId ? listUserCertificates(userId) : Promise.resolve([]),
+  ]);
 
   const stats = [
     { icon: "CheckCircle", bg: "bg-green-50", c: "#16a34a", lbl: "Lesson Selesai", val: `${statsData.totalCompletedLessons}/${statsData.totalLessons}` },
@@ -89,7 +93,7 @@ export default async function DashboardHomePage() {
           <div className="mb-6 flex items-center justify-between">
             <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold text-zinc-900">Lanjutkan Belajar</h3>
             {activeEnrollment && (
-              <Link href={`/dashboard/videos?c=${activeEnrollment.course.id}`} className="flex items-center gap-1 text-sm font-semibold text-zinc-500 hover:text-[var(--brand)]">
+              <Link href={`/dashboard/classroom?c=${activeEnrollment.course.id}`} className="flex items-center gap-1 text-sm font-semibold text-zinc-500 hover:text-[var(--brand)]">
                 Lihat Semua <LandingIcon name="ArrowRight" color="currentColor" />
               </Link>
             )}
@@ -190,7 +194,7 @@ export default async function DashboardHomePage() {
             <h2 className="mb-4 text-xl font-extrabold text-zinc-900">Kelas Saya</h2>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {enrollments.map((e) => (
-                <Link key={e.id} href={`/dashboard/videos?c=${e.courseId}`} className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:shadow-md">
+                <Link key={e.id} href={`/dashboard/classroom?c=${e.courseId}`} className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:shadow-md">
                   <div className="relative h-32 w-full bg-zinc-100">
                     {e.course.thumbnailUrl ? (
                       <img src={e.course.thumbnailUrl} alt={e.course.title} className="h-full w-full object-cover" />
@@ -210,6 +214,66 @@ export default async function DashboardHomePage() {
               ))}
             </div>
           </div>
+
+          {/* Sertifikat Kelulusan Saya */}
+          {certificates.length > 0 && (
+            <>
+              <hr className="border-zinc-100 my-4" />
+              <div>
+                <div className="mb-4">
+                  <h2 className="text-xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)]">
+                    Sertifikat Kelulusan Saya 🎓
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Sertifikat resmi dan rapor nilai kompetensi yang berhasil Anda raih.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {certificates.map((cert) => (
+                    <div
+                      key={cert.id}
+                      className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/40 p-5 shadow-xs flex flex-col justify-between"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                            Terverifikasi &bull; Grade {cert.grade}
+                          </span>
+                          <h4 className="font-bold text-zinc-900 text-base">{cert.courseTitle}</h4>
+                          <p className="text-xs font-mono text-zinc-500">{cert.certificateCode}</p>
+                        </div>
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white font-extrabold text-sm shadow-sm shrink-0">
+                          {cert.grade}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 pt-3 border-t border-emerald-100 flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-zinc-400 font-medium">
+                          Nilai Akhir: <strong className="text-zinc-700">{cert.finalScore}/100</strong>
+                        </span>
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/certificates/${cert.certificateCode}`}
+                            target="_blank"
+                            className="btn btn-primary btn-sm text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none"
+                          >
+                            Sertifikat
+                          </Link>
+                          <Link
+                            href={`/certificates/${cert.certificateCode}?view=report`}
+                            target="_blank"
+                            className="btn btn-secondary btn-sm text-xs"
+                          >
+                            Rapor Nilai
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </>
       )}
 

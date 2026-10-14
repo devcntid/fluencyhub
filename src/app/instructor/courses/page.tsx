@@ -51,7 +51,10 @@ export default async function InstructorCoursesPage() {
                 thumbnailUrl: c.thumbnailUrl
               }} />
               <Link href={`/instructor/curriculum?courseId=${c.id}`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center">
-                Curriculum
+                Kurikulum
+              </Link>
+              <Link href={`/instructor/curriculum?courseId=${c.id}&tab=exams`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center text-blue-600 font-bold border-blue-200 hover:bg-blue-50">
+                Ujian & Penilaian
               </Link>
               <Link href={`/instructor/students`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center">
                 Students

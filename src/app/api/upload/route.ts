@@ -12,12 +12,23 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "File required" }, { status: 400 });
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "Max 5MB" }, { status: 400 });
+  if (file.size > 20 * 1024 * 1024) {
+    return NextResponse.json({ error: "Ukuran file maksimal 20MB" }, { status: 400 });
   }
-  const allowed = ["image/jpeg", "image/png", "application/pdf"];
-  if (!allowed.includes(file.type)) {
-    return NextResponse.json({ error: "JPG, PNG, or PDF only" }, { status: 400 });
+  const allowed = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/jpg",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/zip",
+    "application/x-zip-compressed",
+  ];
+  if (!allowed.includes(file.type) && !file.name.match(/\.(pdf|doc|docx|zip|jpg|jpeg|png|webp)$/i)) {
+    return NextResponse.json({ error: "Format file tidak didukung (gunakan PDF, Word DOC/DOCX, atau Gambar)" }, { status: 400 });
   }
   if (folder === "thumbnails" && session.user.role !== "admin" && session.user.role !== "instructor") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

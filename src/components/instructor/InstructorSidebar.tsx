@@ -7,11 +7,10 @@ import { AdminSignOut } from "@/components/admin/AdminSignOut";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 
 const NAV = [
-  { href: "/instructor", label: "Overview", exact: true, icon: "LayoutDashboard" },
+  { href: "/instructor", label: "Dashboard", exact: true, icon: "LayoutDashboard" },
   { href: "/instructor/courses", label: "My Courses", icon: "Video" },
   { href: "/instructor/curriculum", label: "Kurikulum", icon: "BookOpen" },
   { href: "/instructor/students", label: "Students", icon: "Users" },
-  { href: "/instructor/analytics", label: "Analytics", icon: "MessageCircle" },
   { href: "/instructor/private-sessions", label: "Privat", icon: "Calendar" },
 ];
 
@@ -53,7 +52,11 @@ export function InstructorSidebar({
       </Link>
       <nav className="sidebar-nav">
         {NAV.map((item) => {
-          const active = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = item.exact
+            ? pathname === item.href
+            : pathname === item.href ||
+              pathname.startsWith(`${item.href}/`) ||
+              (item.href === "/instructor/curriculum" && pathname.startsWith("/instructor/exams"));
           return (
             <Link key={item.href} href={item.href} className={`sidebar-item${active ? " active-i" : ""}`}>
               {item.label}

@@ -9,6 +9,7 @@ const TYPES = [
   { v: "live_class", l: "Live Class" },
   { v: "document", l: "Document" },
   { v: "text", l: "Text" },
+  { v: "exam", l: "Ujian / Exam" },
 ] as const;
 
 type ContentType = (typeof TYPES)[number]["v"];

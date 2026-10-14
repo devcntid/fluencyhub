@@ -26,6 +26,18 @@ export default async function InstructorHomePage() {
 
   return (
     <div className="anim mx-auto flex max-w-[900px] flex-col gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)]">
+            Overview & Analytics
+          </h1>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            Pusat analitik kinerja kelas, pendapatan instruktur ({share}% revenue share), dan jadwal live mentoring.
+          </p>
+        </div>
+      </div>
+
       <div className="grid-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
         {[
           { lbl: `Revenue (${share}%)`, val: formatIdr(stats.instructorRevenue), bg: "#f0fdf4", c: "var(--green)", icon: "DollarSign" },
@@ -47,7 +59,7 @@ export default async function InstructorHomePage() {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="card">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-[family-name:var(--font-heading)] text-[15px] font-bold">Monthly Enrollment</h3>
+            <h3 className="font-[family-name:var(--font-heading)] text-[15px] font-bold">Monthly Enrollment & Growth</h3>
             <span className="badge badge-primary">Last 6 months</span>
           </div>
           <EnrollmentBars points={months} />
@@ -89,28 +101,46 @@ export default async function InstructorHomePage() {
         </div>
       </div>
       <div className="card">
-        <h3 className="mb-3 font-[family-name:var(--font-heading)] text-[15px] font-bold">Course Performance</h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-[family-name:var(--font-heading)] text-[15px] font-bold">
+            Course Performance & Revenue Analytics
+          </h3>
+          <span className="badge badge-primary">Analytics</span>
+        </div>
         <div className="tbl-wrap">
           <table className="tbl">
             <thead>
               <tr>
+                <th className="w-10 text-center">No.</th>
                 <th>Course</th>
                 <th>Status</th>
                 <th>Enrolled</th>
-                <th>Revenue (share)</th>
+                <th>Gross (est.)</th>
+                <th>My Share ({share}%)</th>
               </tr>
             </thead>
             <tbody>
-              {courses.map((c) => (
-                <tr key={c.id}>
-                  <td className="max-w-[180px] truncate font-semibold">{c.title}</td>
-                  <td>
-                    <span className={`badge ${c.status === "published" ? "badge-success" : "badge-warning"}`}>{c.status}</span>
-                  </td>
-                  <td className="font-semibold">{c.enrollmentCount}</td>
-                  <td className="font-bold text-[var(--green)]">{Number(c.revenue) > 0 ? formatIdr(c.revenue) : "—"}</td>
-                </tr>
-              ))}
+              {courses.map((c, i) => {
+                const shareAmt = Number(c.revenue);
+                const shareRatio = Number(stats.sharePct) / 100;
+                const gross = shareRatio > 0 ? shareAmt / shareRatio : shareAmt;
+                return (
+                  <tr key={c.id}>
+                    <td className="text-center text-[var(--text-4)]">{i + 1}</td>
+                    <td className="max-w-[200px] truncate font-semibold">{c.title}</td>
+                    <td>
+                      <span className={`badge ${c.status === "published" ? "badge-success" : "badge-warning"}`}>
+                        {c.status}
+                      </span>
+                    </td>
+                    <td className="font-semibold">{c.enrollmentCount}</td>
+                    <td className="text-zinc-600 font-medium">{shareAmt > 0 ? formatIdr(gross) : "—"}</td>
+                    <td className="font-bold text-[var(--green)]">
+                      {shareAmt > 0 ? formatIdr(c.revenue) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

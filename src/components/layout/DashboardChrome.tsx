@@ -8,9 +8,13 @@ import { ProfileDropdown } from "@/components/auth/ProfileDropdown";
 
 export function DashboardChrome({
   user,
+  unlockedExamCourseIds = [],
+  defaultCourseId,
   children,
 }: {
   user?: { name?: string | null; image?: string | null; role?: string | null };
+  unlockedExamCourseIds?: number[];
+  defaultCourseId?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -39,13 +43,43 @@ export function DashboardChrome({
 
   if (player) return <>{children}</>;
 
+  const currentTab = searchParams.get("tab") || "videos";
+  const cParam = c ? `&c=${c}` : "";
+
+  const effectiveCourseId = c ? Number(c) : defaultCourseId;
+  const isExamUnlocked = effectiveCourseId
+    ? unlockedExamCourseIds.includes(effectiveCourseId)
+    : unlockedExamCourseIds.length > 0;
+
+  const classroomSubItems = [
+    { id: "videos", label: "Video Materi", icon: "PlayCircle", href: `/dashboard/classroom?tab=videos${cParam}` },
+    { id: "live", label: "Live Zoom", icon: "Video", href: `/dashboard/classroom?tab=live${cParam}` },
+    { id: "resources", label: "Resources", icon: "BookOpen", href: `/dashboard/classroom?tab=resources${cParam}` },
+    ...(isExamUnlocked
+      ? [{ id: "exam", label: "Ujian Akhir", icon: "Award", href: `/dashboard/classroom?tab=exam${cParam}` }]
+      : []),
+  ];
+
   const menu = [
     { id: "dashboard", icon: "LayoutDashboard", label: "Dashboard", href: "/dashboard" },
-    { id: "videos", icon: "Play", label: "Videos", href: `/dashboard/videos${suffix}` },
-    { id: "live", icon: "Video", label: "Live", href: `/dashboard/live${suffix}` },
-    { id: "resources", icon: "BookOpen", label: "Resources", href: `/dashboard/resources${suffix}` },
+    { id: "classroom", icon: "GraduationCap", label: "Ruang Kelas", href: `/dashboard/classroom${suffix}` },
     { id: "private", icon: "Calendar", label: "Sesi Privat", href: `/dashboard/private-sessions${suffix}` },
+    { id: "profile", icon: "User", label: "Profil Saya", href: "/dashboard/profile" },
   ];
+
+  const isClassroom =
+    pathname.startsWith("/dashboard/classroom") ||
+    pathname.startsWith("/dashboard/videos") ||
+    pathname.startsWith("/dashboard/live") ||
+    pathname.startsWith("/dashboard/resources");
+
+  const [isClassroomExpanded, setIsClassroomExpanded] = useState(isClassroom);
+
+  useEffect(() => {
+    if (isClassroom) {
+      setIsClassroomExpanded(true);
+    }
+  }, [isClassroom]);
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -62,7 +96,7 @@ export function DashboardChrome({
         </Link>
 
         {/* Profile Sidebar */}
-        <Link href="/dashboard/profile" className="mb-8 flex items-center gap-3 px-2 text-left hover:opacity-80 transition">
+        <Link href="/dashboard/profile" className="mb-6 flex items-center gap-3 px-2 text-left hover:opacity-80 transition">
           {user?.image ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -80,10 +114,79 @@ export function DashboardChrome({
         </Link>
 
         {/* Navigation */}
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto no-scrollbar">
           {menu.map((m) => {
-            const basePath = m.href.split('?')[0];
-            const isActive = m.id === "dashboard" ? pathname === basePath : pathname.startsWith(basePath);
+            const basePath = m.href.split("?")[0];
+            const isActive = m.id === "classroom" ? isClassroom : m.id === "dashboard" ? pathname === basePath : pathname.startsWith(basePath);
+
+            if (m.id === "classroom") {
+              return (
+                <div key="classroom-nav" className="flex flex-col">
+                  <div
+                    className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                      isClassroom
+                        ? "bg-[var(--brand)] text-white shadow-sm"
+                        : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white"
+                    }`}
+                  >
+                    <Link
+                      href={m.href}
+                      className="flex items-center gap-3 flex-1 min-w-0"
+                      onClick={() => {
+                        if (isClassroom) {
+                          setIsClassroomExpanded((prev) => !prev);
+                        } else {
+                          setIsClassroomExpanded(true);
+                        }
+                      }}
+                    >
+                      <LandingIcon name="GraduationCap" color="currentColor" />
+                      <span className="truncate">{m.label}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsClassroomExpanded((prev) => !prev);
+                      }}
+                      className="p-1 -mr-1 rounded-lg hover:bg-white/10 active:scale-95 transition text-current cursor-pointer"
+                      aria-label="Toggle submenu"
+                    >
+                      <LandingIcon
+                        name={isClassroomExpanded ? "ChevronDown" : "ChevronRight"}
+                        size={14}
+                        color="currentColor"
+                      />
+                    </button>
+                  </div>
+
+                  {/* Submenu for Ruang Kelas */}
+                  {isClassroomExpanded && (
+                    <div className="mt-1 ml-4 pl-3 border-l-2 border-zinc-800 flex flex-col gap-1 py-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {classroomSubItems.map((sub) => {
+                        const isSubActive = currentTab === sub.id;
+                        return (
+                          <Link
+                            key={sub.id}
+                            href={sub.href}
+                            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                              isSubActive
+                                ? "bg-blue-600/25 text-blue-400 font-bold border border-blue-500/30"
+                                : "text-zinc-400 hover:bg-zinc-800/40 hover:text-white"
+                            }`}
+                          >
+                            <LandingIcon name={sub.icon} size={14} color="currentColor" />
+                            <span>{sub.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={m.id}
@@ -129,7 +232,13 @@ export function DashboardChrome({
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-20 items-center justify-around border-t border-zinc-200 bg-white/95 backdrop-blur-md px-2 pb-safe pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.05)] md:hidden">
           {menu.map((m) => {
             const basePath = m.href.split('?')[0];
-            const isActive = m.id === "dashboard" ? pathname === basePath : pathname.startsWith(basePath);
+            const isClassroom = m.id === "classroom" && (
+              pathname.startsWith("/dashboard/classroom") ||
+              pathname.startsWith("/dashboard/videos") ||
+              pathname.startsWith("/dashboard/live") ||
+              pathname.startsWith("/dashboard/resources")
+            );
+            const isActive = m.id === "dashboard" ? pathname === basePath : isClassroom || pathname.startsWith(basePath);
             return (
               <Link
                 key={m.id}

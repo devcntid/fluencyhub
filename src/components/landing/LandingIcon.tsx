@@ -154,6 +154,48 @@ export function LandingIcon({
           <circle cx="12" cy="13" r="3" />
         </>
       )}
+      {name === "GraduationCap" && (
+        <>
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+          <path d="M6 12v5c3 3 9 3 12 0v-5" />
+        </>
+      )}
+      {name === "Award" && (
+        <>
+          <circle cx="12" cy="8" r="6" />
+          <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+        </>
+      )}
+      {name === "CreditCard" && (
+        <>
+          <rect width="20" height="14" x="2" y="5" rx="2" />
+          <line x1="2" y1="10" x2="22" y2="10" />
+        </>
+      )}
+      {name === "ChevronDown" && <polyline points="6 9 12 15 18 9" />}
+      {name === "ChevronRight" && <polyline points="9 18 15 12 9 6" />}
+      {name === "User" && (
+        <>
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </>
+      )}
+      {name === "Sparkles" && (
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+      )}
+      {name === "Volume2" && (
+        <>
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14" />
+        </>
+      )}
+      {name === "Mic" && (
+        <>
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" x2="12" y1="19" y2="22" />
+        </>
+      )}
     </svg>
   );
 }

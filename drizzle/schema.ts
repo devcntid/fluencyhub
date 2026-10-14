@@ -136,7 +136,7 @@ export const lessons = pgTable(
   (t) => [
     check(
       "lessons_content_type_check",
-      sql`${t.contentType} IN ('youtube_video', 'live_class', 'document', 'text')`,
+      sql`${t.contentType} IN ('youtube_video', 'live_class', 'document', 'text', 'exam')`,
     ),
   ],
 );
@@ -517,4 +517,91 @@ export const privateSessions = pgTable(
     uniqueIndex("unq_private_sessions_active_slot").on(t.slotId).where(sql`${t.status} IN ('pending', 'confirmed')`),
     uniqueIndex("unq_private_sessions_active_learner_instructor").on(t.learnerId, t.instructorId).where(sql`${t.status} IN ('pending', 'confirmed')`),
   ]
+);
+
+export const exams = pgTable(
+  "exams",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    lessonId: bigint("lesson_id", { mode: "number" })
+      .notNull()
+      .references(() => lessons.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    passingScore: integer("passing_score").notNull().default(70),
+    durationMinutes: integer("duration_minutes").notNull().default(60),
+    content: jsonb("content").notNull().default({}),
+    speakingPrompt: text("speaking_prompt"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("unq_exams_lesson_id").on(t.lessonId),
+  ],
+);
+
+export const examSubmissions = pgTable(
+  "exam_submissions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    examId: bigint("exam_id", { mode: "number" })
+      .notNull()
+      .references(() => exams.id, { onDelete: "cascade" }),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: bigint("course_id", { mode: "number" })
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    answers: jsonb("answers").notNull().default({}),
+    autoScore: integer("auto_score").notNull().default(0),
+    manualScore: integer("manual_score"),
+    finalScore: integer("final_score"),
+    youtubeUrl: text("youtube_url"),
+    status: varchar("status", { length: 50 }).notNull().default("pending"),
+    instructorFeedback: text("instructor_feedback"),
+    gradedBy: bigint("graded_by", { mode: "number" }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    gradedAt: timestamp("graded_at", { withTimezone: true }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("exam_submissions_status_check", sql`${t.status} IN ('pending', 'graded', 'passed', 'failed')`),
+    index("idx_exam_submissions_exam_user").on(t.examId, t.userId),
+    index("idx_exam_submissions_course").on(t.courseId),
+  ],
+);
+
+export const certificates = pgTable(
+  "certificates",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    certificateCode: varchar("certificate_code", { length: 100 }).notNull().unique(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: bigint("course_id", { mode: "number" })
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    submissionId: bigint("submission_id", { mode: "number" }).references(
+      () => examSubmissions.id,
+      { onDelete: "set null" },
+    ),
+    finalScore: integer("final_score").notNull(),
+    grade: varchar("grade", { length: 10 }).notNull().default("A"),
+    readingScore: integer("reading_score"),
+    listeningScore: integer("listening_score"),
+    writingScore: integer("writing_score"),
+    speakingScore: integer("speaking_score"),
+    issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("unq_certificates_user_course").on(t.userId, t.courseId),
+    index("idx_certificates_code").on(t.certificateCode),
+  ],
 );

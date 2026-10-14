@@ -53,6 +53,15 @@ export function ProfileDropdown({
             <p className="truncate text-sm font-medium text-zinc-900">{user.name}</p>
           </div>
           <div className="py-1">
+            {(user.role === "instructor" || user.role === "admin") && (
+              <Link
+                href="/instructor"
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-2 text-sm font-bold text-purple-600 hover:bg-purple-50 border-b border-zinc-100"
+              >
+                Portal Instruktur &rarr;
+              </Link>
+            )}
             {hasDashboardAccess && (
               <Link
                 href="/dashboard"

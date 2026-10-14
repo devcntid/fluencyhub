@@ -86,7 +86,7 @@ export interface Lesson {
   id: number;
   sectionId: number;
   title: string;
-  contentType: "youtube_video" | "live_class" | "document" | "text";
+  contentType: "youtube_video" | "live_class" | "document" | "text" | "exam";
   youtubeUrl: string | null;
   youtubeVideoId: string | null;
   liveClassUrl: string | null;
@@ -309,6 +309,86 @@ export interface NotificationTemplate {
   channel: string;
   messageContent: string;
   isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ExamQuestion {
+  id: string;
+  section: "reading" | "listening" | "writing" | "speaking";
+  question: string;
+  passage?: string;
+  audioUrl?: string;
+  options?: string[];
+  correctAnswer?: number;
+  points: number;
+}
+
+export interface ExamContent {
+  questionFileUrl?: string;
+  questionFileName?: string;
+  examInstructions?: string;
+  remedialFileUrl?: string;
+  remedialFileName?: string;
+  remedialInstructions?: string;
+  readingPassage?: string;
+  readingQuestions?: ExamQuestion[];
+  listeningAudioUrl?: string;
+  listeningQuestions?: ExamQuestion[];
+  writingPrompt?: string;
+  speakingPrompt?: string;
+  totalPoints?: number;
+}
+
+export interface Exam {
+  id: number;
+  lessonId: number;
+  title: string;
+  description: string | null;
+  passingScore: number;
+  durationMinutes: number;
+  content: ExamContent;
+  speakingPrompt: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ExamSubmission {
+  id: number;
+  examId: number;
+  userId: number;
+  courseId: number;
+  answers: Record<string, any>;
+  autoScore: number;
+  manualScore: number | null;
+  finalScore: number | null;
+  readingScore?: number | null;
+  listeningScore?: number | null;
+  writingScore?: number | null;
+  speakingScore?: number | null;
+  youtubeUrl: string | null;
+  status: "pending" | "graded" | "passed" | "failed";
+  instructorFeedback: string | null;
+  gradedBy: number | null;
+  gradedAt: Date | null;
+  submittedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Certificate {
+  id: number;
+  certificateCode: string;
+  userId: number;
+  courseId: number;
+  submissionId: number | null;
+  finalScore: number;
+  grade: string;
+  readingScore: number | null;
+  listeningScore: number | null;
+  writingScore: number | null;
+  speakingScore: number | null;
+  issuedAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
