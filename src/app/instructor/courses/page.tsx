@@ -23,7 +23,7 @@ export default async function InstructorCoursesPage() {
       <div className="flex flex-col gap-3">
         {courses.length === 0 ? <p className="text-sm text-[var(--text-3)]">No courses yet.</p> : null}
         {courses.map((c) => (
-          <div key={c.id} className="card flex flex-col gap-4 md:flex-row md:items-center">
+          <div key={c.id} className="card flex flex-col gap-4 lg:flex-row lg:items-center">
             <div className="flex flex-1 items-center gap-3.5 min-w-0">
               {c.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -41,7 +41,7 @@ export default async function InstructorCoursesPage() {
                 </div>
               </div>
             </div>
-            <div className="flex shrink-0 gap-2 flex-wrap md:flex-nowrap">
+            <div className="flex shrink-0 gap-2 flex-wrap lg:flex-nowrap">
               <InstructorCourseEditDialog course={{
                 id: c.id,
                 title: c.title,
@@ -50,16 +50,16 @@ export default async function InstructorCoursesPage() {
                 price: c.price,
                 thumbnailUrl: c.thumbnailUrl
               }} />
-              <Link href={`/instructor/curriculum?courseId=${c.id}`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center">
+              <Link href={`/instructor/curriculum?courseId=${c.id}`} className="btn btn-secondary btn-sm flex-1 lg:flex-none justify-center">
                 Kurikulum
               </Link>
-              <Link href={`/instructor/curriculum?courseId=${c.id}&tab=exams`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center text-blue-600 font-bold border-blue-200 hover:bg-blue-50">
+              <Link href={`/instructor/curriculum?courseId=${c.id}&tab=exams`} className="btn btn-secondary btn-sm flex-1 lg:flex-none justify-center text-blue-600 font-bold border-blue-200 hover:bg-blue-50">
                 Ujian & Penilaian
               </Link>
-              <Link href={`/instructor/students`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center">
+              <Link href={`/instructor/students`} className="btn btn-secondary btn-sm flex-1 lg:flex-none justify-center">
                 Students
               </Link>
-              <Link href={`/dashboard/courses/${c.id}`} className="btn btn-secondary btn-sm flex-1 md:flex-none justify-center">
+              <Link href={`/dashboard/courses/${c.id}`} className="btn btn-secondary btn-sm flex-1 lg:flex-none justify-center">
                 Preview
               </Link>
               <InstructorCourseDeleteButton id={c.id} />

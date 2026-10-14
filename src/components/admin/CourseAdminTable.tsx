@@ -330,12 +330,21 @@ export function CourseAdminTable({
           </label>
         </div>
         {error ? <p className="mt-3 text-sm text-[var(--red)]">{error}</p> : null}
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>
+        <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-zinc-100">
+          <button
+            type="button"
+            className="px-5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm font-semibold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-300 transition active:scale-95 cursor-pointer shadow-xs"
+            onClick={() => setOpen(false)}
+          >
             Cancel
           </button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={save}>
-            Save
+          <button
+            type="button"
+            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm font-bold text-white shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
+            disabled={busy}
+            onClick={save}
+          >
+            {busy ? "Saving..." : "Save"}
           </button>
         </div>
       </AdminFormDialog>

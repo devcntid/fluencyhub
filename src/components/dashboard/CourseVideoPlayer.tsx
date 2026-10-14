@@ -298,7 +298,7 @@ export function CourseVideoPlayer({
     <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* 100% Unlock Banner or Progress Motivation Banner */}
       {is100Percent ? (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs">
           <div className="flex items-start sm:items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-xs">
               <LandingIcon name="Award" size={22} color="currentColor" />
@@ -321,7 +321,7 @@ export function CourseVideoPlayer({
           </Link>
         </div>
       ) : totalLessons > 0 ? (
-        <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-zinc-600">
+        <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/40 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs text-zinc-600">
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-[var(--brand)] font-bold">
               <LandingIcon name="Lock" size={14} color="currentColor" />
@@ -330,13 +330,13 @@ export function CourseVideoPlayer({
               Progres Materi: <strong className="text-zinc-900">{completedLessons}/{totalLessons} ({Math.round((completedLessons / totalLessons) * 100)}%)</strong>. Selesaikan 100% materi untuk membuka tab <strong>Ujian Akhir & Sertifikasi</strong>.
             </span>
           </div>
-          <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-full self-start sm:self-auto">
+          <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-full self-start lg:self-auto shrink-0">
             {totalLessons - completedLessons} materi lagi
           </span>
         </div>
       ) : null}
 
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-4">
+      <div className="mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-zinc-200 pb-4">
         <div>
           <h2 className="font-[family-name:var(--font-heading)] text-lg sm:text-xl font-bold text-zinc-900">
             Daftar Modul & Video Pembelajaran
@@ -345,7 +345,7 @@ export function CourseVideoPlayer({
             Pelajari seluruh video teori secara mandiri sebelum sesi Live Roleplay dan Ujian Sertifikasi.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-xs">
+        <span className="inline-flex items-center gap-1.5 self-start lg:self-auto rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-xs shrink-0">
           <LandingIcon name="PlayCircle" size={14} color="var(--brand)" />
           {totalVideos} Video Tersedia
         </span>
@@ -390,7 +390,7 @@ export function CourseVideoPlayer({
                 <LandingIcon name="PlayCircle" size={18} color="currentColor" /> {sec.title}
               </h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {sec.lessons.map((l) => {
                 const isLocked = false;
                 const isDone = l.isCompleted;

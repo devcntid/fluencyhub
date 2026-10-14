@@ -189,169 +189,182 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
 
                   <div
                     id={`live-${session.id}`}
-                  className={`relative flex flex-col items-center gap-5 overflow-hidden rounded-2xl border p-5 transition-all md:flex-row ${
-                    isLiveNow
-                      ? "border-red-300 bg-white shadow-md shadow-red-100/50 ring-2 ring-red-200"
-                      : isWaitingRoom
-                      ? "border-blue-300 bg-blue-50/20 shadow-sm"
-                      : isEnded
-                      ? "border-zinc-200 bg-zinc-50/60 opacity-80 hover:opacity-100"
-                      : "border-zinc-200 bg-white shadow-xs"
-                  }`}
-                >
-                  {/* Left Accent Bar */}
-                  {isLiveNow && (
-                    <div className="absolute bottom-0 left-0 top-0 w-1.5 bg-red-500 animate-pulse" />
-                  )}
-                  {isWaitingRoom && (
-                    <div className="absolute bottom-0 left-0 top-0 w-1.5 bg-blue-500" />
-                  )}
-
-                  {/* Left Block: Time Range & Duration */}
-                  <div className="flex min-w-[170px] flex-col items-center justify-center text-center border-b pb-4 md:border-b-0 md:border-r md:pb-0 md:pr-5 border-zinc-100">
-                    <span
-                      className={`mb-1 text-[11px] font-black uppercase tracking-wider ${
-                        isLiveNow
-                          ? "text-red-600"
-                          : isWaitingRoom
-                          ? "text-blue-600"
-                          : isEnded
-                          ? "text-zinc-400"
-                          : "text-zinc-500"
-                      }`}
-                    >
-                      {formatDayLabelWIB(startDate, currentTime)}
-                    </span>
-                    <div className="flex items-center gap-1 font-extrabold font-[family-name:var(--font-heading)] text-zinc-900">
-                      <span className="text-xl md:text-2xl">{formatTimeWIB(startDate)}</span>
-                      <span className="text-xs text-zinc-400 font-normal">-</span>
-                      <span className="text-xl md:text-2xl">{formatTimeWIB(endDate)}</span>
-                    </div>
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <span className="text-[11px] font-bold text-zinc-400">WIB</span>
-                      <span className="text-zinc-300">•</span>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-600">
-                        <LandingIcon name="Clock" size={11} color="currentColor" />
-                        {durationMin} Menit
-                      </span>
-                    </div>
-                    <span className="mt-1.5 text-[10px] text-zinc-400 hidden sm:block">
-                      {formatFullDateWIB(startDate)}
-                    </span>
-                  </div>
-
-                  {/* Center Block: Status & Details */}
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="mb-2 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                      {/* Live Status Badge */}
-                      {isLiveNow && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700 border border-red-200 animate-pulse">
-                          <span className="h-2 w-2 rounded-full bg-red-600 animate-ping inline-block" />
-                          SEDANG BERLANGSUNG
-                        </span>
-                      )}
-                      {isWaitingRoom && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 border border-blue-200">
-                          <span className="h-2 w-2 rounded-full bg-blue-600 inline-block" />
-                          WAITING ROOM BUKA
-                        </span>
-                      )}
-                      {isUpcoming && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 border border-amber-200">
-                          <LandingIcon name="Clock" size={11} color="currentColor" />
-                          Belum Dimulai
-                        </span>
-                      )}
-                      {isEnded && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500 border border-zinc-200">
-                          <LandingIcon name="CheckCircle" size={11} color="currentColor" />
-                          Selesai
-                        </span>
-                      )}
-
-                      {/* Module Badge */}
-                      <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 border border-blue-100 line-clamp-1">
-                        {session.moduleName}
-                      </span>
-                    </div>
-
-                    <h3 className="mb-1.5 text-base sm:text-lg font-bold text-zinc-900 leading-snug">
-                      {session.title}
-                    </h3>
-
-                    <div className="flex items-center justify-center gap-2 text-xs text-zinc-500 md:justify-start">
-                      <img
-                        src={session.coachAvatar}
-                        alt={session.coachName}
-                        className="h-5 w-5 rounded-full object-cover ring-1 ring-zinc-200"
-                      />
-                      <span>
-                        Instruktur: <strong className="text-zinc-700 font-semibold">{session.coachName}</strong>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Right Block: Action Button */}
-                  <div className="mt-2 min-w-[150px] w-full md:w-auto md:mt-0 flex flex-col items-center md:items-end gap-1 shrink-0">
-                    {isEnded ? (
-                      <>
-                        <div
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2.5 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed md:w-auto select-none"
-                          title="Sesi ini telah selesai sesuai durasi yang ditentukan"
-                        >
-                          <LandingIcon name="CheckCircle" size={15} color="currentColor" />
-                          <span>Kelas Telah Selesai</span>
-                        </div>
-                        <span className="text-[10px] text-zinc-400 text-center md:text-right">
-                          Waktu sesi telah berakhir
-                        </span>
-                      </>
-                    ) : isLiveNow ? (
-                      <>
-                        <a
-                          href={session.liveClassUrl || "#"}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-red-200 transition hover:bg-red-700 active:scale-95 md:w-auto"
-                        >
-                          <LandingIcon name="Video" size={16} color="currentColor" />
-                          <span>Join Live Room</span>
-                        </a>
-                        <span className="text-[10px] font-bold text-red-600 text-center md:text-right animate-pulse">
-                          Sedang berlangsung sekarang
-                        </span>
-                      </>
-                    ) : isWaitingRoom ? (
-                      <>
-                        <a
-                          href={session.liveClassUrl || "#"}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-95 md:w-auto"
-                        >
-                          <LandingIcon name="Video" size={16} color="currentColor" />
-                          <span>Masuk Waiting Room</span>
-                        </a>
-                        <span className="text-[10px] text-blue-600 font-semibold text-center md:text-right">
-                          Ruang Zoom sudah dibuka
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <div
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2.5 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed md:w-auto select-none"
-                          title="Ruang Zoom akan dibuka 15 menit sebelum waktu kelas"
-                        >
-                          <LandingIcon name="Clock" size={15} color="currentColor" />
-                          <span>Belum Dibuka</span>
-                        </div>
-                        <span className="text-[10px] text-zinc-400 text-center md:text-right">
-                          Dibuka 15 mnt sebelum mulai
-                        </span>
-                      </>
+                    className={`relative flex flex-col items-stretch gap-4 sm:gap-5 overflow-hidden rounded-2xl border p-4 sm:p-5 transition-all lg:flex-row lg:items-center ${
+                      isLiveNow
+                        ? "border-red-300 bg-white shadow-md shadow-red-100/50 ring-2 ring-red-200"
+                        : isWaitingRoom
+                        ? "border-blue-300 bg-blue-50/20 shadow-sm"
+                        : isEnded
+                        ? "border-zinc-200 bg-zinc-50/60 opacity-80 hover:opacity-100"
+                        : "border-zinc-200 bg-white shadow-xs"
+                    }`}
+                  >
+                    {/* Left Accent Bar */}
+                    {isLiveNow && (
+                      <div className="absolute bottom-0 left-0 top-0 w-1.5 bg-red-500 animate-pulse" />
                     )}
+                    {isWaitingRoom && (
+                      <div className="absolute bottom-0 left-0 top-0 w-1.5 bg-blue-500" />
+                    )}
+
+                    {/* Left Block: Time Range & Duration */}
+                    <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:min-w-[175px] lg:flex-col lg:items-center lg:justify-center text-left sm:text-center border-b pb-3.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5 border-zinc-100 gap-2 sm:gap-4 lg:gap-1 shrink-0">
+                      <div className="flex items-center gap-2 sm:flex-col sm:gap-0.5 lg:items-center">
+                        <span
+                          className={`text-[11px] font-black uppercase tracking-wider ${
+                            isLiveNow
+                              ? "text-red-600"
+                              : isWaitingRoom
+                              ? "text-blue-600"
+                              : isEnded
+                              ? "text-zinc-400"
+                              : "text-zinc-500"
+                          }`}
+                        >
+                          {formatDayLabelWIB(startDate, currentTime)}
+                        </span>
+                        <span className="text-[11px] text-zinc-300 sm:hidden">•</span>
+                        <span className="text-[11px] text-zinc-500 sm:hidden">
+                          {formatFullDateWIB(startDate)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 font-extrabold font-[family-name:var(--font-heading)] text-zinc-900">
+                        <span className="text-xl sm:text-2xl">{formatTimeWIB(startDate)}</span>
+                        <span className="text-xs text-zinc-400 font-normal">-</span>
+                        <span className="text-xl sm:text-2xl">{formatTimeWIB(endDate)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] font-bold text-zinc-400">WIB</span>
+                        <span className="text-zinc-300">•</span>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-600">
+                          <LandingIcon name="Clock" size={11} color="currentColor" />
+                          {durationMin} Menit
+                        </span>
+                        <span className="text-zinc-300 hidden sm:inline lg:hidden">•</span>
+                        <span className="text-[11px] text-zinc-500 hidden sm:inline lg:hidden">
+                          {formatFullDateWIB(startDate)}
+                        </span>
+                      </div>
+
+                      <span className="mt-1 text-[10px] text-zinc-400 hidden lg:block">
+                        {formatFullDateWIB(startDate)}
+                      </span>
+                    </div>
+
+                    {/* Center Block: Status & Details */}
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        {/* Live Status Badge */}
+                        {isLiveNow && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700 border border-red-200 animate-pulse">
+                            <span className="h-2 w-2 rounded-full bg-red-600 animate-ping inline-block" />
+                            SEDANG BERLANGSUNG
+                          </span>
+                        )}
+                        {isWaitingRoom && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 border border-blue-200">
+                            <span className="h-2 w-2 rounded-full bg-blue-600 inline-block" />
+                            WAITING ROOM BUKA
+                          </span>
+                        )}
+                        {isUpcoming && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 border border-amber-200">
+                            <LandingIcon name="Clock" size={11} color="currentColor" />
+                            Belum Dimulai
+                          </span>
+                        )}
+                        {isEnded && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500 border border-zinc-200">
+                            <LandingIcon name="CheckCircle" size={11} color="currentColor" />
+                            Selesai
+                          </span>
+                        )}
+
+                        {/* Module Badge */}
+                        <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 border border-blue-100 max-w-full truncate">
+                          {session.moduleName}
+                        </span>
+                      </div>
+
+                      <h3 className="mb-1.5 text-base sm:text-lg font-bold text-zinc-900 leading-snug break-words">
+                        {session.title}
+                      </h3>
+
+                      <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <img
+                          src={session.coachAvatar}
+                          alt={session.coachName}
+                          className="h-5 w-5 rounded-full object-cover ring-1 ring-zinc-200 shrink-0"
+                        />
+                        <span className="truncate">
+                          Instruktur: <strong className="text-zinc-700 font-semibold">{session.coachName}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right Block: Action Button */}
+                    <div className="w-full lg:w-auto lg:min-w-[170px] flex flex-col items-stretch lg:items-end gap-1 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-zinc-100">
+                      {isEnded ? (
+                        <>
+                          <div
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2.5 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed lg:w-auto select-none"
+                            title="Sesi ini telah selesai sesuai durasi yang ditentukan"
+                          >
+                            <LandingIcon name="CheckCircle" size={15} color="currentColor" />
+                            <span>Kelas Telah Selesai</span>
+                          </div>
+                          <span className="text-[10px] text-zinc-400 text-center lg:text-right">
+                            Waktu sesi telah berakhir
+                          </span>
+                        </>
+                      ) : isLiveNow ? (
+                        <>
+                          <a
+                            href={session.liveClassUrl || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-red-200 transition hover:bg-red-700 active:scale-95 lg:w-auto"
+                          >
+                            <LandingIcon name="Video" size={16} color="currentColor" />
+                            <span>Join Live Room</span>
+                          </a>
+                          <span className="text-[10px] font-bold text-red-600 text-center lg:text-right animate-pulse">
+                            Sedang berlangsung sekarang
+                          </span>
+                        </>
+                      ) : isWaitingRoom ? (
+                        <>
+                          <a
+                            href={session.liveClassUrl || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-95 lg:w-auto"
+                          >
+                            <LandingIcon name="Video" size={16} color="currentColor" />
+                            <span>Masuk Waiting Room</span>
+                          </a>
+                          <span className="text-[10px] text-blue-600 font-semibold text-center lg:text-right">
+                            Ruang Zoom sudah dibuka
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2.5 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed lg:w-auto select-none"
+                            title="Ruang Zoom akan dibuka 15 menit sebelum waktu kelas"
+                          >
+                            <LandingIcon name="Clock" size={15} color="currentColor" />
+                            <span>Belum Dibuka</span>
+                          </div>
+                          <span className="text-[10px] text-zinc-400 text-center lg:text-right">
+                            Dibuka 15 mnt sebelum mulai
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
               </div>
             );
           }

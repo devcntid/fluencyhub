@@ -71,22 +71,22 @@ export default async function DashboardHomePage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
         {stats.map((s, idx) => (
-          <div key={idx} className="flex items-center gap-4 rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${s.bg}`}>
-              <LandingIcon name={s.icon} color={s.c} />
+          <div key={idx} className="flex items-center gap-3.5 rounded-2xl border border-zinc-100 bg-white p-3.5 sm:p-4 shadow-sm">
+            <div className={`flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl ${s.bg}`}>
+              <LandingIcon name={s.icon} color={s.c} size={22} />
             </div>
-            <div>
-              <div className="text-lg font-bold text-zinc-900">{s.val}</div>
-              <div className="text-xs font-medium text-zinc-500">{s.lbl}</div>
+            <div className="min-w-0">
+              <div className="text-base sm:text-lg font-bold text-zinc-900 truncate">{s.val}</div>
+              <div className="text-[11px] sm:text-xs font-medium text-zinc-500 truncate">{s.lbl}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
+      <div className="flex flex-col lg:grid lg:grid-cols-[2fr_1fr] gap-6">
         {/* Lanjutkan Belajar */}
         <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
@@ -219,7 +219,7 @@ export default async function DashboardHomePage() {
           <hr className="border-zinc-100 my-4" />
           <div>
             <h2 className="mb-4 text-xl font-extrabold text-zinc-900">Kelas Saya</h2>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {enrollments.map((e) => (
                 <Link key={e.id} href={`/dashboard/classroom?c=${e.courseId}`} className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:shadow-md">
                   <div className="relative h-32 w-full bg-zinc-100">
@@ -255,7 +255,7 @@ export default async function DashboardHomePage() {
                     Sertifikat resmi dan rapor nilai kompetensi yang berhasil Anda raih.
                   </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
                   {certificates.map((cert) => (
                     <div
                       key={cert.id}
@@ -310,7 +310,7 @@ export default async function DashboardHomePage() {
           <hr className="border-zinc-100 my-4" />
           <div>
             <h2 className="mb-4 text-xl font-extrabold text-zinc-900">Jelajahi Kelas Lainnya</h2>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {otherCourses.map((c) => (
                 <Link key={c.id} href={`/courses/${c.slug}`} className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:shadow-md">
                   <div className="relative h-32 w-full bg-zinc-100">

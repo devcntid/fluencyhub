@@ -35,12 +35,12 @@ export async function PublicNavbar() {
 
   return (
     <nav className="glass-nav sticky top-0 z-50 print:hidden">
-      <div className="mx-auto flex h-[62px] max-w-[1200px] items-center justify-between gap-4 px-5">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[var(--r-md)] bg-[var(--brand)]">
-            <LandingIcon name="MessageCircle" color="#fff" />
+      <div className="mx-auto flex h-[62px] max-w-[1200px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-5">
+        <Link href="/" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-[var(--r-md)] bg-[var(--brand)]">
+            <LandingIcon name="MessageCircle" color="#fff" size={16} />
           </span>
-          <span className="font-[family-name:var(--font-heading)] text-lg font-extrabold tracking-tight">
+          <span className="font-[family-name:var(--font-heading)] text-base sm:text-lg font-extrabold tracking-tight">
             Fluency<span className="text-[var(--brand)]">Hub</span>
           </span>
         </Link>
@@ -50,15 +50,22 @@ export async function PublicNavbar() {
           <Link href="/#harga" className="nav-link">Harga</Link>
           <Link href="/#testimoni" className="nav-link">Testimoni</Link>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {user ? (
             <ProfileDropdown user={user} profileUrl="/profile" hasDashboardAccess={hasDashboardAccess} />
           ) : (
             <>
-              <Link href="/auth/signin" className="btn btn-secondary btn-default hidden md:inline-flex">
-                <LandingIcon name="LogIn" color="var(--text-2)" /> Log in
+              <Link
+                href="/auth/signin"
+                className="btn btn-secondary !px-2.5 !py-1.5 sm:!px-4 sm:!py-2 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 shadow-xs"
+              >
+                <LandingIcon name="LogIn" color="var(--text-2)" size={14} />
+                <span>Log in</span>
               </Link>
-              <Link href="/#harga" className="btn btn-primary btn-default">
+              <Link
+                href="/#harga"
+                className="btn btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl shadow-xs whitespace-nowrap"
+              >
                 Mulai Gratis
               </Link>
             </>

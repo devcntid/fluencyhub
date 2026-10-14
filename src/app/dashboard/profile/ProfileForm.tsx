@@ -47,7 +47,7 @@ export function ProfileForm({ initialName, initialWhatsapp }: ProfileFormProps) 
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="flex flex-col rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm">
+      <form onSubmit={handleSubmit} className="flex flex-col rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-sm">
         <h2 className="mb-6 text-xl font-bold text-zinc-900">Informasi Pribadi</h2>
         
         <div className="flex flex-col gap-5">

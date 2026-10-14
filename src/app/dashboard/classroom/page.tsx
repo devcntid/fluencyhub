@@ -179,8 +179,8 @@ export default async function ClassroomPage({
   return (
     <main className="min-h-[calc(100vh-72px)] w-full bg-[#fafafa]">
       {/* Top Header & Course Filter Buttons */}
-      <div className="border-b border-zinc-200 bg-white px-4 py-5 md:px-8 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="border-b border-zinc-200 bg-white px-4 py-5 sm:px-6 lg:px-8 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[var(--brand)] border border-blue-100">
@@ -200,7 +200,7 @@ export default async function ClassroomPage({
           </div>
 
           {/* Progress Indicator */}
-          <div className="flex items-center gap-3 bg-zinc-50 border border-zinc-200/80 rounded-xl px-3.5 py-2 self-start md:self-auto shrink-0 shadow-2xs">
+          <div className="flex items-center gap-3 bg-zinc-50 border border-zinc-200/80 rounded-xl px-3.5 py-2 self-start lg:self-auto shrink-0 shadow-2xs">
             <div className="min-w-[110px]">
               <div className="flex items-center justify-between text-[11px] mb-1">
                 <span className="font-semibold text-zinc-500">
@@ -253,7 +253,7 @@ export default async function ClassroomPage({
       />
 
       {/* Content Area Based on Active Tab */}
-      <div className="p-4 sm:p-6 md:p-8">
+      <div className="p-4 sm:p-5 lg:p-8">
         {currentTab === "videos" && (
           <div className="w-full">
             <CourseVideoPlayer course={course} curriculum={curriculum} />

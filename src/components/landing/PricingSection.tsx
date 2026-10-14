@@ -17,16 +17,23 @@ export function PricingSection({ courses, enrolledCourseIds = [] }: { courses: P
             const isEnrolled = enrolledCourseIds.includes(c.id);
             return (
             <article key={c.id} className={`pricing-card${c.isFeatured ? " featured" : ""}`}>
-              <div className="relative">
+              <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50/40 to-slate-100 flex items-center justify-center">
                 {c.thumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={c.thumbnailUrl} alt="" className="aspect-video w-full object-cover" />
-                ) : null}
-                <div className="absolute top-2.5 left-2.5">
+                  <img src={c.thumbnailUrl} alt={c.title} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-zinc-400 gap-1.5 p-4 text-center">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-xs text-[var(--brand)]">
+                      <LandingIcon name="BookOpen" size={22} color="currentColor" />
+                    </div>
+                    <span className="text-[11px] font-bold text-zinc-500 line-clamp-1 max-w-[220px]">{c.title}</span>
+                  </div>
+                )}
+                <div className="absolute top-2.5 left-2.5 z-10">
                   <span className={`badge ${c.isFeatured ? "badge-primary" : "badge"}`}>{c.marketingTag ?? c.level}</span>
                 </div>
                 {c.isFeatured ? (
-                  <div className="absolute top-2.5 right-2.5">
+                  <div className="absolute top-2.5 right-2.5 z-10">
                     <span className="badge badge-warning">Most Popular</span>
                   </div>
                 ) : null}

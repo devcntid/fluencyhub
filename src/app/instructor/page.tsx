@@ -55,7 +55,7 @@ export default async function InstructorHomePage() {
           </div>
         ))}
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="card">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-[family-name:var(--font-heading)] text-[15px] font-bold">Monthly Enrollment & Growth</h3>
