@@ -284,18 +284,26 @@ export async function notifyZoomSessionStatus(learner: any, instructor: any, ses
   }
 }
 
-export async function notifyZoomSessionCancelled(user: any, otherUser: any, sessionDate: Date, role: string) {
+export async function notifyZoomSessionCancelled(user: any, otherUser: any, sessionDate: Date, role: string, reason?: string) {
   try {
     const dStr = sessionDate.toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" });
     const roleStr = role === 'instructor' ? 'Instruktur' : 'Siswa';
     
     if (user.whatsappNumber) {
-      const wa = `Halo ${user.name},\n\nSesi Privat Anda pada tanggal *${dStr} WIB* telah *DIBATALKAN* oleh ${roleStr} (${otherUser.name}).\n\nMohon maklum,\nFluencyHub Team`;
+      let wa = `Halo ${user.name},\n\nSesi Privat Anda pada tanggal *${dStr} WIB* telah *DIBATALKAN* oleh ${roleStr} (${otherUser.name}).`;
+      if (reason) {
+        wa += `\n\n📝 *Alasan Pembatalan:* ${reason}`;
+      }
+      wa += `\n\nMohon maklum,\nFluencyHub Team`;
       await sendFonnteWhatsApp(formatPhone(user.whatsappNumber), wa);
     }
     
     if (user.email) {
-      const html = `<p>Halo ${user.name},</p><p>Sesi Privat Anda pada tanggal <strong>${dStr} WIB</strong> telah <strong>DIBATALKAN</strong> oleh ${roleStr} (${otherUser.name}).</p>`;
+      let html = `<p>Halo ${user.name},</p><p>Sesi Privat Anda pada tanggal <strong>${dStr} WIB</strong> telah <strong>DIBATALKAN</strong> oleh ${roleStr} (${otherUser.name}).</p>`;
+      if (reason) {
+        html += `<p><strong>Alasan Pembatalan:</strong> ${reason}</p>`;
+      }
+      html += `<p>Mohon maklum,<br>FluencyHub Team</p>`;
       await sendEmail({ to: user.email, subject: "Sesi Privat Dibatalkan - FluencyHub", html });
     }
   } catch (err) {

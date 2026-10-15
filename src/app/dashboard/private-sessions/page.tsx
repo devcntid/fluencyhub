@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -12,6 +12,82 @@ export default function PrivateSessionsPage() {
   const [allSlots, setAllSlots] = useState<any[]>([]);
   const [selectedInstructorId, setSelectedInstructorId] = useState<string>("");
   const [learnerCourses, setLearnerCourses] = useState<any[]>([]);
+
+  // Horizontal Scroll for Instructor Filter
+  const instructorScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftStart = useRef(0);
+  const hasMoved = useRef(false);
+
+  const checkScroll = useCallback(() => {
+    if (!instructorScrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = instructorScrollRef.current;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  const scrollInstructors = (direction: "left" | "right") => {
+    if (!instructorScrollRef.current) return;
+    const scrollAmount = 260;
+    instructorScrollRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth"
+    });
+  };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (!instructorScrollRef.current) return;
+    isDragging.current = true;
+    hasMoved.current = false;
+    startX.current = e.pageX - instructorScrollRef.current.offsetLeft;
+    scrollLeftStart.current = instructorScrollRef.current.scrollLeft;
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !instructorScrollRef.current) return;
+    const x = e.pageX - instructorScrollRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.5;
+    if (Math.abs(x - startX.current) > 6) {
+      hasMoved.current = true;
+    }
+    instructorScrollRef.current.scrollLeft = scrollLeftStart.current - walk;
+    checkScroll();
+  };
+
+  const onMouseUp = () => {
+    isDragging.current = false;
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkScroll();
+    }, 150);
+    const handleResize = () => checkScroll();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [instructors, checkScroll]);
+
+  useEffect(() => {
+    const el = instructorScrollRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0 && el.scrollWidth > el.clientWidth) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+        checkScroll();
+      }
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [instructors, checkScroll]);
 
   // Calendar State
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -145,38 +221,92 @@ export default function PrivateSessionsPage() {
         {/* Kolom Kalender Booking */}
         <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl w-full">
           <div className="p-6 border-b border-zinc-100 bg-white/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
+            <h2 className="text-xl font-bold flex items-center gap-2 shrink-0">
               <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
               Jadwal Instruktur
             </h2>
             
             {instructors.length > 0 && (
-              <div className="w-full mt-4 md:mt-0 flex overflow-x-auto pb-2 gap-2 snap-x hide-scrollbar">
-                <button
-                  type="button"
-                  onClick={() => setSelectedInstructorId("")}
-                  className={`snap-start shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
-                    selectedInstructorId === ""
-                      ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                      : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-                  }`}
-                >
-                  Semua Instruktur Saya
-                </button>
-                {instructors.map((inst) => (
+              <div className="relative flex-1 min-w-0 max-w-full flex items-center gap-2">
+                {(canScrollLeft || canScrollRight) && (
                   <button
-                    key={inst.instructorId}
                     type="button"
-                    onClick={() => setSelectedInstructorId(String(inst.instructorId))}
-                    className={`snap-start shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
-                      selectedInstructorId === String(inst.instructorId)
+                    onClick={() => scrollInstructors("left")}
+                    disabled={!canScrollLeft}
+                    title="Geser ke kiri"
+                    aria-label="Geser ke kiri"
+                    className={`shrink-0 w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white text-zinc-700 border border-zinc-200 rounded-xl shadow-sm transition-all ${
+                      canScrollLeft
+                        ? "hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 active:scale-95 cursor-pointer"
+                        : "opacity-30 cursor-not-allowed pointer-events-none"
+                    }`}
+                  >
+                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                )}
+
+                <div 
+                  ref={instructorScrollRef}
+                  onScroll={checkScroll}
+                  onMouseDown={onMouseDown}
+                  onMouseMove={onMouseMove}
+                  onMouseUp={onMouseUp}
+                  onMouseLeave={onMouseUp}
+                  className="flex-1 min-w-0 flex overflow-x-auto py-1 pr-4 gap-2 scroll-smooth hide-scrollbar cursor-grab active:cursor-grabbing select-none"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (hasMoved.current) return;
+                      setSelectedInstructorId("");
+                    }}
+                    className={`shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
+                      selectedInstructorId === ""
                         ? "bg-blue-600 border-blue-600 text-white shadow-sm"
                         : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
                     }`}
                   >
-                    {inst.instructorName}
+                    Semua Instruktur Saya
                   </button>
-                ))}
+                  {instructors.map((inst) => (
+                    <button
+                      key={inst.instructorId}
+                      type="button"
+                      onClick={() => {
+                        if (hasMoved.current) return;
+                        setSelectedInstructorId(String(inst.instructorId));
+                      }}
+                      className={`shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
+                        selectedInstructorId === String(inst.instructorId)
+                          ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                          : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                      }`}
+                    >
+                      {inst.instructorName}
+                    </button>
+                  ))}
+                </div>
+
+                {(canScrollLeft || canScrollRight) && (
+                  <button
+                    type="button"
+                    onClick={() => scrollInstructors("right")}
+                    disabled={!canScrollRight}
+                    title="Geser ke kanan"
+                    aria-label="Geser ke kanan"
+                    className={`shrink-0 w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white text-zinc-700 border border-zinc-200 rounded-xl shadow-sm transition-all ${
+                      canScrollRight
+                        ? "hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 active:scale-95 cursor-pointer"
+                        : "opacity-30 cursor-not-allowed pointer-events-none"
+                    }`}
+                  >
+                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -272,72 +402,87 @@ export default function PrivateSessionsPage() {
             ) : (
               <div className="space-y-4">
                 {sessions.map(sess => {
-                  const start = new Date(sess.startAt);
-                  const isPast = start < new Date();
+                  const now = new Date();
+                  const start = sess.startAt ? new Date(sess.startAt) : new Date();
+                  const end = sess.endAt ? new Date(sess.endAt) : new Date(start.getTime() + 60 * 60 * 1000);
+                  
+                  // Tombol Gabung Zoom HANYA muncul saat waktu privat sudah mulai (atau 10 menit sebelum mulai agar siswa bisa bersiap) dan belum berakhir
+                  const hasStarted = now.getTime() >= (start.getTime() - 10 * 60 * 1000);
+                  const hasEnded = now.getTime() > end.getTime();
+                  const canJoinZoom = sess.status === 'confirmed' && hasStarted && !hasEnded;
+                  
+                  // Boleh membatalkan jika status 'pending', atau jika status 'confirmed' dan jadwal mulai masih minimal 24 jam ke depan
+                  const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+                  const canCancel = sess.status === 'pending' || (sess.status === 'confirmed' && !hasEnded && hoursDiff >= 24);
+
                   return (
-                    <div key={sess.id} className="border border-zinc-200 rounded-2xl p-5 flex flex-col md:flex-row gap-5 items-start md:items-center bg-white shadow-sm hover:shadow-md transition-shadow">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={sess.instructorAvatar || "https://i.pravatar.cc/80?img=15"} alt="" className="w-14 h-14 rounded-full ring-2 ring-zinc-100 object-cover" />
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <h3 className="font-bold text-zinc-900">{sess.instructorName}</h3>
+                    <div key={sess.id} className="border border-zinc-200 rounded-2xl p-5 bg-white shadow-sm hover:shadow-md transition-shadow">
+                      {/* Baris Atas: Info Instruktur & Status */}
+                      <div className="flex items-center gap-3.5 mb-3.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={sess.instructorAvatar || "https://i.pravatar.cc/80?img=15"} alt="" className="w-11 h-11 rounded-full ring-2 ring-zinc-100 object-cover shrink-0" />
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <h3 className="font-bold text-zinc-900 text-base">{sess.instructorName}</h3>
                           {sess.status === 'pending' && <span className="badge bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider animate-pulse">Menunggu</span>}
                           {sess.status === 'confirmed' && <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Disetujui</span>}
                           {sess.status === 'rejected' && <span className="badge bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Ditolak</span>}
                           {sess.status === 'cancelled' && <span className="badge bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Dibatalkan</span>}
                           {sess.status === 'completed' && <span className="badge bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Selesai</span>}
                         </div>
-                        
-                        <div className="bg-zinc-50 p-3 rounded-xl mt-3 relative overflow-hidden border border-zinc-100">
+                      </div>
+
+                      {/* Baris Bawah: Kotak Tanggal & Tombol Aksi Sejajar */}
+                      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+                        <div className="flex-1 min-w-0 bg-zinc-50 p-4 rounded-xl relative overflow-hidden border border-zinc-100">
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-300"></div>
                           <p className="font-bold text-zinc-800 text-sm flex items-center gap-1.5 mb-1.5">
                             <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            {format(start, "EEEE, d MMM yyyy • HH:mm", { locale: id })} WIB
+                            {format(start, "EEEE, d MMM yyyy • HH:mm", { locale: id })}{sess.endAt ? ` - ${format(end, "HH:mm")}` : ""} WIB
                           </p>
                           <p className="text-xs text-zinc-600">
-                            <span className="font-bold text-zinc-400 uppercase tracking-wider block mb-0.5 mt-2">Topik:</span>
+                            <span className="font-bold text-zinc-400 uppercase tracking-wider block mb-0.5 mt-1">Topik:</span>
                             {sess.topic}
                           </p>
-                          {sess.rejectReason && <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded border border-red-100"><span className="font-bold">Alasan Ditolak:</span> {sess.rejectReason}</p>}
+                          {sess.rejectReason && (
+                            <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded border border-red-100">
+                              <span className="font-bold">{sess.status === 'cancelled' ? 'Alasan Pembatalan:' : 'Alasan Ditolak:'}</span> {sess.rejectReason}
+                            </p>
+                          )}
                           {sess.instructorNotes && <p className="text-xs text-indigo-700 mt-2 bg-indigo-50 p-2 rounded border border-indigo-100"><span className="font-bold">Catatan Instruktur:</span> {sess.instructorNotes}</p>}
                         </div>
-                      </div>
 
-                      <div className="flex flex-col gap-2 w-full md:w-40 shrink-0">
-                        {sess.status === 'confirmed' && (
-                          <a 
-                            href={sess.zoomLink || sess.instructorZoomLink || "#"} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className={`btn bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 py-2.5 flex justify-center items-center gap-2 ${isPast ? "opacity-50 pointer-events-none" : ""}`}
-                            onClick={(e) => {
-                              if (isPast) {
-                                e.preventDefault();
-                                alert("Sesi sudah lewat.");
-                              } else if (!sess.zoomLink && !sess.instructorZoomLink) {
-                                e.preventDefault();
-                                alert("Link Zoom belum tersedia. Instruktur akan memberikannya segera.");
-                              }
-                            }}
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                            Gabung Zoom
-                          </a>
-                        )}
-                        
-                        {(sess.status === 'pending' || (sess.status === 'confirmed' && !isPast)) && (
-                          <button 
-                            className="btn bg-white border border-zinc-200 text-red-600 hover:bg-red-50 rounded-xl py-2.5 shadow-sm transition-colors"
-                            onClick={() => {
-                              if(confirm("Yakin ingin membatalkan booking sesi ini?")) {
-                                cancelSession(sess.id);
-                              }
-                            }}
-                          >
-                            Batalkan Sesi
-                          </button>
-                        )}
+                        <div className="flex flex-col gap-2 w-full md:w-44 shrink-0 justify-center">
+                          {canJoinZoom && (
+                            <a 
+                              href={sess.zoomLink || sess.instructorZoomLink || "#"} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="btn bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 py-2.5 flex justify-center items-center gap-2 text-sm font-bold"
+                              onClick={(e) => {
+                                if (!sess.zoomLink && !sess.instructorZoomLink) {
+                                  e.preventDefault();
+                                  alert("Link Zoom belum tersedia. Instruktur akan memberikannya segera.");
+                                }
+                              }}
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                              Gabung Zoom
+                            </a>
+                          )}
+
+                          {canCancel && (
+                            <button 
+                              className="btn bg-white border border-zinc-200 text-red-600 hover:bg-red-50 rounded-xl py-2.5 shadow-sm text-sm font-medium transition-colors"
+                              onClick={() => {
+                                if(confirm("Yakin ingin membatalkan booking sesi ini?")) {
+                                  cancelSession(sess.id);
+                                }
+                              }}
+                            >
+                              Batalkan Sesi
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

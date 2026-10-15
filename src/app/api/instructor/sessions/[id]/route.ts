@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/session";
 import { updateSessionStatus } from "@/lib/db/private-sessions.queries";
 import { getUserById } from "@/lib/db/users.queries";
-import { notifyZoomSessionStatus } from "@/lib/notifications";
+import { notifyZoomSessionStatus, notifyZoomSessionCancelled } from "@/lib/notifications";
 import { sql } from "@/lib/db/client";
 // We should ideally send emails/whatsapp here upon approval/rejection
 
@@ -26,11 +26,11 @@ export async function PATCH(request: Request, context: any) {
 
     await updateSessionStatus(Number(id), Number(session.user.id), status, notesOrReason, overrideLink);
 
-    if (status === 'confirmed' || status === 'rejected') {
+    if (status === 'confirmed' || status === 'rejected' || status === 'cancelled') {
       const rows = await sql`
-        SELECT learner_id, s.start_at 
+        SELECT ps.learner_id, s.start_at 
         FROM private_sessions ps 
-        JOIN instructor_slots s ON ps.slot_id = s.id 
+        LEFT JOIN instructor_slots s ON ps.slot_id = s.id 
         WHERE ps.id = ${Number(id)}
       `;
       if (rows.length > 0) {
@@ -40,7 +40,17 @@ export async function PATCH(request: Request, context: any) {
           getUserById(Number(session.user.id))
         ]);
         if (learner && instructor) {
-          await notifyZoomSessionStatus(learner, instructor, start_at, status, notesOrReason || overrideLink || null);
+          if (status === 'cancelled') {
+            await notifyZoomSessionCancelled(
+              learner,
+              instructor,
+              start_at ? new Date(start_at) : new Date(),
+              "instructor",
+              notesOrReason || undefined
+            );
+          } else {
+            await notifyZoomSessionStatus(learner, instructor, start_at, status, notesOrReason || overrideLink || null);
+          }
         }
       }
     }

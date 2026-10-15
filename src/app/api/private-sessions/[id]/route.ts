@@ -17,7 +17,7 @@ export async function DELETE(request: Request, context: any) {
   try {
     // Fetch info before cancelling to ensure we can notify
     const rows = await sql`
-      SELECT instructor_id, s.start_at 
+      SELECT ps.instructor_id, s.start_at 
       FROM private_sessions ps 
       JOIN instructor_slots s ON ps.slot_id = s.id 
       WHERE ps.id = ${Number(id)}

@@ -10,6 +10,7 @@ export async function getInstructorSlots(instructorId: number): Promise<any[]> {
       status
     FROM instructor_slots
     WHERE instructor_id = ${instructorId}
+      AND end_at > CURRENT_TIMESTAMP
     ORDER BY start_at ASC
   `;
   return rows;
@@ -24,17 +25,77 @@ export async function addInstructorSlot(instructorId: number, startAt: string, e
   return rows[0];
 }
 
-export async function deleteInstructorSlot(slotId: number, instructorId: number) {
-  // Hapus riwayat sesi yang terkait dengan slot ini (yang sudah dibatalkan/ditolak)
-  // agar tidak terbentur constraint foreign key saat menghapus slot
-  await sql`DELETE FROM private_sessions WHERE slot_id = ${slotId}`;
-
-  const rows = await sql`
-    DELETE FROM instructor_slots
-    WHERE id = ${slotId} AND instructor_id = ${instructorId} AND status = 'available'
-    RETURNING id
+export async function deleteInstructorSlot(slotId: number, instructorId: number, reason?: string) {
+  // 1. Cek apakah ada sesi aktif (pending atau confirmed) yang terhubung dengan slot ini
+  const activeSessions = await sql`
+    SELECT ps.id, ps.learner_id, ps.status, s.start_at
+    FROM private_sessions ps
+    JOIN instructor_slots s ON ps.slot_id = s.id
+    WHERE ps.slot_id = ${slotId} 
+      AND ps.instructor_id = ${instructorId}
+      AND ps.status IN ('pending', 'confirmed')
   `;
-  return rows[0];
+
+  if (activeSessions.length > 0) {
+    if (!reason || !reason.trim()) {
+      throw new Error("Alasan pembatalan harus diisi karena jadwal ini sudah dibooking");
+    }
+
+    // Batalkan sesi aktif siswa dan simpan alasannya
+    await sql`
+      UPDATE private_sessions
+      SET status = 'cancelled', 
+          reject_reason = ${reason.trim()}, 
+          updated_at = CURRENT_TIMESTAMP
+      WHERE slot_id = ${slotId} 
+        AND instructor_id = ${instructorId}
+        AND status IN ('pending', 'confirmed')
+    `;
+
+    // Ubah status slot menjadi 'cancelled'
+    const updatedSlot = await sql`
+      UPDATE instructor_slots
+      SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${slotId} AND instructor_id = ${instructorId}
+      RETURNING id, start_at
+    `;
+
+    return { 
+      success: true, 
+      slot: updatedSlot[0], 
+      cancelledSessions: activeSessions,
+      cancellationReason: reason.trim()
+    };
+  }
+
+  // 2. Jika tidak ada sesi aktif, periksa apakah ada riwayat sesi lampau (selesai, ditolak, dibatalkan)
+  const sessionCount = await sql`
+    SELECT COUNT(*)::int as count 
+    FROM private_sessions 
+    WHERE slot_id = ${slotId}
+  `;
+
+  const hasHistory = (sessionCount[0]?.count || 0) > 0;
+
+  if (hasHistory) {
+    // JANGAN hapus riwayat private_sessions agar data riwayat murid & instruktur tetap tampil!
+    // Cukup ubah status slot menjadi 'cancelled' agar slot ketersediaan hilang dari kalender instruktur.
+    const rows = await sql`
+      UPDATE instructor_slots
+      SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${slotId} AND instructor_id = ${instructorId}
+      RETURNING id, start_at
+    `;
+    return { success: true, slot: rows[0], cancelledSessions: [] };
+  } else {
+    // Jika tidak ada riwayat sesi terkait sama sekali, slot aman dihapus permanen dari database
+    const rows = await sql`
+      DELETE FROM instructor_slots
+      WHERE id = ${slotId} AND instructor_id = ${instructorId}
+      RETURNING id, start_at
+    `;
+    return { success: true, slot: rows[0], cancelledSessions: [] };
+  }
 }
 
 export async function updateZoomLink(instructorId: number, link: string) {
@@ -73,12 +134,12 @@ export async function getLearnerPrivateSessions(learnerId: number): Promise<any[
       u.avatar_url as "instructorAvatar",
       ui.zoom_link as "instructorZoomLink"
     FROM private_sessions ps
-    JOIN instructor_slots s ON ps.slot_id = s.id
+    LEFT JOIN instructor_slots s ON ps.slot_id = s.id
     JOIN courses c ON ps.course_id = c.id
     JOIN users u ON ps.instructor_id = u.id
     LEFT JOIN users ui ON ps.instructor_id = ui.id
     WHERE ps.learner_id = ${learnerId}
-    ORDER BY s.start_at DESC
+    ORDER BY COALESCE(s.start_at, ps.created_at) DESC
   `;
   return rows;
 }
@@ -104,12 +165,12 @@ export async function getInstructorPrivateSessions(instructorId: number): Promis
       u.avatar_url as "learnerAvatar",
       ui.zoom_link as "instructorZoomLink"
     FROM private_sessions ps
-    JOIN instructor_slots s ON ps.slot_id = s.id
+    LEFT JOIN instructor_slots s ON ps.slot_id = s.id
     JOIN courses c ON ps.course_id = c.id
     JOIN users u ON ps.learner_id = u.id
     LEFT JOIN users ui ON ps.instructor_id = ui.id
     WHERE ps.instructor_id = ${instructorId}
-    ORDER BY s.start_at DESC
+    ORDER BY COALESCE(s.start_at, ps.created_at) DESC
   `;
   return rows;
 }
@@ -194,7 +255,7 @@ export async function updateSessionStatus(
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${sessionId}
     `;
-  } else if (status === 'rejected') {
+  } else if (status === 'rejected' || status === 'cancelled') {
     await sql`
       UPDATE private_sessions 
       SET status = ${status}, reject_reason = ${notesOrReason || null}, updated_at = CURRENT_TIMESTAMP
@@ -214,13 +275,13 @@ export async function updateSessionStatus(
     `;
   }
 
-  if (status === 'rejected' || status === 'cancelled' || status === 'completed' || status === 'no_show') {
+  if (status === 'rejected' || status === 'cancelled') {
     await sql`
       UPDATE instructor_slots 
       SET status = 'available', updated_at = CURRENT_TIMESTAMP 
       WHERE id = ${slotId}
     `;
-  } else if (status === 'confirmed') {
+  } else if (status === 'confirmed' || status === 'completed' || status === 'no_show') {
     await sql`
       UPDATE instructor_slots 
       SET status = 'booked', updated_at = CURRENT_TIMESTAMP 
