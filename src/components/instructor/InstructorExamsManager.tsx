@@ -26,10 +26,10 @@ export function InstructorExamsManager({
         <div>
           <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
             <LandingIcon name="Award" size={15} color="#2563eb" />
-            Panel Ujian & Koreksi — {courseTitle}
+            Exam & Grading Panel — {courseTitle}
           </span>
           <p className="text-[11px] text-zinc-500 mt-0.5">
-            Kelola file soal ujian (PDF) dan input penilaian hasil pengerjaan siswa.
+            Manage exam question papers (PDF) and grade student submissions.
           </p>
         </div>
 
@@ -38,7 +38,7 @@ export function InstructorExamsManager({
           className="btn btn-primary btn-sm bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1.5 shadow-xs shrink-0"
         >
           <LandingIcon name="Award" size={14} color="#fff" />
-          <span>Panel Koreksi & Penilaian &rarr;</span>
+          <span>Grading & Review Panel &rarr;</span>
           {pendingCount > 0 && (
             <span className="ml-1 rounded-full bg-amber-500 text-white px-1.5 py-0.2 text-[10px] font-extrabold">
               {pendingCount}
@@ -59,17 +59,17 @@ export function InstructorExamsManager({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-blue-800">
-                    1. Soal Ujian Utama
+                    1. Main Exam Paper
                   </span>
                   <span className="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.2 rounded-md border border-blue-200">
-                    Reguler (Wajib)
+                    Regular (Required)
                   </span>
                 </div>
                 <p className="text-sm font-bold text-zinc-900 truncate mt-0.5">
                   {exam?.title || `Final Examination — ${courseTitle}`}
                 </p>
                 <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Passing Score: <strong>{exam?.passingScore || 70}</strong> &bull; Dikerjakan pertama kali oleh 100% siswa
+                  Passing Score: <strong>{exam?.passingScore || 70}</strong> &bull; Maks. 5MB &bull; Taken first by all enrolled students
                 </p>
               </div>
             </div>
@@ -81,7 +81,7 @@ export function InstructorExamsManager({
                   : "bg-red-100 text-red-700 border border-red-200"
               }`}
             >
-              {exam?.content?.questionFileUrl ? "✓ File Siap" : "Belum Ada Soal"}
+              {exam?.content?.questionFileUrl ? "✓ File Ready" : "No File Uploaded"}
             </span>
           </div>
 
@@ -90,7 +90,7 @@ export function InstructorExamsManager({
               {exam?.content?.questionFileUrl ? (
                 <div className="flex items-center gap-1.5 text-zinc-700 text-[11px] truncate">
                   <span className="font-semibold truncate">
-                    📄 {exam.content.questionFileName || "Lembar_Soal.pdf"}
+                    📄 {exam.content.questionFileName || "Exam_Paper.pdf"}
                   </span>
                   <a
                     href={exam.content.questionFileUrl}
@@ -98,12 +98,12 @@ export function InstructorExamsManager({
                     rel="noreferrer"
                     className="text-blue-600 hover:underline font-bold text-[10px] shrink-0"
                   >
-                    (Buka File)
+                    (Open File)
                   </a>
                 </div>
               ) : (
                 <span className="text-red-600 text-[11px] font-semibold">
-                  Siswa belum dapat mengambil ujian
+                  Students cannot take the exam yet
                 </span>
               )}
             </div>
@@ -113,7 +113,8 @@ export function InstructorExamsManager({
               courseTitle={courseTitle}
               initialExam={exam}
               initialTab="main"
-              triggerLabel={exam?.content?.questionFileUrl ? "Kelola Soal Utama" : "+ Upload Soal Utama"}
+              iconName={exam?.content?.questionFileUrl ? "FileText" : "Plus"}
+              triggerLabel={exam?.content?.questionFileUrl ? "Manage Main Paper" : "Upload Main Paper"}
               triggerClassName="btn btn-secondary btn-sm shrink-0 font-bold border-blue-200 text-blue-900 hover:bg-blue-50"
             />
           </div>
@@ -129,17 +130,17 @@ export function InstructorExamsManager({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-amber-900">
-                    2. Soal Khusus Remedial
+                    2. Remedial Exam Paper
                   </span>
                   <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.2 rounded-md border border-amber-200">
-                    Paket B (Opsional)
+                    Set B (Optional)
                   </span>
                 </div>
                 <p className="text-sm font-bold text-zinc-900 truncate mt-0.5">
-                  {exam?.content?.remedialFileName || (exam?.content?.remedialFileUrl ? "File Remedial Terpasang" : "Default: Sama dengan Soal Utama")}
+                  {exam?.content?.remedialFileName || (exam?.content?.remedialFileUrl ? "Remedial Paper Attached" : "Default: Same as Main Exam Paper")}
                 </p>
                 <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Khusus siswa belum lulus (&lt; {exam?.passingScore || 70})
+                  For students who have not passed (&lt; {exam?.passingScore || 70}) &bull; Maks. 5MB
                 </p>
               </div>
             </div>
@@ -151,7 +152,7 @@ export function InstructorExamsManager({
                   : "bg-zinc-100 text-zinc-600 border border-zinc-200"
               }`}
             >
-              {exam?.content?.remedialFileUrl ? "Paket B Aktif" : "Sama dg Soal Utama"}
+              {exam?.content?.remedialFileUrl ? "Set B Active" : "Same as Main"}
             </span>
           </div>
 
@@ -160,7 +161,7 @@ export function InstructorExamsManager({
               {exam?.content?.remedialFileUrl ? (
                 <div className="flex items-center gap-1.5 text-zinc-700 text-[11px] truncate">
                   <span className="font-semibold text-amber-950 truncate">
-                    🔄 {exam.content.remedialFileName || "File_Remedial.pdf"}
+                    🔄 {exam.content.remedialFileName || "Remedial_Paper.pdf"}
                   </span>
                   <a
                     href={exam.content.remedialFileUrl}
@@ -168,12 +169,12 @@ export function InstructorExamsManager({
                     rel="noreferrer"
                     className="text-amber-800 hover:underline font-bold text-[10px] shrink-0"
                   >
-                    (Buka File)
+                    (Open File)
                   </a>
                 </div>
               ) : (
                 <span className="text-zinc-500 text-[11px]">
-                  Murid remedial merevisi lembar soal utama
+                  Remedial students will revise using the main exam paper
                 </span>
               )}
             </div>
@@ -183,12 +184,12 @@ export function InstructorExamsManager({
               courseTitle={courseTitle}
               initialExam={exam}
               initialTab="remedial"
-              iconName="RotateCcw"
-              triggerLabel={exam?.content?.remedialFileUrl ? "Kelola Soal Remedial" : "+ Upload Soal Remedial"}
+              iconName={exam?.content?.remedialFileUrl ? "RotateCcw" : "Plus"}
+              triggerLabel={exam?.content?.remedialFileUrl ? "Manage Remedial Paper" : "Upload Remedial Paper"}
               triggerClassName={`btn btn-sm shrink-0 font-bold ${
                 exam?.content?.remedialFileUrl
                   ? "btn-secondary border-amber-300 bg-amber-50/70 text-amber-900 hover:bg-amber-100"
-                  : "btn-primary bg-amber-600 hover:bg-amber-700 text-white"
+                  : "bg-amber-600 hover:bg-amber-700 text-white border border-amber-600 shadow-xs"
               }`}
             />
           </div>
@@ -198,24 +199,24 @@ export function InstructorExamsManager({
       {/* Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div className="p-4 rounded-xl bg-white border border-zinc-200 shadow-xs">
-          <span className="text-zinc-400 font-semibold block">Total Pengumpulan</span>
+          <span className="text-zinc-400 font-semibold block">Total Submissions</span>
           <span className="text-2xl font-black text-zinc-900 mt-1 block">{submissions.length}</span>
-          <span className="text-[11px] text-zinc-400">Lembar jawaban masuk</span>
+          <span className="text-[11px] text-zinc-400">Answer sheets submitted</span>
         </div>
         <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 shadow-xs">
-          <span className="text-amber-700 font-semibold block">Menunggu Dikoreksi</span>
+          <span className="text-amber-700 font-semibold block">Pending Review</span>
           <span className="text-2xl font-black text-amber-700 mt-1 block">{pendingCount}</span>
-          <span className="text-[11px] text-amber-600 font-medium">Perlu diberi nilai</span>
+          <span className="text-[11px] text-amber-600 font-medium">Needs grading</span>
         </div>
         <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 shadow-xs">
-          <span className="text-emerald-700 font-semibold block">Lulus & Bersertifikat</span>
+          <span className="text-emerald-700 font-semibold block">Passed & Certified</span>
           <span className="text-2xl font-black text-emerald-700 mt-1 block">{passedCount}</span>
-          <span className="text-[11px] text-emerald-600 font-medium">Nilai &ge; batas kelulusan</span>
+          <span className="text-[11px] text-emerald-600 font-medium">Nilai &ge; {exam?.passingScore || 70} (Lulus)</span>
         </div>
         <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 shadow-xs">
-          <span className="text-zinc-500 font-semibold block">Belum Lulus</span>
+          <span className="text-zinc-500 font-semibold block">Needs Remedial</span>
           <span className="text-2xl font-black text-zinc-700 mt-1 block">{failedCount}</span>
-          <span className="text-[11px] text-zinc-400">Dapat mengirim ulang</span>
+          <span className="text-[11px] text-zinc-400">Nilai &lt; {exam?.passingScore || 70} (Remedial)</span>
         </div>
       </div>
 
@@ -223,11 +224,11 @@ export function InstructorExamsManager({
       <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-zinc-900 font-[family-name:var(--font-heading)]">
-            Daftar Jawaban Siswa ({submissions.length})
+            Student Submissions ({submissions.length})
           </h2>
           {pendingCount > 0 && (
             <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
-              {pendingCount} jawaban menunggu penilaian
+              {pendingCount} submission{pendingCount > 1 ? "s" : ""} pending grading
             </span>
           )}
         </div>
@@ -235,9 +236,9 @@ export function InstructorExamsManager({
         {submissions.length === 0 ? (
           <div className="p-10 text-center rounded-xl bg-zinc-50 border border-dashed border-zinc-200 text-zinc-400 text-xs">
             <LandingIcon name="FileText" size={32} color="currentColor" className="mx-auto mb-2 opacity-50" />
-            <p className="font-semibold text-zinc-600">Belum Ada Siswa yang Mengumpulkan Jawaban</p>
+            <p className="font-semibold text-zinc-600">No Student Submissions Yet</p>
             <p className="mt-1">
-              Siswa akan mengunduh lembar soal ujian pada tab Ujian Akhir dan mengirimkan lembar jawaban mereka di sini.
+              Students will download the exam questions from the Final Exam tab and submit their completed answer sheets here.
             </p>
           </div>
         ) : (
@@ -245,12 +246,12 @@ export function InstructorExamsManager({
             <table className="w-full min-w-[620px] text-left text-xs">
               <thead>
                 <tr className="border-b border-zinc-100 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                  <th className="pb-3 pl-2">Siswa</th>
-                  <th className="pb-3">Waktu Kirim</th>
-                  <th className="pb-3">Lembar Jawaban</th>
+                  <th className="pb-3 pl-2">Student</th>
+                  <th className="pb-3">Submitted At</th>
+                  <th className="pb-3">Answer Sheet</th>
                   <th className="pb-3">Status</th>
-                  <th className="pb-3">Nilai Akhir</th>
-                  <th className="pb-3 text-right pr-2">Aksi Penilaian</th>
+                  <th className="pb-3">Final Score</th>
+                  <th className="pb-3 text-right pr-2">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -262,7 +263,7 @@ export function InstructorExamsManager({
                         <p className="text-[11px] text-zinc-400">{s.studentEmail}</p>
                       </td>
                       <td className="py-3.5 text-zinc-500 whitespace-nowrap">
-                        {new Date(s.submittedAt).toLocaleDateString("id-ID", {
+                        {new Date(s.submittedAt).toLocaleDateString("en-US", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
@@ -281,11 +282,11 @@ export function InstructorExamsManager({
                           >
                             <LandingIcon name="Download" size={12} color="currentColor" />
                             <span className="truncate max-w-[140px]">
-                              {s.answers.answerFileName || "Lembar_Jawaban.pdf"}
+                              {s.answers.answerFileName || "Answer_Sheet.pdf"}
                             </span>
                           </a>
                         ) : (
-                          <span className="text-zinc-400 italic text-[11px]">Tidak ada file</span>
+                          <span className="text-zinc-400 italic text-[11px]">No file attached</span>
                         )}
                       </td>
                       <td className="py-3.5">
@@ -298,14 +299,14 @@ export function InstructorExamsManager({
                               : "bg-amber-100 text-amber-800"
                           }`}
                         >
-                          {s.status === "passed" ? "Lulus" : s.status === "failed" ? "Gagal" : "Pending"}
+                          {s.status === "passed" ? "Passed" : s.status === "failed" ? "Failed" : "Pending"}
                         </span>
                       </td>
                       <td className="py-3.5 font-bold">
                         {s.finalScore !== null ? (
                           <span className="text-blue-600 text-sm">{s.finalScore} / 100</span>
                         ) : (
-                          <span className="text-zinc-400 font-medium italic text-[11px]">Belum Dinilai</span>
+                          <span className="text-zinc-400 font-medium italic text-[11px]">Not Graded</span>
                         )}
                       </td>
                       <td className="py-3.5 text-right pr-2">
@@ -317,7 +318,7 @@ export function InstructorExamsManager({
                               : "btn-secondary text-zinc-700 hover:bg-zinc-100"
                           }`}
                         >
-                          {s.status === "pending" ? "Input Nilai & Koreksi →" : "Ubah Nilai →"}
+                          {s.status === "pending" ? "Grade Submission →" : "Edit Grade →"}
                         </Link>
                       </td>
                     </tr>

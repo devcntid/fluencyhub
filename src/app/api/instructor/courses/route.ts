@@ -11,6 +11,7 @@ const Schema = z.object({
   price: z.string().min(1),
   originalPrice: z.string().nullable().optional(),
   thumbnailUrl: z.string().url().nullable().optional(),
+  level: z.enum(["beginner", "intermediate", "advanced", "all_levels"]).optional(),
 });
 
 export async function POST(req: Request) {
@@ -23,25 +24,54 @@ export async function POST(req: Request) {
   const parsed = Schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
 
+  let targetSlug = parsed.data.slug.trim().toLowerCase();
+  if (!targetSlug) {
+    targetSlug = parsed.data.title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
   const existing = await sql`
-    SELECT id FROM courses 
-    WHERE (slug = ${parsed.data.slug} OR title = ${parsed.data.title}) 
+    SELECT id, slug, title FROM courses 
+    WHERE (slug = ${targetSlug} OR title = ${parsed.data.title}) 
       AND deleted_at IS NULL
   `;
   if (existing.length > 0) {
-    return NextResponse.json({ error: "Duplikat nama atau slug tidak diizinkan." }, { status: 400 });
+    const isSlugMatch = existing.some((e: any) => e.slug === targetSlug);
+    const msg = isSlugMatch
+      ? `Slug "${targetSlug}" sudah digunakan oleh kelas lain. Silakan ubah slug.`
+      : `Judul "${parsed.data.title}" sudah digunakan oleh kelas lain. Silakan ubah judul.`;
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 
-  // Instructor default settings for new course:
-  // - status is "draft"
-  // - isFeatured is false
-  const course = await createCourseAdmin({
-    ...parsed.data,
-    instructorId: Number(session.user.id),
-    status: "draft",
-    isFeatured: false,
-    marketingTag: null,
-  });
+  // Check if any row (including deleted ones) has this exact slug
+  const anySlugConflict = await sql`SELECT id FROM courses WHERE slug = ${targetSlug}`;
+  if (anySlugConflict.length > 0) {
+    targetSlug = `${targetSlug}-${Date.now().toString().slice(-4)}`;
+  }
 
-  return NextResponse.json({ data: course }, { status: 201 });
+  try {
+    const course = await createCourseAdmin({
+      ...parsed.data,
+      slug: targetSlug,
+      instructorId: Number(session.user.id),
+      status: "draft",
+      isFeatured: false,
+      marketingTag: null,
+      level: parsed.data.level ?? "beginner",
+    });
+
+    return NextResponse.json({ data: course }, { status: 201 });
+  } catch (err: any) {
+    console.error("Error creating course:", err);
+    if (err?.code === "23505") {
+      return NextResponse.json(
+        { error: "Slug atau judul kursus sudah terdaftar. Silakan ganti slug atau judul kursus Anda." },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ error: "Gagal membuat kursus baru. Silakan coba lagi." }, { status: 500 });
+  }
 }

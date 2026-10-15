@@ -18,12 +18,12 @@ export default async function InstructorExamReviewPage({
   if (courses.length === 0) {
     return (
       <div className="mx-auto max-w-[800px] p-8 text-center space-y-4">
-        <h1 className="text-xl font-black text-zinc-900">Review & Penilaian Ujian</h1>
+        <h1 className="text-xl font-black text-zinc-900">Exam Review & Grading</h1>
         <p className="text-sm text-zinc-500">
-          Anda belum memiliki kelas aktif. Silakan buat kelas dan atur kurikulum terlebih dahulu.
+          You do not have any active courses yet. Please create a course and set up its curriculum first.
         </p>
         <Link href="/instructor/courses" className="btn btn-primary btn-sm inline-block">
-          Kelola Kelas &rarr;
+          Manage Class &rarr;
         </Link>
       </div>
     );

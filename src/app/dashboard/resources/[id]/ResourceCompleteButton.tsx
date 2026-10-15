@@ -33,7 +33,7 @@ export function ResourceCompleteButton({
       router.refresh();
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat mengupdate progress. Silakan coba lagi.");
+      alert("An error occurred while updating progress. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -50,7 +50,7 @@ export function ResourceCompleteButton({
       }`}
     >
       <LandingIcon name={initialCompleted ? "X" : "CheckCircle"} size={16} color="#fff" />
-      {initialCompleted ? "Batal Tandai Selesai" : "Tandai Selesai"}
+      {initialCompleted ? "Mark as Incomplete" : "Mark as Completed"}
     </button>
   );
 }

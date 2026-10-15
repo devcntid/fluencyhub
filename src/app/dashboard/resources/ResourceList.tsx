@@ -57,7 +57,7 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
       router.refresh();
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat mengupdate progress. Silakan coba lagi.");
+      alert("An error occurred while updating progress. Please try again.");
     } finally {
       setSubmittingId(null);
     }
@@ -70,10 +70,10 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
           <LandingIcon name="BookOpen" color="currentColor" />
         </div>
         <h3 className="mb-2 font-[family-name:var(--font-heading)] text-lg font-bold text-zinc-900">
-          Belum Ada Resource
+          No Resources Yet
         </h3>
         <p className="max-w-sm text-sm text-zinc-500">
-          Anda belum memiliki materi atau modul latihan karena Anda belum terdaftar di kelas manapun yang memiliki dokumen tambahan.
+          You do not have any learning documents or practice modules yet because you are not enrolled in any course with supplementary resources.
         </p>
       </div>
     );
@@ -83,13 +83,13 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <p className="text-xs font-semibold text-zinc-500">
-          Menampilkan {resources.length} materi dokumen
+          Showing {resources.length} document resources
         </p>
       </div>
 
       {resources.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-200 py-12 text-center text-zinc-500">
-          Tidak ada resource untuk kelas ini.
+          No resources available for this course.
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -125,7 +125,7 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-100"
                     >
                       <LandingIcon name="Eye" size={14} color="currentColor" />
-                      Lihat
+                      View
                     </a>
                     <a
                       href={res.documentUrl}
@@ -145,7 +145,7 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
                     >
                       <LandingIcon name="BookOpen" size={16} color="currentColor" />
-                      Baca Teks Materi
+                      Read Study Text
                     </Link>
                   </div>
                 ) : (
@@ -154,7 +154,7 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
                       disabled
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 text-sm font-semibold text-zinc-400"
                     >
-                      Kosong
+                      Empty
                     </button>
                   </div>
                 )}
@@ -170,7 +170,7 @@ export function ResourceList({ resources }: { resources: ResourceItem[] }) {
                     }`}
                   >
                     <LandingIcon name={res.isCompleted ? "X" : "CheckCircle"} size={14} color="#fff" />
-                    {res.isCompleted ? "Batal Tandai Selesai" : "Tandai Selesai"}
+                    {res.isCompleted ? "Mark as Incomplete" : "Mark as Completed"}
                   </button>
                 </div>
               </div>

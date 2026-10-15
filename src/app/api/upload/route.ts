@@ -12,8 +12,19 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "File required" }, { status: 400 });
   }
-  if (file.size > 20 * 1024 * 1024) {
-    return NextResponse.json({ error: "Ukuran file maksimal 20MB" }, { status: 400 });
+
+  // 5MB limit for exams (soal & remedial), exam-answers, and documents
+  const maxBytes =
+    folder === "exams" || folder === "exam-answers" || folder === "documents"
+      ? 5 * 1024 * 1024
+      : 20 * 1024 * 1024;
+  const maxMb = maxBytes / (1024 * 1024);
+
+  if (file.size > maxBytes) {
+    return NextResponse.json(
+      { error: `Ukuran file melebihi batas maksimal ${maxMb}MB (ukuran file Anda: ${(file.size / (1024 * 1024)).toFixed(1)}MB)` },
+      { status: 400 }
+    );
   }
   const allowed = [
     "image/jpeg",

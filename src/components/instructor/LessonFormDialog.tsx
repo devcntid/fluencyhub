@@ -3,16 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
+import { useToast } from "@/components/ui/NotificationProvider";
 
 const TYPES = [
   { v: "youtube_video", l: "YouTube" },
   { v: "live_class", l: "Live Class" },
   { v: "document", l: "Document" },
   { v: "text", l: "Text" },
-  { v: "exam", l: "Ujian / Exam" },
 ] as const;
 
-type ContentType = (typeof TYPES)[number]["v"];
+type ContentType = (typeof TYPES)[number]["v"] | "exam";
 
 export type LessonFormValue = {
   id?: number;
@@ -49,6 +49,7 @@ export function LessonFormDialog({
   triggerClassName?: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [sectionId, setSectionId] = useState(sections[0]?.id ?? 0);
@@ -63,6 +64,17 @@ export function LessonFormDialog({
   const [sortOrder, setSortOrder] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setError("");
+  };
 
   const handleStartTimeChange = (val: string) => {
     setStartTime(val);
@@ -77,25 +89,34 @@ export function LessonFormDialog({
   };
 
   async function uploadDocument(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      setError(`Ukuran file PDF melebihi batas maksimal 5MB (ukuran file Anda: ${(file.size / (1024 * 1024)).toFixed(1)}MB). Silakan kompres atau pilih file yang lebih kecil.`);
+      return;
+    }
     setBusy(true);
+    clearFieldError("url");
     const form = new FormData();
     form.set("file", file);
     form.set("folder", "documents");
     const res = await fetch("/api/upload", { method: "POST", body: form });
     if (!res.ok) {
-      setError("Document upload failed.");
+      const errJson = await res.json().catch(() => ({}));
+      setError(errJson.error || "Document upload failed.");
       setBusy(false);
       return;
     }
     const json = (await res.json()) as { data?: { url?: string } };
-    if (json.data?.url) setUrl(json.data.url);
+    if (json.data?.url) {
+      setUrl(json.data.url);
+      clearFieldError("url");
+    }
     setBusy(false);
   }
 
   function fill(v?: LessonFormValue) {
     setTitle(v?.title ?? "");
     setSectionId(v?.sectionId ?? sections[0]?.id ?? 0);
-    setType(v?.contentType ?? "youtube_video");
+    setType(v?.contentType && v.contentType !== "exam" ? v.contentType : "youtube_video");
     setUrl(v?.youtubeUrl || v?.liveClassUrl || v?.documentUrl || "");
 
     if (v?.liveClassDatetime) {
@@ -123,6 +144,7 @@ export function LessonFormDialog({
     setFree(Boolean(v?.isFreePreview));
     setSortOrder(v?.sortOrder ?? 1);
     setError("");
+    setFieldErrors({});
   }
 
   function openForm() {
@@ -131,65 +153,147 @@ export function LessonFormDialog({
   }
 
   async function save() {
-    if (!title) {
-      setError("Title is required");
-      return;
+    const errors: Record<string, string> = {};
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      errors.title = "Lesson title cannot be empty.";
     }
-    setBusy(true);
+
+    if (!sectionId || Number(sectionId) <= 0) {
+      errors.sectionId = "Please select a module / section.";
+    }
 
     let finalDuration = dur;
     let liveDatetimeIso: string | null = null;
 
-    if (type === "live_class") {
-      if (!liveDate || !startTime || !endTime) {
-        setError("Tanggal pelaksanaan, waktu mulai, dan waktu selesai live class wajib diisi.");
-        setBusy(false);
-        return;
+    if (type === "youtube_video") {
+      const trimmedUrl = url.trim();
+      if (!trimmedUrl) {
+        errors.url = "YouTube video URL cannot be empty.";
+      } else if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://")) {
+        errors.url = "YouTube URL must start with https:// or http://";
+      } else {
+        const ytRegex = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([A-Za-z0-9_-]{6,})/;
+        if (!ytRegex.test(trimmedUrl)) {
+          errors.url = "Please enter a valid YouTube video URL (e.g. https://www.youtube.com/watch?v=...).";
+        }
       }
-      const [startH, startM] = startTime.split(":").map(Number);
-      const [endH, endM] = endTime.split(":").map(Number);
-      const startMin = startH * 60 + startM;
-      const endMin = endH * 60 + endM;
-
-      if (endMin <= startMin) {
-        setError("Waktu selesai harus lebih besar dari waktu mulai.");
-        setBusy(false);
-        return;
+    } else if (type === "live_class") {
+      const trimmedUrl = url.trim();
+      if (!trimmedUrl) {
+        errors.url = "Meeting room URL (Zoom / Google Meet) cannot be empty.";
+      } else if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://")) {
+        errors.url = "Meeting URL must start with https:// or http://";
       }
-      finalDuration = endMin - startMin;
 
-      const [year, month, day] = liveDate.split("-").map(Number);
-      const dateObj = new Date(year, month - 1, day, startH, startM, 0);
-      liveDatetimeIso = dateObj.toISOString();
+      if (!liveDate) {
+        errors.liveDate = "Session date cannot be empty.";
+      }
+
+      if (!startTime) {
+        errors.startTime = "Start time cannot be empty.";
+      }
+
+      if (!endTime) {
+        errors.endTime = "End time cannot be empty.";
+      }
+
+      if (startTime && endTime) {
+        const [startH, startM] = startTime.split(":").map(Number);
+        const [endH, endM] = endTime.split(":").map(Number);
+        const startMin = startH * 60 + startM;
+        const endMin = endH * 60 + endM;
+
+        if (endMin <= startMin) {
+          errors.endTime = "End time must be after start time.";
+        } else {
+          finalDuration = endMin - startMin;
+        }
+
+        if (liveDate) {
+          const [year, month, day] = liveDate.split("-").map(Number);
+          const dateObj = new Date(year, month - 1, day, startH, startM, 0);
+          liveDatetimeIso = dateObj.toISOString();
+        }
+      }
+    } else if (type === "document") {
+      const trimmedUrl = url.trim();
+      if (!trimmedUrl) {
+        errors.url = "Document file or URL cannot be empty. Please upload a PDF or enter a link.";
+      } else if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://") && !trimmedUrl.startsWith("/uploads/")) {
+        errors.url = "Document link must start with https:// or http://";
+      }
+    } else if (type === "text") {
+      if (!text.trim()) {
+        errors.text = "Study text content cannot be empty.";
+      }
     }
+
+    if (type !== "live_class") {
+      if (!dur || dur <= 0) {
+        errors.dur = "Duration cannot be 0. Please enter estimated minutes (minimum 1 minute).";
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const count = Object.keys(errors).length;
+      if (count === 1) {
+        setError(Object.values(errors)[0]);
+      } else {
+        setError(`Please fill in all ${count} required fields marked above.`);
+      }
+      return;
+    }
+
+    setBusy(true);
+    setError("");
 
     const body = {
       sectionId,
-      title,
+      title: trimmedTitle,
       contentType: type,
-      youtubeUrl: type === "youtube_video" ? url || null : null,
-      liveClassUrl: type === "live_class" ? url || null : null,
+      youtubeUrl: type === "youtube_video" ? url.trim() || null : null,
+      liveClassUrl: type === "live_class" ? url.trim() || null : null,
       liveClassDatetime: liveDatetimeIso,
       liveClassPlatform: type === "live_class" ? "zoom" : null,
-      documentUrl: type === "document" ? url || null : null,
-      textContent: type === "text" ? text || null : null,
+      documentUrl: type === "document" ? url.trim() || null : null,
+      textContent: type === "text" ? text.trim() || null : null,
       durationMinutes: finalDuration,
       isFreePreview: free,
       sortOrder: initial?.id ? sortOrder : undefined,
     };
-    const res = await fetch(initial?.id ? `/api/instructor/lessons/${initial.id}` : "/api/instructor/lessons", {
-      method: initial?.id ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setBusy(false);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || "Save failed");
-      return;
+    try {
+      const res = await fetch(initial?.id ? `/api/instructor/lessons/${initial.id}` : "/api/instructor/lessons", {
+        method: initial?.id ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      setBusy(false);
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as Record<string, any>;
+        let msg = "Save failed";
+        if (typeof err?.error === "string") {
+          msg = err.error;
+        } else if (Array.isArray(err?.error?.formErrors) && err.error.formErrors.length > 0) {
+          msg = String(err.error.formErrors[0]);
+        } else if (err?.error?.fieldErrors && typeof err.error.fieldErrors === "object") {
+          const firstVal = Object.values(err.error.fieldErrors)[0];
+          if (Array.isArray(firstVal) && firstVal.length > 0) {
+            msg = String(firstVal[0]);
+          }
+        }
+        setError(msg);
+        return;
+      }
+      setOpen(false);
+      toast.success(initial?.id ? "Materi pelajaran berhasil diperbarui!" : "Materi pelajaran baru berhasil ditambahkan!");
+      router.refresh();
+    } catch {
+      setBusy(false);
+      setError("An unexpected network error occurred. Please try again.");
     }
-    setOpen(false);
-    router.refresh();
   }
 
   return (
@@ -198,10 +302,22 @@ export function LessonFormDialog({
         {triggerLabel}
       </button>
       <AdminFormDialog title={initial?.id ? "Edit lesson" : "Add New Lesson"} open={open} onClose={() => setOpen(false)}>
-        <div className="grid gap-3">
+        <div className="grid gap-3.5">
           <label>
-            <span className="label">Section</span>
-            <select className="input" value={sectionId} onChange={(e) => setSectionId(Number(e.target.value))}>
+            <span className="label flex items-center justify-between">
+              <span>Section / Module <span className="text-red-500">*</span></span>
+              {fieldErrors.sectionId && (
+                <span className="text-xs font-semibold text-red-500">{fieldErrors.sectionId}</span>
+              )}
+            </span>
+            <select
+              className={`input ${fieldErrors.sectionId ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
+              value={sectionId}
+              onChange={(e) => {
+                setSectionId(Number(e.target.value));
+                clearFieldError("sectionId");
+              }}
+            >
               {sections.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.title}
@@ -209,10 +325,25 @@ export function LessonFormDialog({
               ))}
             </select>
           </label>
+
           <label>
-            <span className="label">Lesson Title</span>
-            <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <span className="label flex items-center justify-between">
+              <span>Lesson Title <span className="text-red-500">*</span></span>
+              {fieldErrors.title && (
+                <span className="text-xs font-semibold text-red-500">{fieldErrors.title}</span>
+              )}
+            </span>
+            <input
+              className={`input ${fieldErrors.title ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
+              value={title}
+              placeholder="e.g. Introduction to Academic Writing"
+              onChange={(e) => {
+                setTitle(e.target.value);
+                clearFieldError("title");
+              }}
+            />
           </label>
+
           <div>
             <span className="label">Content Type</span>
             <div className="mt-1 flex flex-wrap gap-2">
@@ -229,6 +360,8 @@ export function LessonFormDialog({
                   onClick={() => {
                     setType(t.v);
                     setUrl("");
+                    setFieldErrors({});
+                    setError("");
                   }}
                 >
                   {t.l}
@@ -236,51 +369,99 @@ export function LessonFormDialog({
               ))}
             </div>
           </div>
+
           {type === "youtube_video" ? (
             <label>
-              <span className="label">YouTube URL</span>
-              <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} />
+              <span className="label flex items-center justify-between">
+                <span>YouTube URL <span className="text-red-500">*</span></span>
+                {fieldErrors.url && (
+                  <span className="text-xs font-semibold text-red-500">{fieldErrors.url}</span>
+                )}
+              </span>
+              <input
+                className={`input ${fieldErrors.url ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
+                value={url}
+                placeholder="https://www.youtube.com/watch?v=..."
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  clearFieldError("url");
+                }}
+              />
             </label>
           ) : null}
+
           {type === "live_class" ? (
             <>
               <label>
-                <span className="label">Zoom / Google Meet URL</span>
+                <span className="label flex items-center justify-between">
+                  <span>Zoom / Google Meet URL <span className="text-red-500">*</span></span>
+                  {fieldErrors.url && (
+                    <span className="text-xs font-semibold text-red-500">{fieldErrors.url}</span>
+                  )}
+                </span>
                 <input
-                  className="input"
+                  className={`input ${fieldErrors.url ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://zoom.us/j/... atau https://meet.google.com/..."
+                  onChange={(e) => {
+                    setUrl(e.target.value);
+                    clearFieldError("url");
+                  }}
+                  placeholder="https://zoom.us/j/... or https://meet.google.com/..."
                 />
               </label>
 
               <label>
-                <span className="label">Tanggal Pelaksanaan</span>
+                <span className="label flex items-center justify-between">
+                  <span>Session Date <span className="text-red-500">*</span></span>
+                  {fieldErrors.liveDate && (
+                    <span className="text-xs font-semibold text-red-500">{fieldErrors.liveDate}</span>
+                  )}
+                </span>
                 <input
-                  className="input"
+                  className={`input ${fieldErrors.liveDate ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
                   type="date"
                   value={liveDate}
-                  onChange={(e) => setLiveDate(e.target.value)}
+                  onChange={(e) => {
+                    setLiveDate(e.target.value);
+                    clearFieldError("liveDate");
+                  }}
                 />
               </label>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label>
-                  <span className="label">Waktu Mulai</span>
+                  <span className="label flex items-center justify-between">
+                    <span>Start Time <span className="text-red-500">*</span></span>
+                    {fieldErrors.startTime && (
+                      <span className="text-xs font-semibold text-red-500">{fieldErrors.startTime}</span>
+                    )}
+                  </span>
                   <input
-                    className="input"
+                    className={`input ${fieldErrors.startTime ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
                     type="time"
                     value={startTime}
-                    onChange={(e) => handleStartTimeChange(e.target.value)}
+                    onChange={(e) => {
+                      handleStartTimeChange(e.target.value);
+                      clearFieldError("startTime");
+                      clearFieldError("endTime");
+                    }}
                   />
                 </label>
                 <label>
-                  <span className="label">Waktu Selesai (Sampai Jam)</span>
+                  <span className="label flex items-center justify-between">
+                    <span>End Time <span className="text-red-500">*</span></span>
+                    {fieldErrors.endTime && (
+                      <span className="text-xs font-semibold text-red-500">{fieldErrors.endTime}</span>
+                    )}
+                  </span>
                   <input
-                    className="input"
+                    className={`input ${fieldErrors.endTime ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
                     type="time"
                     value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
+                    onChange={(e) => {
+                      setEndTime(e.target.value);
+                      clearFieldError("endTime");
+                    }}
                   />
                 </label>
               </div>
@@ -292,7 +473,7 @@ export function LessonFormDialog({
                 if (diffMin <= 0) {
                   return (
                     <p className="rounded-[var(--r)] border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
-                      ⚠️ Waktu selesai harus lebih lama dari waktu mulai.
+                      ⚠️ End time must be after start time.
                     </p>
                   );
                 }
@@ -300,25 +481,31 @@ export function LessonFormDialog({
                 const mins = diffMin % 60;
                 const durLabel =
                   hours > 0
-                    ? `${hours} jam ${mins > 0 ? `${mins} menit` : ""}`
-                    : `${mins} menit`;
+                    ? `${hours} hrs ${mins > 0 ? `${mins} mins` : ""}`
+                    : `${mins} mins`;
                 return (
                   <div className="flex items-center justify-between rounded-[var(--r)] border border-blue-200 bg-blue-50/80 px-3.5 py-2 text-xs font-semibold text-blue-700">
-                    <span>⏱️ Terhitung Durasi:</span>
+                    <span>⏱️ Calculated Duration:</span>
                     <span className="font-extrabold text-blue-900 bg-white px-2.5 py-0.5 rounded shadow-2xs">
-                      {diffMin} Menit ({durLabel.trim()})
+                      {diffMin} Minutes ({durLabel.trim()})
                     </span>
                   </div>
                 );
               })()}
             </>
           ) : null}
+
           {type === "document" ? (
             <div className="flex flex-col gap-2">
               <label>
-                <span className="label">Upload PDF Document</span>
+                <span className="label flex items-center justify-between">
+                  <span>Upload PDF Document <span className="text-red-500">*</span> <span className="text-[11px] text-zinc-400 font-normal">(Maksimal 5MB)</span></span>
+                  {fieldErrors.url && (
+                    <span className="text-xs font-semibold text-red-500">{fieldErrors.url}</span>
+                  )}
+                </span>
                 <input
-                  className="input"
+                  className={`input ${fieldErrors.url ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
                   type="file"
                   accept="application/pdf"
                   onChange={(e) => {
@@ -334,7 +521,15 @@ export function LessonFormDialog({
               </div>
               <label>
                 <span className="label">Document URL (External Link)</span>
-                <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+                <input
+                  className={`input ${fieldErrors.url ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
+                  value={url}
+                  onChange={(e) => {
+                    setUrl(e.target.value);
+                    clearFieldError("url");
+                  }}
+                  placeholder="https://..."
+                />
               </label>
               {url && (
                 <p className="text-xs text-[var(--brand)] font-medium truncate">
@@ -343,36 +538,85 @@ export function LessonFormDialog({
               )}
             </div>
           ) : null}
+
           {type === "text" ? (
             <label>
-              <span className="label">Text content</span>
-              <textarea className="input min-h-24" value={text} onChange={(e) => setText(e.target.value)} />
+              <span className="label flex items-center justify-between">
+                <span>Text content <span className="text-red-500">*</span></span>
+                {fieldErrors.text && (
+                  <span className="text-xs font-semibold text-red-500">{fieldErrors.text}</span>
+                )}
+              </span>
+              <textarea
+                className={`input min-h-24 ${fieldErrors.text ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
+                value={text}
+                placeholder="Write lesson notes, guidelines, or study materials here..."
+                onChange={(e) => {
+                  setText(e.target.value);
+                  clearFieldError("text");
+                }}
+              />
             </label>
           ) : null}
+
           {type !== "live_class" ? (
             <label>
-              <span className="label">Duration (min)</span>
-              <input className="input" type="number" min="0" value={dur} onChange={(e) => setDur(Math.max(0, parseInt(e.target.value) || 0))} />
+              <span className="label flex items-center justify-between">
+                <span>Duration (minutes) <span className="text-red-500">*</span></span>
+                {fieldErrors.dur && (
+                  <span className="text-xs font-semibold text-red-500">{fieldErrors.dur}</span>
+                )}
+              </span>
+              <input
+                className={`input ${fieldErrors.dur ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
+                type="number"
+                min="1"
+                placeholder="e.g. 15 (cannot be 0)"
+                value={dur === 0 ? "" : dur}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setDur(Number.isNaN(val) ? 0 : Math.max(0, val));
+                  clearFieldError("dur");
+                }}
+              />
             </label>
           ) : null}
+
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} />
             <span className="text-sm font-semibold">Free Preview</span>
           </label>
+
           {initial?.id ? (
             <label>
               <span className="label">Sort order</span>
-              <input className="input" type="number" min="1" value={sortOrder} onChange={(e) => setSortOrder(Math.max(1, Number(e.target.value) || 1))} />
+              <input
+                className="input"
+                type="number"
+                min="1"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(Math.max(1, Number(e.target.value) || 1))}
+              />
             </label>
           ) : null}
         </div>
-        {error ? <p className="mt-3 text-sm text-[var(--red)]">{error}</p> : null}
+
+        {error ? (
+          <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700 animate-in fade-in duration-150">
+            <span className="text-sm shrink-0">⚠️</span>
+            <div className="flex-1">
+              <p className="font-bold text-red-800">Please complete all required fields:</p>
+              <p className="mt-0.5 text-red-600 font-normal">{error}</p>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="btn btn-secondary btn-default" onClick={() => setOpen(false)}>
-            Batal
+            Cancel
           </button>
           <button type="button" className="btn btn-primary btn-default" disabled={busy} onClick={save}>
-            Simpan Lesson
+            {busy ? "Saving..." : "Save Lesson"}
           </button>
         </div>
       </AdminFormDialog>

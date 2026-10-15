@@ -24,6 +24,14 @@ export function DashboardChrome({
 
   const [open, setOpen] = useState(false);
   const player = /\/dashboard\/courses\/\d+/.test(pathname);
+
+  const isClassroom =
+    pathname.startsWith("/dashboard/classroom") ||
+    pathname.startsWith("/dashboard/videos") ||
+    pathname.startsWith("/dashboard/live") ||
+    pathname.startsWith("/dashboard/resources");
+
+  const [isClassroomExpanded, setIsClassroomExpanded] = useState(isClassroom);
   
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -41,45 +49,37 @@ export function DashboardChrome({
     };
   }, [open]);
 
-  if (player) return <>{children}</>;
-
-  const currentTab = searchParams.get("tab") || "videos";
-  const cParam = c ? `&c=${c}` : "";
-
-  const effectiveCourseId = c ? Number(c) : defaultCourseId;
-  const isExamUnlocked = effectiveCourseId
-    ? unlockedExamCourseIds.includes(effectiveCourseId)
-    : unlockedExamCourseIds.length > 0;
-
-  const classroomSubItems = [
-    { id: "videos", label: "Video Materi", icon: "PlayCircle", href: `/dashboard/classroom?tab=videos${cParam}` },
-    { id: "live", label: "Live Zoom", icon: "Video", href: `/dashboard/classroom?tab=live${cParam}` },
-    { id: "resources", label: "Resources", icon: "BookOpen", href: `/dashboard/classroom?tab=resources${cParam}` },
-    ...(isExamUnlocked
-      ? [{ id: "exam", label: "Ujian Akhir", icon: "Award", href: `/dashboard/classroom?tab=exam${cParam}` }]
-      : []),
-  ];
-
-  const menu = [
-    { id: "dashboard", icon: "LayoutDashboard", label: "Dashboard", href: "/dashboard" },
-    { id: "classroom", icon: "GraduationCap", label: "Ruang Kelas", href: `/dashboard/classroom${suffix}` },
-    { id: "private", icon: "Calendar", label: "Sesi Privat", href: `/dashboard/private-sessions${suffix}` },
-    { id: "profile", icon: "User", label: "Profil Saya", href: "/dashboard/profile" },
-  ];
-
-  const isClassroom =
-    pathname.startsWith("/dashboard/classroom") ||
-    pathname.startsWith("/dashboard/videos") ||
-    pathname.startsWith("/dashboard/live") ||
-    pathname.startsWith("/dashboard/resources");
-
-  const [isClassroomExpanded, setIsClassroomExpanded] = useState(isClassroom);
-
   useEffect(() => {
     if (isClassroom) {
       setIsClassroomExpanded(true);
     }
   }, [isClassroom]);
+
+  if (player) return <>{children}</>;
+
+  const currentTab = searchParams.get("tab") || "videos";
+  const cParam = c ? `&c=${c}` : "&c=all";
+
+  const effectiveCourseId = c && c !== "all" ? Number(c) : null;
+  const isExamUnlocked = effectiveCourseId
+    ? unlockedExamCourseIds.includes(effectiveCourseId)
+    : unlockedExamCourseIds.length > 0;
+
+  const classroomSubItems = [
+    { id: "videos", label: "Video Lessons", icon: "PlayCircle", href: `/dashboard/classroom?tab=videos${cParam}` },
+    { id: "live", label: "Live Zoom", icon: "Video", href: `/dashboard/classroom?tab=live${cParam}` },
+    { id: "resources", label: "Resources", icon: "BookOpen", href: `/dashboard/classroom?tab=resources${cParam}` },
+    ...(isExamUnlocked
+      ? [{ id: "exam", label: "Final Exam", icon: "Award", href: `/dashboard/classroom?tab=exam${cParam}` }]
+      : []),
+  ];
+
+  const menu = [
+    { id: "dashboard", icon: "LayoutDashboard", label: "Dashboard", href: "/dashboard" },
+    { id: "classroom", icon: "GraduationCap", label: "Classroom", href: "/dashboard/classroom?c=all" },
+    { id: "private", icon: "Calendar", label: "Private Sessions", href: `/dashboard/private-sessions${suffix}` },
+    { id: "profile", icon: "User", label: "My Profile", href: "/dashboard/profile" },
+  ];
 
   return (
     <div className="min-h-screen bg-[#fafafa]">

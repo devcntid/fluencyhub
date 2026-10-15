@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
+import { useToast } from "@/components/ui/NotificationProvider";
 
 export function SectionFormDialog({
   courseId,
@@ -16,6 +17,7 @@ export function SectionFormDialog({
   triggerLabel: string;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(section?.title ?? "");
   const [sortOrder, setSortOrder] = useState(section?.sortOrder ?? 1);
@@ -47,6 +49,7 @@ export function SectionFormDialog({
       return;
     }
     setOpen(false);
+    toast.success(section ? "Modul berhasil diperbarui!" : "Modul baru berhasil ditambahkan!");
     router.refresh();
   }
 

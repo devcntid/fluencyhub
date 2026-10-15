@@ -47,3 +47,37 @@ export async function listUserResources(userId: number): Promise<UserResource[]>
     isCompleted: Boolean(r.is_completed),
   }));
 }
+
+export async function listCourseResources(courseId: number): Promise<UserResource[]> {
+  const rows = await sql`
+    SELECT 
+      l.id, 
+      l.title, 
+      l.description, 
+      l.document_url, 
+      l.text_content,
+      l.content_type, 
+      c.title as course_title,
+      c.id as course_id,
+      false as is_completed
+    FROM lessons l
+    JOIN sections s ON l.section_id = s.id
+    JOIN courses c ON s.course_id = c.id
+    WHERE c.id = ${courseId}
+      AND l.deleted_at IS NULL
+      AND l.content_type IN ('document', 'text')
+    ORDER BY l.created_at DESC
+  `;
+
+  return rows.map((r: Record<string, unknown>) => ({
+    id: Number(r.id),
+    title: String(r.title),
+    description: r.description ? String(r.description) : null,
+    documentUrl: r.document_url ? String(r.document_url) : null,
+    textContent: r.text_content ? String(r.text_content) : null,
+    contentType: String(r.content_type),
+    courseTitle: String(r.course_title),
+    courseId: Number(r.course_id),
+    isCompleted: false,
+  }));
+}

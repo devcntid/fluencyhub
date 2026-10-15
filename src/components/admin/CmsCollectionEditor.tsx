@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminDataGrid } from "@/components/admin/AdminDataGrid";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
+import { useConfirm, useToast } from "@/components/ui/NotificationProvider";
 
 export type CmsField = {
   name: string;
@@ -56,6 +57,8 @@ export function CmsCollectionEditor({
   addLabel?: string;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [values, setValues] = useState<Record<string, unknown>>(createDefaults);
@@ -98,11 +101,29 @@ export function CmsCollectionEditor({
   }
 
   async function remove(id: number) {
-    if (!confirm("Delete this item?")) return;
+    const ok = await confirm({
+      title: "Hapus Item Ini?",
+      message: "Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.",
+      confirmText: "Ya, Hapus",
+      cancelText: "Batal",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     setBusy(true);
-    await fetch(`${endpoint}/${id}`, { method: "DELETE" });
-    setBusy(false);
-    router.refresh();
+    try {
+      const res = await fetch(`${endpoint}/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.error("Gagal menghapus item.");
+        return;
+      }
+      toast.success("Item berhasil dihapus!");
+      router.refresh();
+    } catch {
+      toast.error("Terjadi kesalahan jaringan.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

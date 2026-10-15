@@ -8,8 +8,8 @@ import type { PlayerLesson, PlayerSection } from "@/lib/db/lessons.queries";
 
 function typeLabel(type: string) {
   if (type === "live_class") return "Live";
-  if (type === "document") return "Dokumen";
-  if (type === "text") return "Teks";
+  if (type === "document") return "Document";
+  if (type === "text") return "Text";
   return "Video";
 }
 
@@ -63,7 +63,7 @@ export function CoursePlayer({
       router.refresh();
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan. Silakan coba lagi.");
+      alert("An error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -77,7 +77,7 @@ export function CoursePlayer({
           {preview ? <span className="badge badge-inst">Preview mode</span> : null}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-[var(--text-3)]" title="Progress Belajar">
+          <span className="text-xs font-semibold text-[var(--text-3)]" title="Learning Progress">
             Progress: {progressPct}%
           </span>
           <Link href={backHref} className="btn btn-ghost btn-sm" aria-label="Close">
@@ -125,14 +125,14 @@ export function CoursePlayer({
           {current.contentType === "document" && current.documentUrl ? (
             <div className="card bg-[var(--brand-50)] border border-[var(--brand-200)] p-6 text-center">
               <Icon name="FileText" size={48} className="mx-auto text-[var(--brand)] mb-3" />
-              <h4 className="font-semibold text-lg text-[var(--brand)] mb-1">Dokumen PDF</h4>
-              <p className="text-sm text-[var(--text-3)] mb-4">Instruktur telah menyediakan materi dalam bentuk dokumen untuk diunduh.</p>
+              <h4 className="font-semibold text-lg text-[var(--brand)] mb-1">PDF Document</h4>
+              <p className="text-sm text-[var(--text-3)] mb-4">The instructor has provided learning materials as a downloadable document.</p>
               <div className="flex justify-center gap-3">
                 <a href={current.documentUrl} className="btn btn-primary btn-default" target="_blank" rel="noreferrer">
-                  <Icon name="ExternalLink" size={16} /> Buka Dokumen
+                  <Icon name="ExternalLink" size={16} /> Open Document
                 </a>
                 <a href={current.documentUrl} download className="btn btn-secondary btn-default" target="_blank" rel="noreferrer">
-                  <Icon name="Download" size={16} /> Unduh File
+                  <Icon name="Download" size={16} /> Download File
                 </a>
               </div>
             </div>
@@ -150,10 +150,10 @@ export function CoursePlayer({
                 className={`btn ${current.isCompleted ? "btn-secondary" : "btn-success"} btn-default`}
               >
                 {current.isCompleted ? (
-                  "Batal Tandai Selesai"
+                  "Mark as Incomplete"
                 ) : (
                   <>
-                    <Icon name="CheckCircle" size={16} /> Tandai Selesai
+                    <Icon name="CheckCircle" size={16} /> Mark as Completed
                   </>
                 )}
               </button>
@@ -162,27 +162,27 @@ export function CoursePlayer({
               onClick={() => setShowNotesAlert(true)}
               className="btn btn-secondary btn-default"
             >
-              <Icon name="StickyNote" size={16} /> Catatan
+              <Icon name="StickyNote" size={16} /> Notes
             </button>
           </div>
           
           {showNotesAlert && (
             <div className="mt-2 text-sm text-[var(--yellow)]">
-              ⚠️ Fitur catatan akan segera hadir di pembaruan selanjutnya!
+              ⚠️ The notes feature will be available in an upcoming update!
             </div>
           )}
 
           <div className="player-nav mt-8">
             {prevId ? (
               <Link href={`/dashboard/courses/${courseId}/${prevId}`} className="btn btn-secondary btn-default">
-                ← Pelajaran sebelumnya
+                ← Previous Lesson
               </Link>
             ) : (
               <span />
             )}
             {nextId ? (
               <Link href={`/dashboard/courses/${courseId}/${nextId}`} className="btn btn-primary btn-default">
-                Pelajaran selanjutnya →
+                Next Lesson →
               </Link>
             ) : (
               <span />
@@ -191,7 +191,7 @@ export function CoursePlayer({
         </div>
         <aside className="player-aside">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-[family-name:var(--font-heading)] text-sm font-bold">Daftar Materi</h3>
+            <h3 className="font-[family-name:var(--font-heading)] text-sm font-bold">Curriculum Outline</h3>
           </div>
           {sections.map((sec) => (
             <div key={sec.id} className="mb-4">

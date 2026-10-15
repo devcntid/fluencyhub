@@ -24,7 +24,7 @@ export default async function InstructorHomePage() {
   const share = Number(stats.sharePct).toFixed(0);
 
   return (
-    <div className="anim mx-auto flex max-w-[900px] flex-col gap-4">
+    <div className="anim flex w-full flex-col gap-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-3">
         <div>
@@ -32,12 +32,12 @@ export default async function InstructorHomePage() {
             Overview & Analytics
           </h1>
           <p className="mt-0.5 text-xs text-zinc-500">
-            Pusat analitik kinerja kelas, pendapatan instruktur ({share}% revenue share), dan jadwal live mentoring.
+            Course performance analytics, instructor earnings ({share}% revenue share), and live mentoring schedules.
           </p>
         </div>
       </div>
 
-      <div className="grid-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { lbl: `Revenue (${share}%)`, val: formatIdr(stats.instructorRevenue), bg: "#f0fdf4", c: "var(--green)", icon: "DollarSign" },
           { lbl: "Total Enrolled", val: String(stats.enrolledTotal), bg: "#eff6ff", c: "var(--blue)", icon: "Users" },
@@ -112,7 +112,7 @@ export default async function InstructorHomePage() {
               })
             ) : (
               <div className="flex h-32 flex-col items-center justify-center text-sm text-zinc-500">
-                Tidak ada jadwal live terdekat.
+                No upcoming live classes scheduled.
               </div>
             )}
           </div>
@@ -145,7 +145,7 @@ export default async function InstructorHomePage() {
                 return (
                   <tr key={c.id}>
                     <td className="text-center text-[var(--text-4)]">{i + 1}</td>
-                    <td className="max-w-[200px] truncate font-semibold">{c.title}</td>
+                    <td className="font-semibold text-zinc-900">{c.title}</td>
                     <td>
                       <span className={`badge ${c.status === "published" ? "badge-success" : "badge-warning"}`}>
                         {c.status}

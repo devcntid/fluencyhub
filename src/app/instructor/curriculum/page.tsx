@@ -28,7 +28,7 @@ export default async function InstructorCurriculumPage({
 
   return (
     <CurriculumManager
-      courses={courses.map((c) => ({ id: c.id, title: c.title }))}
+      courses={courses.map((c) => ({ id: c.id, title: c.title, status: c.status }))}
       selectedId={selectedId}
       allowed={allowed}
       curriculum={curriculum}

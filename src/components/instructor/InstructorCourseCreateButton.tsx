@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
+import { useToast } from "@/components/ui/NotificationProvider";
 
 function slugify(value: string) {
   return value
@@ -14,6 +15,7 @@ function slugify(value: string) {
 
 export function InstructorCourseCreateButton() {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -24,6 +26,7 @@ export function InstructorCourseCreateButton() {
   const [shortDescription, setShortDescription] = useState("");
   const [price, setPrice] = useState("0");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [level, setLevel] = useState<"beginner" | "intermediate" | "advanced" | "all_levels">("beginner");
 
   function startCreate() {
     setTitle("");
@@ -31,6 +34,7 @@ export function InstructorCourseCreateButton() {
     setShortDescription("");
     setPrice("0");
     setThumbnailUrl("");
+    setLevel("beginner");
     setError("");
     setUploading(false);
     setOpen(true);
@@ -46,14 +50,14 @@ export function InstructorCourseCreateButton() {
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error || "Gagal mengunggah thumbnail.");
+        setError(json.error || "Failed to upload thumbnail.");
         return;
       }
       if (json.data?.url) {
         setThumbnailUrl(json.data.url);
       }
     } catch {
-      setError("Terjadi kesalahan jaringan saat mengunggah thumbnail.");
+      setError("Network error while uploading thumbnail.");
     } finally {
       setUploading(false);
     }
@@ -61,7 +65,7 @@ export function InstructorCourseCreateButton() {
 
   async function save() {
     if (uploading) {
-      setError("Harap tunggu hingga thumbnail selesai diunggah.");
+      setError("Please wait until thumbnail upload finishes.");
       return;
     }
     setBusy(true);
@@ -72,6 +76,7 @@ export function InstructorCourseCreateButton() {
       shortDescription: shortDescription || null,
       price: price ? price.replace(",", ".") : "0",
       thumbnailUrl: thumbnailUrl || null,
+      level,
     };
     try {
       const res = await fetch("/api/instructor/courses", {
@@ -82,7 +87,7 @@ export function InstructorCourseCreateButton() {
       setBusy(false);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        let errMsg = "Gagal menyimpan. Judul dan slug wajib diisi.";
+        let errMsg = "Save failed. Title and slug are required.";
         if (typeof err.error === "string") {
           errMsg = err.error;
         } else if (err.error?.fieldErrors) {
@@ -91,13 +96,15 @@ export function InstructorCourseCreateButton() {
           errMsg = err.message;
         }
         setError(errMsg);
+        toast.error(errMsg);
         return;
       }
       setOpen(false);
+      toast.success("Kursus baru berhasil dibuat!");
       router.refresh();
     } catch {
       setBusy(false);
-      setError("Terjadi kesalahan jaringan saat menyimpan kursus.");
+      setError("Network error while saving course.");
     }
   }
 
@@ -123,6 +130,21 @@ export function InstructorCourseCreateButton() {
           <label>
             <span className="label">Slug</span>
             <input className="input" value={slug} onChange={(e) => setSlug(e.target.value)} />
+          </label>
+          <label>
+            <span className="label">Level</span>
+            <select
+              className="input"
+              value={level}
+              onChange={(e) =>
+                setLevel(e.target.value as "beginner" | "intermediate" | "advanced" | "all_levels")
+              }
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="all_levels">All Levels</option>
+            </select>
           </label>
           <label>
             <span className="label">Short description</span>
@@ -157,7 +179,7 @@ export function InstructorCourseCreateButton() {
             />
             {uploading && (
               <p className="mt-1 text-xs font-semibold text-blue-600 animate-pulse">
-                Sedang mengunggah gambar... Mohon tunggu.
+                Uploading image... Please wait.
               </p>
             )}
           </label>
@@ -166,7 +188,7 @@ export function InstructorCourseCreateButton() {
             <img src={thumbnailUrl} alt="" className="h-24 w-40 rounded-[var(--r)] object-cover" />
           ) : null}
           <p className="text-xs text-[var(--text-4)] mt-2">
-            New courses are saved as &quot;Draft&quot; by default. An admin can publish them later.
+            New courses are saved as &quot;Draft&quot; by default. You can publish your course once you add at least 1 module containing both video and document materials.
           </p>
         </div>
         {error ? <p className="mt-3 text-sm text-[var(--red)]">{error}</p> : null}
@@ -175,7 +197,7 @@ export function InstructorCourseCreateButton() {
             Cancel
           </button>
           <button type="button" className="btn btn-primary btn-sm" disabled={busy || uploading} onClick={save}>
-            {busy ? "Menyimpan..." : uploading ? "Mengunggah..." : "Create"}
+            {busy ? "Saving..." : uploading ? "Uploading..." : "Create Course"}
           </button>
         </div>
       </AdminFormDialog>

@@ -26,10 +26,10 @@ export function CourseSwitcher({
     <div className="w-full">
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
         <span className="text-xs font-bold text-zinc-400 shrink-0 uppercase tracking-wider mr-1">
-          Materi Kelas:
+          Filter Courses:
         </span>
         <div className="flex items-center gap-2 flex-nowrap shrink-0">
-          {/* Tombol Lihat Semua Materi */}
+          {/* All Courses Button */}
           <button
             type="button"
             onClick={() => handleSelect("all")}
@@ -44,7 +44,7 @@ export function CourseSwitcher({
               size={15}
               color={isAll ? "#fff" : "currentColor"}
             />
-            <span>Semua Materi</span>
+            <span>All Courses</span>
             {isAll && (
               <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse ml-0.5" />
             )}

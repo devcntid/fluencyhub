@@ -14,7 +14,7 @@ export function AvatarUploader() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Ukuran file maksimal 5MB.");
+      alert("Maximum file size is 5MB.");
       return;
     }
 
@@ -30,7 +30,7 @@ export function AvatarUploader() {
       });
 
       if (!uploadRes.ok) {
-        throw new Error("Gagal mengunggah gambar.");
+        throw new Error("Failed to upload image.");
       }
 
       const uploadData = await uploadRes.json();
@@ -41,7 +41,7 @@ export function AvatarUploader() {
       router.refresh();
     } catch (err: unknown) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Gagal mengunggah foto.");
+      alert(err instanceof Error ? err.message : "Failed to upload photo.");
     } finally {
       setLoading(false);
       if (fileInputRef.current) {
@@ -65,7 +65,7 @@ export function AvatarUploader() {
         onClick={() => fileInputRef.current?.click()}
         className="rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 transition disabled:opacity-50"
       >
-        {loading ? "Mengunggah..." : "Ubah Foto"}
+        {loading ? "Uploading..." : "Change Photo"}
       </button>
     </div>
   );

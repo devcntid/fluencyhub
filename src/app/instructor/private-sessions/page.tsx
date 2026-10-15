@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isBefore, endOfDay } from "date-fns";
-import { id } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 
 export default function InstructorPrivateSessionsPage() {
   const [slots, setSlots] = useState<any[]>([]);
@@ -40,6 +41,18 @@ export default function InstructorPrivateSessionsPage() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(selectedCalendarDate || slotToDelete !== null || modalConfig.isOpen);
+    if (isAnyModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedCalendarDate, slotToDelete, modalConfig.isOpen]);
+
   const [zoomLink, setZoomLink] = useState("");
 
   async function fetchData() {
@@ -70,7 +83,7 @@ export default function InstructorPrivateSessionsPage() {
   }
 
   async function addSlot() {
-    if (!slotDate || !slotStart || !slotEnd) return showToast("Lengkapi semua field", "error");
+    if (!slotDate || !slotStart || !slotEnd) return showToast("Please fill in all fields", "error");
     const startAt = new Date(`${slotDate}T${slotStart}:00`).toISOString();
     const endAt = new Date(`${slotDate}T${slotEnd}:00`).toISOString();
 
@@ -83,22 +96,22 @@ export default function InstructorPrivateSessionsPage() {
       const json = await res.json();
       if (res.ok) {
         fetchData();
-        showToast("Jadwal slot berhasil ditambahkan!");
+        showToast("Available slot added successfully!");
         setSlotStart("");
         setSlotEnd("");
       } else {
-        showToast(json.error || "Gagal menambahkan slot", "error");
+        showToast(json.error || "Failed to add slot", "error");
       }
     } catch (e) {
       console.error(e);
-      showToast("Terjadi kesalahan jaringan", "error");
+      showToast("Network error occurred", "error");
     }
   }
 
   async function executeDeleteSlot() {
     if (slotToDelete === null) return;
     if (slotToDelete.isBooked && !deleteReason.trim()) {
-      showToast("Alasan pembatalan harus diisi.", "error");
+      showToast("Cancellation reason is required.", "error");
       return;
     }
     try {
@@ -109,18 +122,18 @@ export default function InstructorPrivateSessionsPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(json.error || "Gagal menghapus slot", "error");
+        showToast(json.error || "Failed to delete slot", "error");
         setSlotToDelete(null);
         setDeleteReason("");
         return;
       }
       fetchData();
-      showToast(slotToDelete.isBooked ? "Jadwal dihapus & sesi berhasil dibatalkan" : "Slot berhasil dihapus!");
+      showToast(slotToDelete.isBooked ? "Slot deleted and session cancelled" : "Slot removed successfully!");
       setSlotToDelete(null);
       setDeleteReason("");
     } catch (e) {
       console.error(e);
-      showToast("Gagal menghapus slot", "error");
+      showToast("Failed to delete slot", "error");
       setSlotToDelete(null);
       setDeleteReason("");
     }
@@ -142,21 +155,21 @@ export default function InstructorPrivateSessionsPage() {
         body: JSON.stringify({ status, notesOrReason })
       });
       if (res.ok) {
-        showToast("Status sesi berhasil diperbarui!");
+        showToast("Session status updated successfully!");
         fetchData();
       } else {
         const json = await res.json();
-        showToast(json.error || "Gagal mengupdate sesi", "error");
+        showToast(json.error || "Failed to update session", "error");
       }
     } catch (e) {
       console.error(e);
-      showToast("Terjadi kesalahan jaringan", "error");
+      showToast("Network error occurred", "error");
     }
   }
 
   const groupedSlots = slots.reduce((acc, slot) => {
     if (slot.status === 'cancelled') return acc;
-    // Slot yang sudah lewat waktu selesainya tidak ditampilkan di kalender ketersediaan
+    // Expired slots are not shown on the calendar
     if (new Date(slot.endAt) <= new Date()) return acc;
 
     const dateStr = format(new Date(slot.startAt), "yyyy-MM-dd");
@@ -174,16 +187,16 @@ export default function InstructorPrivateSessionsPage() {
   function nextMonth() { setCurrentMonth(addMonths(currentMonth, 1)); }
   function prevMonth() { setCurrentMonth(subMonths(currentMonth, 1)); }
 
-  if (!isMounted) return <div className="p-8 text-center text-zinc-500 animate-pulse font-medium">Memuat halaman...</div>;
+  if (!isMounted) return <div className="p-8 text-center text-zinc-500 animate-pulse font-medium">Loading calendar...</div>;
 
   return (
     <div className="p-4 md:p-8 space-y-10 w-full">
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight font-[family-name:var(--font-heading)] mb-2 bg-gradient-to-r from-zinc-900 to-zinc-500 bg-clip-text text-transparent">
-          Manajemen Sesi Privat
+          Private Sessions Management
         </h1>
         <p className="text-zinc-500 text-sm">
-          Atur ketersediaan waktu luangmu dan kelola permintaan sesi privat 1-on-1 dari learner.
+          Set up your availability calendar and manage 1-on-1 private mentoring requests from students.
         </p>
       </div>
 
@@ -194,9 +207,9 @@ export default function InstructorPrivateSessionsPage() {
               <div>
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                  Kalender Ketersediaan (Slot)
+                  Availability Calendar (Slots)
                 </h2>
-                <p className="text-xs text-zinc-500 mt-1">Pilih tanggal untuk menambah jam free.</p>
+                <p className="text-xs text-zinc-500 mt-1">Click any date to add or manage your available hours.</p>
               </div>
             </div>
           </div>
@@ -204,7 +217,7 @@ export default function InstructorPrivateSessionsPage() {
           <div className="p-6">
             <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm">
               <div className="flex items-center justify-between p-4 border-b border-zinc-100 bg-zinc-50/80">
-                <h3 className="font-bold text-zinc-800 text-lg capitalize">{format(currentMonth, "MMMM yyyy", { locale: id })}</h3>
+                <h3 className="font-bold text-zinc-800 text-lg capitalize">{format(currentMonth, "MMMM yyyy", { locale: enUS })}</h3>
                 <div className="flex gap-2">
                   <button className="p-2 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-sm" onClick={prevMonth}>
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
@@ -216,7 +229,7 @@ export default function InstructorPrivateSessionsPage() {
               </div>
               
               <div className="grid grid-cols-7 border-b border-zinc-100 bg-white">
-                {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map(d => (
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
                   <div key={d} className="py-2.5 text-center text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-wider">{d}</div>
                 ))}
               </div>
@@ -245,7 +258,7 @@ export default function InstructorPrivateSessionsPage() {
                         <div className="w-full mt-0.5">
                           <div className={`text-[8px] md:text-[9px] px-0.5 md:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-sm border leading-none md:leading-normal ${daySlots.some((s: any) => s.status !== 'available') ? 'bg-amber-100 text-amber-800 border-amber-200/50' : 'bg-emerald-100 text-emerald-700 border-emerald-200/50'}`}>
                             <span className="md:hidden">{daySlots.length}</span>
-                            <span className="hidden md:inline">{daySlots.length} Slot</span>
+                            <span className="hidden md:inline">{daySlots.length} Slot{daySlots.length > 1 ? "s" : ""}</span>
                           </div>
                         </div>
                       )}
@@ -261,9 +274,9 @@ export default function InstructorPrivateSessionsPage() {
           <div className="p-6 border-b border-zinc-100 bg-white/80">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-              Permintaan Sesi & Aktif
+              Session Requests & Active Bookings
             </h2>
-            <p className="text-xs text-zinc-500 mt-1">Daftar booking yang masuk dari siswa.</p>
+            <p className="text-xs text-zinc-500 mt-1">List of incoming bookings from enrolled students.</p>
           </div>
           
           <div className="p-6">
@@ -271,7 +284,7 @@ export default function InstructorPrivateSessionsPage() {
               {sessions.filter(s => s.status === 'pending' || s.status === 'confirmed').length === 0 ? (
                 <div className="text-center py-10 px-4 border-2 border-dashed border-zinc-200 rounded-2xl">
                   <svg className="w-10 h-10 text-zinc-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
-                  <p className="text-sm font-medium text-zinc-500">Belum ada permintaan masuk.</p>
+                  <p className="text-sm font-medium text-zinc-500">No session requests yet.</p>
                 </div>
               ) : (
                 sessions.filter(s => s.status === 'pending' || s.status === 'confirmed').map(sess => {
@@ -279,10 +292,10 @@ export default function InstructorPrivateSessionsPage() {
                   const start = sess.startAt ? new Date(sess.startAt) : new Date();
                   const end = sess.endAt ? new Date(sess.endAt) : new Date(start.getTime() + 60 * 60 * 1000);
                   
-                  // Tombol Buka Zoom HANYA muncul saat waktu sesi sudah mau mulai (15 menit sebelum mulai agar instruktur bisa bersiap) hingga sesi selesai
+                  // Zoom button appears 15 minutes before session start until session end
                   const canOpenZoom = now.getTime() >= (start.getTime() - 15 * 60 * 1000) && now.getTime() <= end.getTime();
 
-                  // Tombol Selesai HANYA muncul jika waktu sesi zoom privat sudah berjalan atau sudah selesai
+                  // Mark Completed button appears once the start time has been reached
                   const canMarkComplete = now.getTime() >= start.getTime();
 
                   return (
@@ -296,7 +309,7 @@ export default function InstructorPrivateSessionsPage() {
                         </div>
                         <div>
                           {sess.status === 'pending' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-200 shadow-sm animate-pulse">PENDING</span>}
-                          {sess.status === 'confirmed' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">DISATUJUI</span>}
+                          {sess.status === 'confirmed' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">CONFIRMED</span>}
                         </div>
                       </div>
                       
@@ -304,19 +317,19 @@ export default function InstructorPrivateSessionsPage() {
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-300"></div>
                         <p className="font-bold text-zinc-800 mb-1 flex items-center gap-1.5">
                           <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                          {format(start, "EEEE, d MMM yyyy • HH:mm", { locale: id })} - {format(end, "HH:mm")} WIB
+                          {format(start, "EEEE, d MMM yyyy • HH:mm", { locale: enUS })} - {format(end, "HH:mm")}
                         </p>
                         <p className="text-zinc-600 mt-2">
-                          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Topik Bahasan</span>
-                          "{sess.topic}"
+                          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Discussion Topic</span>
+                          &ldquo;{sess.topic}&rdquo;
                         </p>
                       </div>
 
                       <div className="flex gap-3">
                         {sess.status === 'pending' && (
                           <>
-                            <button className="btn flex-1 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-md py-2.5 transition-all font-bold" onClick={() => handleSessionAction(sess.id, 'confirmed')}>✅ Setujui</button>
-                            <button className="btn flex-1 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-sm py-2.5 transition-all font-bold" onClick={() => handleSessionAction(sess.id, 'rejected', "Alasan penolakan:")}>❌ Tolak</button>
+                            <button className="btn flex-1 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-md py-2.5 transition-all font-bold" onClick={() => handleSessionAction(sess.id, 'confirmed')}>✅ Approve</button>
+                            <button className="btn flex-1 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-sm py-2.5 transition-all font-bold" onClick={() => handleSessionAction(sess.id, 'rejected', "Decline reason:")}>❌ Decline</button>
                           </>
                         )}
                         {sess.status === 'confirmed' && (
@@ -326,32 +339,32 @@ export default function InstructorPrivateSessionsPage() {
                                 <svg className="w-4 h-4 text-blue-500 animate-pulse shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <span>Ruang Zoom akan dibuka menjelang sesi (15 menit sebelum mulai)</span>
+                                <span>Zoom room opens 15 minutes before the session starts</span>
                               </div>
                             )}
 
                             {canOpenZoom && (
                               <a href={sess.zoomLink || zoomLink || "#"} target="_blank" rel="noreferrer" className="btn flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 py-2.5 flex items-center justify-center gap-2 font-bold transition-all">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                                Buka Zoom
+                                Open Zoom
                               </a>
                             )}
 
                             {canMarkComplete && (
                               <button 
                                 className="btn flex-1 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-700 hover:text-emerald-800 rounded-xl shadow-sm py-2.5 transition-all font-bold flex items-center justify-center gap-1.5" 
-                                onClick={() => handleSessionAction(sess.id, 'completed', "Catatan (opsional):")}
+                                onClick={() => handleSessionAction(sess.id, 'completed', "Session Notes (optional):")}
                               >
                                 <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
-                                Selesai
+                                Mark Completed
                               </button>
                             )}
 
                             <button 
                               className="btn px-4 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-sm py-2.5 transition-all font-bold text-xs flex items-center justify-center gap-1.5" 
-                              onClick={() => handleSessionAction(sess.id, 'cancelled', "Alasan pembatalan (wajib diisi):")}
+                              onClick={() => handleSessionAction(sess.id, 'cancelled', "Cancellation reason (required):")}
                             >
-                              Batalkan
+                              Cancel Session
                             </button>
                           </div>
                         )}
@@ -366,7 +379,7 @@ export default function InstructorPrivateSessionsPage() {
       </div>
 
       {/* Modal Aksi Sesi */}
-      {modalConfig.isOpen && (
+      {isMounted && modalConfig.isOpen && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6">
@@ -381,7 +394,7 @@ export default function InstructorPrivateSessionsPage() {
                   </div>
                 )}
                 <h3 className="text-xl font-bold text-zinc-900">
-                  {modalConfig.status === 'rejected' ? 'Tolak Sesi' : modalConfig.status === 'cancelled' ? 'Batalkan Sesi' : 'Selesaikan Sesi'}
+                  {modalConfig.status === 'rejected' ? 'Decline Session' : modalConfig.status === 'cancelled' ? 'Cancel Session' : 'Complete Session'}
                 </h3>
               </div>
               <label className="block text-sm font-bold text-zinc-700 mb-2 uppercase tracking-wider">{modalConfig.promptText}</label>
@@ -389,7 +402,7 @@ export default function InstructorPrivateSessionsPage() {
                 className="w-full input border-zinc-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl min-h-[120px] resize-y p-4 text-sm"
                 value={modalConfig.value}
                 onChange={(e) => setModalConfig({ ...modalConfig, value: e.target.value })}
-                placeholder={modalConfig.status === 'rejected' ? 'Berikan alasan yang spesifik agar siswa mengerti...' : modalConfig.status === 'cancelled' ? 'Berikan alasan pembatalan sesi...' : 'Berikan catatan atau pesan untuk siswa...'}
+                placeholder={modalConfig.status === 'rejected' ? 'Provide a specific reason so the student understands...' : modalConfig.status === 'cancelled' ? 'State the reason for cancelling this session...' : 'Add any helpful notes or advice for the student...'}
                 autoFocus
               ></textarea>
             </div>
@@ -398,27 +411,28 @@ export default function InstructorPrivateSessionsPage() {
                 className="px-5 py-2.5 text-sm font-bold text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50 rounded-xl transition-colors"
                 onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
               >
-                Batal
+                Back
               </button>
               <button 
                 className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-md transition-transform active:scale-95 ${modalConfig.status === 'rejected' || modalConfig.status === 'cancelled' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'}`}
                 onClick={() => {
                   if ((modalConfig.status === 'rejected' || modalConfig.status === 'cancelled') && !modalConfig.value.trim()) {
-                    return showToast("Alasan tidak boleh kosong.", "error");
+                    return showToast("Reason cannot be empty.", "error");
                   }
                   processSessionAction(modalConfig.sessionId, modalConfig.status, modalConfig.value);
                   setModalConfig({ ...modalConfig, isOpen: false });
                 }}
               >
-                Kirim & Simpan
+                Submit & Save
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal Hapus Slot */}
-      {slotToDelete !== null && (
+      {isMounted && slotToDelete !== null && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6">
@@ -430,18 +444,18 @@ export default function InstructorPrivateSessionsPage() {
 
               {slotToDelete.isBooked ? (
                 <>
-                  <h3 className="text-lg font-bold text-zinc-900 text-center mb-1">Hapus Jadwal & Batalkan Sesi?</h3>
+                  <h3 className="text-lg font-bold text-zinc-900 text-center mb-1">Delete Slot & Cancel Session?</h3>
                   <p className="text-xs text-zinc-500 text-center mb-4 leading-relaxed">
-                    Jadwal ini sudah dibooking oleh <strong className="text-zinc-800">{slotToDelete.bookedBy || 'Siswa'}</strong>. Menghapus jadwal ini dari kalender akan secara otomatis membatalkan sesi murid dan mengirimkan notifikasi.
+                    This slot has already been booked by <strong className="text-zinc-800">{slotToDelete.bookedBy || 'Student'}</strong>. Deleting this slot will automatically cancel the student&apos;s session and notify them.
                   </p>
                   
                   <div className="mb-5">
                     <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">
-                      Alasan Pembatalan <span className="text-red-500">*</span>
+                      Cancellation Reason <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       className="w-full input border-zinc-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 rounded-xl min-h-[90px] resize-y p-3 text-sm"
-                      placeholder="Contoh: Ada keperluan mendesak yang tidak bisa ditinggalkan..."
+                      placeholder="e.g. An unexpected emergency occurred and I cannot attend..."
                       value={deleteReason}
                       onChange={(e) => setDeleteReason(e.target.value)}
                       autoFocus
@@ -450,9 +464,9 @@ export default function InstructorPrivateSessionsPage() {
                 </>
               ) : (
                 <>
-                  <h3 className="text-lg font-bold text-zinc-900 text-center mb-2">Hapus Slot Waktu?</h3>
+                  <h3 className="text-lg font-bold text-zinc-900 text-center mb-2">Delete Time Slot?</h3>
                   <p className="text-sm text-zinc-500 text-center mb-6">
-                    Kamu yakin ingin menghapus slot jam tersedia ini? Murid tidak akan bisa melihat jadwal ini lagi.
+                    Are you sure you want to delete this available time slot? Students will no longer see or book this slot.
                   </p>
                 </>
               )}
@@ -465,29 +479,30 @@ export default function InstructorPrivateSessionsPage() {
                     setDeleteReason("");
                   }}
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button 
                   className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md shadow-red-500/20 transition-all active:scale-95 disabled:opacity-50"
                   disabled={slotToDelete.isBooked && !deleteReason.trim()}
                   onClick={executeDeleteSlot}
                 >
-                  {slotToDelete.isBooked ? "Ya, Batalkan & Hapus" : "Ya, Hapus"}
+                  {slotToDelete.isBooked ? "Yes, Cancel & Delete" : "Yes, Delete"}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal Detail & Tambah Hari Ini */}
-      {selectedCalendarDate && (
+      {isMounted && selectedCalendarDate && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             <div className="p-5 border-b border-zinc-100 bg-zinc-50 flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-bold text-zinc-900 capitalize">{format(selectedCalendarDate, "EEEE, d MMMM yyyy", { locale: id })}</h3>
-                <p className="text-xs text-zinc-500 mt-1">Kelola jam luang untuk hari ini</p>
+                <h3 className="text-xl font-bold text-zinc-900 capitalize">{format(selectedCalendarDate, "EEEE, d MMMM yyyy", { locale: enUS })}</h3>
+                <p className="text-xs text-zinc-500 mt-1">Manage your available hours for this day</p>
               </div>
               <button className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/50 rounded-full transition-colors" onClick={() => setSelectedCalendarDate(null)}>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -501,40 +516,40 @@ export default function InstructorPrivateSessionsPage() {
                     <svg className="w-4 h-4 text-zinc-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Tanggal ini sudah lewat. Tidak dapat menambahkan jam baru di tanggal yang sudah berlalu.
+                    This date has passed. You cannot add new slots to past dates.
                   </p>
                 </div>
               ) : (
                 <div className="bg-white p-5 rounded-2xl mb-8 border border-zinc-200 shadow-sm">
                   <h4 className="text-sm font-bold text-zinc-900 mb-4 flex items-center gap-2">
                     <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                    Tambah Jam Baru
+                    Add New Time Slot
                   </h4>
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">Jam Mulai</label>
+                      <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">Start Time</label>
                       <input type="time" className="input w-full bg-zinc-50" value={slotStart} onChange={(e) => setSlotStart(e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">Jam Selesai</label>
+                      <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">End Time</label>
                       <input type="time" className="input w-full bg-zinc-50" value={slotEnd} onChange={(e) => setSlotEnd(e.target.value)} />
                     </div>
                   </div>
                   <button className="btn w-full bg-zinc-900 hover:bg-zinc-800 text-white shadow-md hover:-translate-y-0.5 transition-all rounded-xl py-2.5 text-sm font-bold" onClick={addSlot}>
-                    + Simpan Jam Ini
+                    + Save Slot
                   </button>
                 </div>
               )}
 
               <h4 className="text-sm font-bold text-zinc-900 mb-4 flex items-center gap-2">
                 <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                Daftar Jadwal ({groupedSlots[format(selectedCalendarDate, "yyyy-MM-dd")]?.length || 0})
+                Configured Slots ({groupedSlots[format(selectedCalendarDate, "yyyy-MM-dd")]?.length || 0})
               </h4>
               
               <div className="space-y-3">
                 {!groupedSlots[format(selectedCalendarDate, "yyyy-MM-dd")]?.length ? (
                   <div className="text-center py-8 border-2 border-dashed border-zinc-200 rounded-xl bg-zinc-50">
-                    <p className="text-sm font-medium text-zinc-500">Belum ada jam yang ditambahkan.</p>
+                    <p className="text-sm font-medium text-zinc-500">No time slots added for this date.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -558,7 +573,7 @@ export default function InstructorPrivateSessionsPage() {
                                 });
                                 setDeleteReason("");
                               }}
-                              title={isBooked ? "Hapus jadwal & batalkan sesi" : "Hapus jam ini"}
+                              title={isBooked ? "Delete slot & cancel session" : "Delete this slot"}
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
@@ -567,7 +582,7 @@ export default function InstructorPrivateSessionsPage() {
                             {isBooked ? (
                               <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${activeSession.status === 'pending' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>
-                                  {activeSession.status === 'pending' ? 'Menunggu' : 'Dibooking'}
+                                  {activeSession.status === 'pending' ? 'Pending' : 'Booked'}
                                 </span>
                                 <span className="text-xs text-zinc-600 font-medium truncate max-w-[130px]" title={activeSession.learnerName}>
                                   {activeSession.learnerName}
@@ -575,7 +590,7 @@ export default function InstructorPrivateSessionsPage() {
                               </div>
                             ) : (
                               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                Tersedia
+                                Available
                               </span>
                             )}
                           </div>
@@ -587,11 +602,12 @@ export default function InstructorPrivateSessionsPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Toast Notification */}
-      {toast.show && (
+      {isMounted && toast.show && typeof document !== "undefined" && createPortal(
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
           <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl border ${toast.type === 'success' ? 'bg-white border-emerald-100' : 'bg-red-50 border-red-100'}`}>
             {toast.type === 'success' ? (
@@ -607,7 +623,8 @@ export default function InstructorPrivateSessionsPage() {
               {toast.message}
             </p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

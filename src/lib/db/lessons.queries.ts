@@ -54,7 +54,7 @@ export async function listCoursePlayerCurriculum(courseId: number, userId: numbe
       courseId,
       title: s.title,
       lessons: s.lessons
-        .filter((l) => l.contentType !== "live_class")
+        .filter((l) => l.contentType === "youtube_video")
         .map((l) => ({
           id: l.id,
           sectionId: l.sectionId,
@@ -79,7 +79,7 @@ export async function getFirstLessonIdForCourse(courseId: number): Promise<numbe
   const rows = await sql`
     SELECT l.id FROM lessons l
     JOIN sections s ON s.id = l.section_id
-    WHERE s.course_id = ${courseId} AND l.deleted_at IS NULL AND l.content_type != 'live_class'
+    WHERE s.course_id = ${courseId} AND l.deleted_at IS NULL AND l.content_type = 'youtube_video'
     ORDER BY s.sort_order ASC, l.sort_order ASC, l.id ASC
     LIMIT 1
   `;
@@ -230,6 +230,7 @@ export type UpcomingLiveClass = {
   courseId: number;
   coachName: string;
   coachAvatar: string;
+  isCompleted?: boolean;
 };
 
 export async function listUpcomingLiveClasses(userId: number): Promise<UpcomingLiveClass[]> {
@@ -244,12 +245,14 @@ export async function listUpcomingLiveClasses(userId: number): Promise<UpcomingL
       c.title as course_title,
       c.id as course_id,
       u.name as coach_name,
-      u.avatar_url as coach_avatar
+      u.avatar_url as coach_avatar,
+      COALESCE(lp.is_completed, false) as is_completed
     FROM lessons l
     JOIN sections s ON s.id = l.section_id
     JOIN courses c ON c.id = s.course_id
     JOIN users u ON u.id = c.instructor_id
     JOIN enrollments e ON e.course_id = c.id
+    LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = ${userId}
     WHERE l.content_type = 'live_class'
       AND l.deleted_at IS NULL
       AND e.user_id = ${userId}
@@ -268,6 +271,49 @@ export async function listUpcomingLiveClasses(userId: number): Promise<UpcomingL
       courseId: Number(raw.course_id),
       coachName: String(raw.coach_name),
       coachAvatar: raw.coach_avatar ? String(raw.coach_avatar) : "https://i.pravatar.cc/150?u=" + String(raw.coach_name),
+      isCompleted: Boolean(raw.is_completed),
+    };
+  });
+}
+
+export async function listUpcomingLiveClassesForCourse(courseId: number, userId?: number | null): Promise<UpcomingLiveClass[]> {
+  const rows = await sql`
+    SELECT
+      l.id,
+      l.title,
+      l.live_class_datetime,
+      l.live_class_url,
+      COALESCE(l.duration_minutes, l.live_class_duration_min, 60) as duration_minutes,
+      s.title as module_name,
+      c.title as course_title,
+      c.id as course_id,
+      u.name as coach_name,
+      u.avatar_url as coach_avatar,
+      COALESCE(lp.is_completed, false) as is_completed
+    FROM lessons l
+    JOIN sections s ON s.id = l.section_id
+    JOIN courses c ON c.id = s.course_id
+    JOIN users u ON u.id = c.instructor_id
+    LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = ${userId ?? -1}
+    WHERE l.content_type = 'live_class'
+      AND l.deleted_at IS NULL
+      AND c.id = ${courseId}
+    ORDER BY l.live_class_datetime ASC NULLS LAST
+  `;
+  return rows.map((r) => {
+    const raw = r as Record<string, unknown>;
+    return {
+      id: Number(raw.id),
+      title: String(raw.title),
+      liveClassDatetime: raw.live_class_datetime ? new Date(String(raw.live_class_datetime)) : null,
+      liveClassUrl: raw.live_class_url ? String(raw.live_class_url) : null,
+      durationMinutes: Number(raw.duration_minutes ?? 60),
+      moduleName: String(raw.module_name),
+      courseTitle: String(raw.course_title),
+      courseId: Number(raw.course_id),
+      coachName: String(raw.coach_name),
+      coachAvatar: raw.coach_avatar ? String(raw.coach_avatar) : "https://i.pravatar.cc/150?u=" + String(raw.coach_name),
+      isCompleted: Boolean(raw.is_completed),
     };
   });
 }

@@ -32,7 +32,7 @@ export default async function ProfilePage() {
             Welcome, {userName}
           </h1>
           <p className="text-xs sm:text-sm text-zinc-500">
-            Berikut informasi mengenai profil kamu
+            Here is your profile information
           </p>
         </div>
       </div>
@@ -49,7 +49,7 @@ export default async function ProfilePage() {
           )}
           <div className="flex flex-col min-w-0">
             <span className="text-lg sm:text-xl font-bold text-zinc-900 truncate">{userName}</span>
-            <span className="text-xs sm:text-sm text-zinc-500 truncate">{dbUser?.email || session?.user?.email || "email@tidak-tersedia.com"}</span>
+            <span className="text-xs sm:text-sm text-zinc-500 truncate">{dbUser?.email || session?.user?.email || "email@unavailable.com"}</span>
           </div>
         </div>
         
@@ -61,27 +61,27 @@ export default async function ProfilePage() {
       {/* Cards Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
         
-        {/* Card Kiri: Informasi Pribadi (Client Component Form) */}
+        {/* Left Card: Personal Information (Client Component Form) */}
         <ProfileForm 
           initialName={userName} 
           initialWhatsapp={dbUser?.whatsappNumber || ""} 
         />
 
-        {/* Card Kanan: Informasi Akun */}
+        {/* Right Card: Account Information */}
         <div className="flex flex-col w-full rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-sm">
-          <h2 className="mb-6 text-xl font-bold text-zinc-900">Informasi Akun</h2>
+          <h2 className="mb-6 text-xl font-bold text-zinc-900">Account Information</h2>
           
           <div className="flex flex-col w-full gap-4 rounded-xl bg-blue-50 p-5 border border-blue-100">
             <div className="flex justify-between items-center gap-4">
-              <span className="text-sm font-semibold text-blue-900">Tipe Member</span>
+              <span className="text-sm font-semibold text-blue-900">Membership Type</span>
               <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white text-right">
                 {dbUser?.role === 'admin' ? 'Admin' : dbUser?.role === 'instructor' ? 'Instructor' : 'Hybrid Pro'}
               </span>
             </div>
             <div className="flex justify-between items-center gap-4">
-              <span className="text-sm font-semibold text-blue-900">Bergabung Sejak</span>
+              <span className="text-sm font-semibold text-blue-900">Joined Since</span>
               <span className="text-sm font-bold text-blue-900 text-right">
-                {dbUser?.createdAt ? new Date(dbUser.createdAt).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : 'September 2026'}
+                {dbUser?.createdAt ? new Date(dbUser.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'September 2026'}
               </span>
             </div>
           </div>

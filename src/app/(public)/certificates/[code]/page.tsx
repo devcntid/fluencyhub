@@ -3,10 +3,36 @@ import QRCode from "qrcode";
 import { getCertificateByCode } from "@/lib/db/certificates.queries";
 import { CertificateViewer } from "./CertificateViewer";
 
-export const metadata = {
-  title: "Verifikasi Sertifikat Resmi — FluencyHub",
-  description: "Halaman verifikasi keaslian sertifikat dan rapor nilai kelulusan siswa FluencyHub Academy.",
-};
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { code } = await params;
+  const { view } = await searchParams;
+  const certificate = await getCertificateByCode(code);
+
+  if (!certificate) {
+    return {
+      title: "Sertifikat Tidak Ditemukan — FluencyHub",
+    };
+  }
+
+  const cleanStudent = certificate.studentName.replace(/[/\\?%*:|"<>]/g, "").trim();
+  const cleanCourse = certificate.courseTitle.replace(/[/\\?%*:|"<>]/g, "").trim();
+  const isReport = view === "report";
+
+  return {
+    title: isReport
+      ? `Rapor Nilai - ${cleanStudent} - ${cleanCourse}`
+      : `Sertifikat - ${cleanStudent} - ${cleanCourse}`,
+    description: `Dokumen resmi ${
+      isReport ? "Rapor Nilai Akademik" : "Sertifikat Kelulusan"
+    } siswa ${certificate.studentName} untuk kursus ${certificate.courseTitle} di FluencyHub Academy.`,
+  };
+}
 
 export default async function CertificatePage({
   params,

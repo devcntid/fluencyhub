@@ -172,7 +172,7 @@ export function InstructorExamReviewWorkbench({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error || "Gagal menyimpan penilaian.");
+        setError(json.error || "Failed to save grading evaluation.");
         setSaving(false);
         return;
       }
@@ -204,17 +204,18 @@ export function InstructorExamReviewWorkbench({
       setSaving(false);
       setSuccessMsg(
         isPassed
-          ? `✓ Nilai rata-rata ${calculatedAverage} tersimpan! Siswa dinyatakan Lulus dan Sertifikat resmi telah otomatis terbit.`
-          : `✓ Penilaian tersimpan (Nilai rata-rata ${calculatedAverage}). Siswa berstatus Belum Lulus / Remedial.`
+          ? `✓ Average score of ${calculatedAverage} saved! Student has Passed and official Certificate has been issued.`
+          : `✓ Evaluation saved (Average score ${calculatedAverage}). Student status: Needs Remedial.`
       );
       router.refresh();
     } catch {
       setSaving(false);
-      setError("Terjadi kesalahan koneksi saat menyimpan penilaian.");
+      setError("Network error occurred while saving evaluation.");
     }
   }
 
   const ytId = selectedSubmission ? getYouTubeId(selectedSubmission.youtubeUrl) : null;
+  const videoUrl = selectedSubmission?.youtubeUrl || (ytId ? `https://www.youtube.com/watch?v=${ytId}` : null);
   const isPassingGrade = averageScore >= passingScore;
 
   return (
@@ -228,10 +229,10 @@ export function InstructorExamReviewWorkbench({
             <Link
               href={`/instructor/curriculum?tab=exams&courseId=${course.id}`}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-bold text-zinc-700 shadow-xs transition shrink-0"
-              title="Kembali ke Kurikulum"
+              title="Back to Curriculum"
             >
               <LandingIcon name="ArrowLeft" size={13} color="currentColor" />
-              <span>Kurikulum</span>
+              <span>Curriculum</span>
             </Link>
 
             <span className="text-zinc-300 hidden sm:inline">•</span>
@@ -239,13 +240,13 @@ export function InstructorExamReviewWorkbench({
             {/* Course Title Badge */}
             <div
               className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/70 border border-blue-200/80 text-blue-950 text-xs font-extrabold max-w-[240px] sm:max-w-[420px] truncate shadow-2xs"
-              title={`Kelas aktif: ${course.title}`}
+              title={`Active Course: ${course.title}`}
             >
               <LandingIcon name="BookOpen" size={13} color="#2563eb" />
               <span className="truncate">{course.title}</span>
               {exam && (
                 <span className="hidden md:inline-block text-[11px] font-semibold text-blue-600/80 shrink-0 ml-1">
-                  (KKM: {passingScore})
+                  (Passing: {passingScore})
                 </span>
               )}
             </div>
@@ -259,7 +260,7 @@ export function InstructorExamReviewWorkbench({
                 {pendingCount} Pending
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {passedCount} Lulus
+                {passedCount} Passed
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-zinc-100 text-zinc-600 border border-zinc-200">
                 {failedCount} Remedial
@@ -271,7 +272,7 @@ export function InstructorExamReviewWorkbench({
               courseTitle={course.title}
               initialExam={exam}
               initialTab="main"
-              triggerLabel="📄 Soal Utama"
+              triggerLabel="Main Paper"
               triggerClassName="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/70 text-xs font-bold text-blue-900 shadow-xs transition shrink-0 cursor-pointer"
             />
 
@@ -281,7 +282,7 @@ export function InstructorExamReviewWorkbench({
               initialExam={exam}
               initialTab="remedial"
               iconName="RotateCcw"
-              triggerLabel={exam?.content?.remedialFileUrl ? "🔄 Remedial (Aktif)" : "🔄 + Remedial"}
+              triggerLabel={exam?.content?.remedialFileUrl ? "Remedial (Active)" : "+ Remedial"}
               triggerClassName={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold shadow-xs transition shrink-0 cursor-pointer ${
                 exam?.content?.remedialFileUrl
                   ? "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
@@ -304,10 +305,10 @@ export function InstructorExamReviewWorkbench({
                     ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                     : "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50"
                 }`}
-                title={showStudentList ? "Sembunyikan panel daftar siswa (Lebarkan Dokumen)" : "Buka daftar semua siswa"}
+                title={showStudentList ? "Hide student list (Maximize Document Width)" : "Show all students"}
               >
                 <LandingIcon name="Users" size={13} color="currentColor" />
-                <span>{showStudentList ? "Tutup Daftar Siswa" : `Buka Daftar Siswa (${submissions.length})`}</span>
+                <span>{showStudentList ? "Hide Student List" : `Student List (${submissions.length})`}</span>
               </button>
 
               <span className="text-zinc-200 hidden sm:inline">|</span>
@@ -319,14 +320,14 @@ export function InstructorExamReviewWorkbench({
                   onClick={handlePrev}
                   disabled={!hasPrev}
                   className="p-1.5 rounded-lg text-zinc-600 hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  title="Siswa Sebelumnya (Keyboard: Panah Kiri)"
+                  title="Previous Student (Keyboard: Left Arrow)"
                 >
                   <LandingIcon name="ArrowLeft" size={13} color="currentColor" />
                 </button>
 
                 <div className="flex items-center gap-2 px-2.5 py-0.5 min-w-0">
                   <span className="text-[11px] font-black text-zinc-800 truncate max-w-[140px] sm:max-w-[200px]">
-                    {selectedSubmission?.studentName || "Pilih Siswa"}
+                    {selectedSubmission?.studentName || "Select Student"}
                   </span>
                   <span className="text-[10px] font-bold text-zinc-400">
                     ({filteredSubmissions.length > 0 ? `${currentIndex + 1}/${filteredSubmissions.length}` : "0/0"})
@@ -342,7 +343,7 @@ export function InstructorExamReviewWorkbench({
                       }`}
                     >
                       {selectedSubmission.status === "passed"
-                        ? `Lulus (${selectedSubmission.finalScore})`
+                        ? `Passed (${selectedSubmission.finalScore})`
                         : selectedSubmission.status === "failed"
                         ? "Remedial"
                         : "Pending"}
@@ -355,7 +356,7 @@ export function InstructorExamReviewWorkbench({
                   onClick={handleNext}
                   disabled={!hasNext}
                   className="p-1.5 rounded-lg text-zinc-600 hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  title="Siswa Berikutnya (Keyboard: Panah Kanan)"
+                  title="Next Student (Keyboard: Right Arrow)"
                 >
                   <LandingIcon name="ArrowRight" size={13} color="currentColor" />
                 </button>
@@ -367,11 +368,11 @@ export function InstructorExamReviewWorkbench({
               {!showStudentList ? (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Mode Fokus (Dokumen Lebar Maksimal)
+                  Focus Mode (Full Width Document)
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-lg">
-                  Mode Panel Lengkap (3 Kolom)
+                  Full Panel Mode (3 Columns)
                 </span>
               )}
             </div>
@@ -388,10 +389,10 @@ export function InstructorExamReviewWorkbench({
           </div>
           <div className="max-w-md space-y-1.5">
             <h3 className="text-base sm:text-lg font-black text-zinc-900">
-              Belum Ada Siswa Mengumpulkan Jawaban Ujian
+              No Student Submissions Yet
             </h3>
             <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">
-              Kelas <strong>{course.title}</strong> saat ini belum memiliki lembar jawaban ujian yang dikumpulkan oleh siswa.
+              Course <strong>{course.title}</strong> does not have any submitted exam papers yet.
             </p>
           </div>
 
@@ -401,13 +402,13 @@ export function InstructorExamReviewWorkbench({
               className="btn btn-primary btn-sm text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-xs"
             >
               <LandingIcon name="FileText" size={13} color="#fff" />
-              Kelola File Soal Ujian &rarr;
+              Manage Exam Questions &rarr;
             </Link>
             <Link
               href={`/instructor/curriculum?tab=exams&courseId=${course.id}`}
               className="btn btn-secondary btn-sm text-xs font-bold"
             >
-              Kembali ke Kurikulum
+              Back to Curriculum
             </Link>
           </div>
         </div>
@@ -421,15 +422,15 @@ export function InstructorExamReviewWorkbench({
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-100">
                 <span className="text-xs font-extrabold text-zinc-800 flex items-center gap-1.5">
                   <LandingIcon name="Users" size={13} color="#2563eb" />
-                  Daftar Peserta ({submissions.length})
+                  Enrolled Students ({submissions.length})
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowStudentList(false)}
                   className="text-zinc-400 hover:text-zinc-700 text-xs px-1.5 py-0.5 rounded-lg hover:bg-zinc-100 transition font-bold flex items-center gap-1"
-                  title="Tutup panel (Lebarkan lembar dokumen)"
+                  title="Close panel (Maximize document canvas)"
                 >
-                  <span>Tutup</span>
+                  <span>Close</span>
                   <span>✕</span>
                 </button>
               </div>
@@ -438,7 +439,7 @@ export function InstructorExamReviewWorkbench({
               <div className="relative mb-2">
                 <input
                   type="text"
-                  placeholder="Cari nama atau email..."
+                  placeholder="Search student name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full text-xs py-2 px-3 pl-8 rounded-xl border border-zinc-200 bg-zinc-50 placeholder:text-zinc-400 focus:bg-white focus:border-blue-500 outline-none transition"
@@ -469,7 +470,7 @@ export function InstructorExamReviewWorkbench({
                     statusFilter === "all" ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
                   }`}
                 >
-                  Semua ({submissions.length})
+                  All ({submissions.length})
                 </button>
                 <button
                   type="button"
@@ -491,7 +492,7 @@ export function InstructorExamReviewWorkbench({
                       : "bg-emerald-50 text-emerald-700 border border-emerald-200"
                   }`}
                 >
-                  Lulus ({passedCount})
+                  Passed ({passedCount})
                 </button>
                 <button
                   type="button"
@@ -508,7 +509,7 @@ export function InstructorExamReviewWorkbench({
               <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
                 {filteredSubmissions.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-zinc-200 p-6 text-center text-xs text-zinc-400 mt-2">
-                    Tidak ada peserta yang cocok.
+                    No matching students found.
                   </div>
                 ) : (
                   filteredSubmissions.map((s) => {
@@ -535,18 +536,18 @@ export function InstructorExamReviewWorkbench({
                                 : "bg-amber-100 text-amber-800"
                             }`}
                           >
-                            {s.status === "passed" ? "Lulus" : s.status === "failed" ? "Remedial" : "Pending"}
+                            {s.status === "passed" ? "Passed" : s.status === "failed" ? "Remedial" : "Pending"}
                           </span>
                         </div>
                         <span className="text-[10px] text-zinc-400 block truncate mt-0.5">{s.studentEmail}</span>
                         <div className="flex items-center justify-between mt-1 pt-1 border-t border-zinc-100 text-[10px]">
                           <span suppressHydrationWarning className="text-zinc-400">
                             {mounted
-                              ? new Date(s.submittedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+                              ? new Date(s.submittedAt).toLocaleDateString("en-US", { day: "numeric", month: "short" })
                               : "..."}
                           </span>
                           <span className="font-bold text-blue-600">
-                            {s.finalScore !== null ? `${s.finalScore}/100` : "Belum Dinilai"}
+                            {s.finalScore !== null ? `${s.finalScore}/100` : "Not Graded"}
                           </span>
                         </div>
                       </button>
@@ -575,7 +576,7 @@ export function InstructorExamReviewWorkbench({
                           }`}
                         >
                           <LandingIcon name="FileText" size={13} color="currentColor" />
-                          <span>Lembar Jawaban PDF</span>
+                          <span>PDF Answer Sheet</span>
                         </button>
                         <button
                           type="button"
@@ -585,7 +586,7 @@ export function InstructorExamReviewWorkbench({
                           }`}
                         >
                           <LandingIcon name="Video" size={13} color="currentColor" />
-                          <span>Video Siswa</span>
+                          <span>Student Video</span>
                         </button>
                       </div>
                     ) : (
@@ -594,35 +595,60 @@ export function InstructorExamReviewWorkbench({
                           PDF
                         </div>
                         <span className="text-xs font-bold text-zinc-800 truncate">
-                          {selectedSubmission.answers?.answerFileName || "Lembar_Jawaban_Ujian.pdf"}
+                          {selectedSubmission.answers?.answerFileName || "Answer_Sheet.pdf"}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Document Action Buttons */}
-                  {selectedSubmission.answers?.answerFileUrl && (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <a
-                        href={selectedSubmission.answers.answerFileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn btn-secondary btn-sm text-[11px] font-bold py-1 px-2.5 flex items-center gap-1"
-                      >
-                        <LandingIcon name="Eye" size={12} color="currentColor" />
-                        <span>Buka Tab Baru</span>
-                      </a>
-                      <a
-                        href={selectedSubmission.answers.answerFileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        download
-                        className="btn btn-primary btn-sm text-[11px] font-bold py-1 px-2.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center gap-1"
-                      >
-                        <LandingIcon name="Download" size={12} color="#fff" />
-                        <span>Download</span>
-                      </a>
-                    </div>
+                  {/* Media Action Buttons (Contextual based on Active Tab) */}
+                  {activeMediaTab === "video" ? (
+                    videoUrl ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href={videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-secondary btn-sm text-[11px] font-bold py-1 px-2.5 flex items-center gap-1 hover:text-red-600"
+                        >
+                          <LandingIcon name="Eye" size={12} color="currentColor" />
+                          <span>Open New Tab</span>
+                        </a>
+                        <a
+                          href={videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-primary btn-sm text-[11px] font-bold py-1 px-2.5 bg-red-600 hover:bg-red-700 text-white shadow-xs flex items-center gap-1"
+                        >
+                          <LandingIcon name="Video" size={12} color="#fff" />
+                          <span>{ytId ? "Watch on YouTube" : "Watch Video"}</span>
+                        </a>
+                      </div>
+                    ) : null
+                  ) : (
+                    selectedSubmission.answers?.answerFileUrl ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href={selectedSubmission.answers.answerFileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-secondary btn-sm text-[11px] font-bold py-1 px-2.5 flex items-center gap-1"
+                        >
+                          <LandingIcon name="Eye" size={12} color="currentColor" />
+                          <span>Open New Tab</span>
+                        </a>
+                        <a
+                          href={selectedSubmission.answers.answerFileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          download
+                          className="btn btn-primary btn-sm text-[11px] font-bold py-1 px-2.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center gap-1"
+                        >
+                          <LandingIcon name="Download" size={12} color="#fff" />
+                          <span>Download</span>
+                        </a>
+                      </div>
+                    ) : null
                   )}
                 </div>
 
@@ -633,11 +659,11 @@ export function InstructorExamReviewWorkbench({
                       <iframe
                         src={selectedSubmission.answers.answerFileUrl}
                         className="w-full h-full border-0"
-                        title="Lembar Jawaban Siswa"
+                        title="Student Answer Sheet"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-center p-8 text-zinc-400 text-xs">
-                        Siswa tidak melampirkan file lembar jawaban.
+                        Student has not attached an answer sheet file.
                       </div>
                     )
                   ) : (
@@ -654,7 +680,7 @@ export function InstructorExamReviewWorkbench({
                         </div>
                       ) : (
                         <div className="text-white text-xs text-center space-y-2">
-                          <p>Tautan Video Siswa:</p>
+                          <p>Student Video URL:</p>
                           <a
                             href={selectedSubmission.youtubeUrl || "#"}
                             target="_blank"
@@ -672,14 +698,14 @@ export function InstructorExamReviewWorkbench({
                 {/* Student Notes Bar (if any) */}
                 {selectedSubmission.answers?.studentNotes && (
                   <div className="px-4 py-2.5 bg-blue-50/80 border-t border-blue-100 text-xs text-zinc-700 flex items-start gap-2 shrink-0">
-                    <span className="font-bold text-blue-900 shrink-0">Catatan Siswa:</span>
+                    <span className="font-bold text-blue-900 shrink-0">Student Notes:</span>
                     <p className="italic text-zinc-600 truncate">&ldquo;{selectedSubmission.answers.studentNotes}&rdquo;</p>
                   </div>
                 )}
               </>
             ) : (
               <div className="flex h-full items-center justify-center text-center p-8 text-zinc-400 text-xs">
-                Pilih peserta di panel kiri untuk menampilkan lembar jawaban.
+                Select a student from the left panel to display answer sheet.
               </div>
             )}
           </div>
@@ -708,22 +734,22 @@ export function InstructorExamReviewWorkbench({
                       }`}
                     >
                       {selectedSubmission.status === "passed"
-                        ? `Lulus (${selectedSubmission.finalScore})`
+                        ? `Passed (${selectedSubmission.finalScore})`
                         : selectedSubmission.status === "failed"
                         ? `Remedial (${selectedSubmission.finalScore})`
                         : "Pending"}
                     </span>
                   </div>
                   <div className="text-[10px] text-zinc-400 pt-1 border-t border-zinc-200/60 flex items-center justify-between">
-                    <span>Waktu Pengumpulan:</span>
+                    <span>Submitted At:</span>
                     <span suppressHydrationWarning className="font-semibold text-zinc-600">
                       {mounted
-                        ? `${new Date(selectedSubmission.submittedAt).toLocaleDateString("id-ID", {
+                        ? new Date(selectedSubmission.submittedAt).toLocaleDateString("en-US", {
                             day: "numeric",
                             month: "short",
                             hour: "2-digit",
                             minute: "2-digit",
-                          })} WIB`
+                          })
                         : "..."}
                     </span>
                   </div>
@@ -735,18 +761,18 @@ export function InstructorExamReviewWorkbench({
                     <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
                       <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 flex items-center gap-1.5">
                         <LandingIcon name="Award" size={14} color="currentColor" />
-                        Penilaian Instruktur
+                        Instructor Grading
                       </h3>
-                      <span className="text-[10px] font-bold text-zinc-400">Standar Lulus: {passingScore}</span>
+                      <span className="text-[10px] font-bold text-zinc-400">Passing Score: {passingScore}</span>
                     </div>
 
                     {/* 4 Skills Input Section */}
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-[11px] font-bold text-zinc-700">
-                          Penilaian 4 Aspek Kemahiran (0 - 100)
+                          4 Skills Assessment (0 - 100)
                         </label>
-                        <span className="text-[10px] text-zinc-400">Instruktur mengisi tiap aspek</span>
+                        <span className="text-[10px] text-zinc-400">Score each aspect</span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
@@ -757,7 +783,7 @@ export function InstructorExamReviewWorkbench({
                               <LandingIcon name="BookOpen" size={12} color="var(--brand, #2563eb)" />
                               Reading
                             </span>
-                            <span className="text-[9px] text-blue-600 font-semibold">Membaca</span>
+                            <span className="text-[9px] text-blue-600 font-semibold">Comprehension</span>
                           </div>
                           <div className="relative">
                             <input
@@ -779,7 +805,7 @@ export function InstructorExamReviewWorkbench({
                               <LandingIcon name="Volume2" size={12} color="#4f46e5" />
                               Listening
                             </span>
-                            <span className="text-[9px] text-indigo-600 font-semibold">Mendengar</span>
+                            <span className="text-[9px] text-indigo-600 font-semibold">Audio</span>
                           </div>
                           <div className="relative">
                             <input
@@ -801,7 +827,7 @@ export function InstructorExamReviewWorkbench({
                               <LandingIcon name="FileText" size={12} color="#7c3aed" />
                               Writing
                             </span>
-                            <span className="text-[9px] text-violet-600 font-semibold">Menulis</span>
+                            <span className="text-[9px] text-violet-600 font-semibold">Grammar</span>
                           </div>
                           <div className="relative">
                             <input
@@ -823,7 +849,7 @@ export function InstructorExamReviewWorkbench({
                               <LandingIcon name="Video" size={12} color="#059669" />
                               Speaking
                             </span>
-                            <span className="text-[9px] text-emerald-600 font-semibold">Berbicara</span>
+                            <span className="text-[9px] text-emerald-600 font-semibold">Fluency</span>
                           </div>
                           <div className="relative">
                             <input
@@ -843,7 +869,7 @@ export function InstructorExamReviewWorkbench({
                     {/* Quick Preset Buttons */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-zinc-400 font-semibold">Preset Cepat Semua Aspek:</span>
+                        <span className="text-[10px] text-zinc-400 font-semibold">Quick Score Preset (All Aspects):</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {[100, 95, 90, 85, 80, 75, 70, 65, 50].map((val) => (
@@ -875,7 +901,7 @@ export function InstructorExamReviewWorkbench({
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-[10px] uppercase tracking-wider font-extrabold text-zinc-400 block">
-                            Nilai Akhir (Kalkulasi Otomatis)
+                            Final Score (Auto-Calculated)
                           </span>
                           <p className="text-[10px] text-zinc-400 mt-0.5">
                             (R: {readingScore} + L: {listeningScore} + W: {writingScore} + S: {speakingScore}) ÷ 4
@@ -888,7 +914,7 @@ export function InstructorExamReviewWorkbench({
                       </div>
 
                       <div className="mt-2 pt-2 border-t border-zinc-700/80 flex items-center justify-between text-[11px]">
-                        <span className="text-zinc-300">Hasil Kelulusan:</span>
+                        <span className="text-zinc-300">Result:</span>
                         <span
                           className={`font-black px-2 py-0.5 rounded-full text-[10px] ${
                             isPassingGrade
@@ -896,7 +922,7 @@ export function InstructorExamReviewWorkbench({
                               : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                           }`}
                         >
-                          {isPassingGrade ? "LULUS (>= 70)" : "BELUM LULUS / REMEDIAL (< 70)"}
+                          {isPassingGrade ? `LULUS (>= ${passingScore})` : `REMEDIAL (< ${passingScore})`}
                         </span>
                       </div>
                     </div>
@@ -915,9 +941,9 @@ export function InstructorExamReviewWorkbench({
                             <LandingIcon name="CheckCircle" size={13} color="currentColor" />
                           </div>
                           <div>
-                            <strong className="font-bold">STATUS: LULUS</strong>
+                            <strong className="font-bold">STATUS: LULUS (Score &ge; {passingScore})</strong>
                             <p className="mt-0.5 text-[10px] text-emerald-700">
-                              Sertifikat kelulusan ber-QR code otomatis terbit ke profil siswa.
+                              Official QR-verified graduation certificate is automatically issued to student profile.
                             </p>
                           </div>
                         </div>
@@ -927,10 +953,10 @@ export function InstructorExamReviewWorkbench({
                             <LandingIcon name="FileText" size={13} color="currentColor" />
                           </div>
                           <div>
-                            <strong className="font-bold">STATUS: BELUM LULUS (REMEDIAL)</strong>
+                            <strong className="font-bold">STATUS: NEEDS REMEDIAL (Score &lt; {passingScore})</strong>
                             <p className="mt-0.5 text-[10px] text-amber-700">
-                              Nilai di bawah {passingScore}. Siswa akan mengunduh{" "}
-                              <strong>{exam?.content?.remedialFileUrl ? "Lembar Soal Khusus Remedial (Paket B)" : "Lembar Soal Utama untuk perbaikan"}</strong>.
+                              Score below {passingScore}. Student will download{" "}
+                              <strong>{exam?.content?.remedialFileUrl ? "Remedial Question Paper (Set B)" : "Main Exam Paper for revision"}</strong>.
                             </p>
                           </div>
                         </div>
@@ -939,12 +965,12 @@ export function InstructorExamReviewWorkbench({
 
                     {/* Feedback Textarea */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-zinc-600 block">Catatan & Masukan Instruktur</label>
+                      <label className="text-[11px] font-bold text-zinc-600 block">Instructor Feedback & Comments</label>
                       <textarea
                         rows={3}
                         value={feedback}
                         onChange={(e) => setFeedback(e.target.value)}
-                        placeholder="Tuliskan evaluasi artikulasi, analisis, atau arahan remedial..."
+                        placeholder="Provide feedback on articulation, analysis, grammar, or remedial guidance..."
                         className="w-full text-xs p-2.5 rounded-xl border border-zinc-300 bg-white placeholder:text-zinc-400 leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none"
                       />
 
@@ -952,24 +978,24 @@ export function InstructorExamReviewWorkbench({
                       <div className="flex flex-wrap gap-1 pt-0.5">
                         <button
                           type="button"
-                          onClick={() => appendFeedbackTemplate("Artikulasi sangat jelas dan struktur penyampaian baik.")}
+                          onClick={() => appendFeedbackTemplate("Very clear articulation and well-structured presentation.")}
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition"
                         >
-                          + Artikulasi Baik
+                          + Clear Articulation
                         </button>
                         <button
                           type="button"
-                          onClick={() => appendFeedbackTemplate("Perhatikan kembali kelengkapan analisis data pada poin akhir.")}
+                          onClick={() => appendFeedbackTemplate("Please review and elaborate more on the final analytical points.")}
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition"
                         >
-                          + Analisis Akhir
+                          + Elaborate Analysis
                         </button>
                         <button
                           type="button"
-                          onClick={() => appendFeedbackTemplate("Nilai belum memenuhi batas. Silakan kumpulkan lembar remedial.")}
+                          onClick={() => appendFeedbackTemplate("Score did not meet the passing threshold. Please submit the remedial paper.")}
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-50 hover:bg-red-100 text-red-700 border border-red-100 transition"
                         >
-                          + Remedial
+                          + Needs Remedial
                         </button>
                       </div>
                     </div>
@@ -1001,14 +1027,14 @@ export function InstructorExamReviewWorkbench({
                       <LandingIcon name={isPassingGrade ? "Award" : "FileText"} size={14} color="#fff" />
                       <span>
                         {saving
-                          ? "Menyimpan..."
+                          ? "Saving..."
                           : selectedSubmission.status !== "pending"
                           ? isPassingGrade
-                            ? "Perbarui Penilaian & Terbitkan Sertifikat"
-                            : "Perbarui Evaluasi (Set ke Remedial)"
+                            ? "Update Grade & Issue Certificate"
+                            : "Update Evaluation (Set to Remedial)"
                           : isPassingGrade
-                          ? "Simpan & Terbitkan Sertifikat"
-                          : "Simpan Evaluasi (Remedial)"}
+                          ? "Save & Issue Certificate"
+                          : "Save Evaluation (Remedial)"}
                       </span>
                     </button>
 
@@ -1020,7 +1046,7 @@ export function InstructorExamReviewWorkbench({
                         disabled={!hasPrev}
                         className="hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
                       >
-                        &larr; Sebelumnya
+                        &larr; Previous
                       </button>
                       <button
                         type="button"
@@ -1028,7 +1054,7 @@ export function InstructorExamReviewWorkbench({
                         disabled={!hasNext}
                         className="hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
                       >
-                        Berikutnya &rarr;
+                        Next &rarr;
                       </button>
                     </div>
                   </div>
@@ -1036,7 +1062,7 @@ export function InstructorExamReviewWorkbench({
               </>
             ) : (
               <div className="flex h-full items-center justify-center text-center p-6 text-zinc-400 text-xs">
-                Pilih peserta untuk melakukan penilaian.
+                Select a student to grade.
               </div>
             )}
           </div>

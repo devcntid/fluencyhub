@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 
@@ -28,6 +28,35 @@ export function CertificateViewer({
   initialView?: "certificate" | "report";
 }) {
   const [view, setView] = useState<"certificate" | "report">(initialView);
+
+  const cleanStudent = certificate.studentName.replace(/[/\\?%*:|"<>]/g, "").trim();
+  const cleanCourse = certificate.courseTitle.replace(/[/\\?%*:|"<>]/g, "").trim();
+
+  // Synchronize document.title with active view so browser PDF download uses distinct file names
+  useEffect(() => {
+    if (view === "certificate") {
+      document.title = `Sertifikat - ${cleanStudent} - ${cleanCourse}`;
+    } else {
+      document.title = `Rapor Nilai - ${cleanStudent} - ${cleanCourse}`;
+    }
+  }, [view, cleanStudent, cleanCourse]);
+
+  function handlePrint(targetView: "certificate" | "report") {
+    const targetTitle =
+      targetView === "certificate"
+        ? `Sertifikat - ${cleanStudent} - ${cleanCourse}`
+        : `Rapor Nilai - ${cleanStudent} - ${cleanCourse}`;
+    document.title = targetTitle;
+
+    if (view !== targetView) {
+      setView(targetView);
+      setTimeout(() => {
+        window.print();
+      }, 150);
+    } else {
+      window.print();
+    }
+  }
 
   const formattedDate = new Date(certificate.issuedAt).toLocaleDateString("id-ID", {
     day: "numeric",
@@ -62,7 +91,10 @@ export function CertificateViewer({
           <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700">
             <button
               type="button"
-              onClick={() => setView("certificate")}
+              onClick={() => {
+                setView("certificate");
+                document.title = `Sertifikat - ${cleanStudent} - ${cleanCourse}`;
+              }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
                 view === "certificate"
                   ? "bg-blue-600 text-white shadow-sm"
@@ -73,7 +105,10 @@ export function CertificateViewer({
             </button>
             <button
               type="button"
-              onClick={() => setView("report")}
+              onClick={() => {
+                setView("report");
+                document.title = `Rapor Nilai - ${cleanStudent} - ${cleanCourse}`;
+              }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
                 view === "report"
                   ? "bg-blue-600 text-white shadow-sm"
@@ -86,11 +121,12 @@ export function CertificateViewer({
 
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => handlePrint(view)}
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-lg transition"
+            title={view === "certificate" ? "Unduh Sertifikat PDF" : "Unduh Rapor Nilai PDF"}
           >
             <LandingIcon name="Download" size={16} color="white" />
-            Cetak / Download PDF
+            <span>{view === "certificate" ? "Unduh Sertifikat (PDF)" : "Unduh Rapor Nilai (PDF)"}</span>
           </button>
         </div>
       </div>

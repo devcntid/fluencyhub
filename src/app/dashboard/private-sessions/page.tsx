@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
-import { id } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
+import { useConfirm, useToast } from "@/components/ui/NotificationProvider";
 
 export default function PrivateSessionsPage() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [instructors, setInstructors] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +16,7 @@ export default function PrivateSessionsPage() {
   const [allSlots, setAllSlots] = useState<any[]>([]);
   const [selectedInstructorId, setSelectedInstructorId] = useState<string>("");
   const [learnerCourses, setLearnerCourses] = useState<any[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<"all" | "confirmed" | "pending" | "completed">("all");
 
   // Horizontal Scroll for Instructor Filter
   const instructorScrollRef = useRef<HTMLDivElement>(null);
@@ -106,6 +111,17 @@ export default function PrivateSessionsPage() {
     fetchCourses();
   }, []);
 
+  useEffect(() => {
+    if (selectedCalendarDate) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedCalendarDate]);
+
   async function fetchData() {
     setLoading(true);
     try {
@@ -138,7 +154,7 @@ export default function PrivateSessionsPage() {
 
   async function bookSlot() {
     if (!selectedSlot || !topic || !courseId) {
-      alert("Lengkapi kelas dan topik terlebih dahulu.");
+      alert("Please select a course and enter a topic first.");
       return;
     }
     try {
@@ -154,33 +170,41 @@ export default function PrivateSessionsPage() {
       });
       const json = await res.json();
       if (res.ok) {
-        alert("Berhasil booking! Menunggu persetujuan instruktur.");
+        alert("Booking request submitted! Waiting for instructor approval.");
         setSelectedSlot(null);
         setSelectedCalendarDate(null);
         setTopic("");
         setCourseId("");
         fetchData();
       } else {
-        alert(json.error || "Gagal booking");
+        alert(json.error || "Failed to book session");
       }
     } catch (e) {
-      alert("Terjadi kesalahan jaringan");
+      alert("A network error occurred.");
     }
   }
 
   async function cancelSession(sessionId: number) {
-    if (!confirm("Yakin ingin membatalkan sesi ini?")) return;
+    const ok = await confirm({
+      title: "Batalkan Sesi Privat?",
+      message: "Apakah Anda yakin ingin membatalkan sesi privat ini? Jadwal akan kembali dibuka untuk dipilih.",
+      confirmText: "Ya, Batalkan Sesi",
+      cancelText: "Kembali",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     try {
       const res = await fetch(`/api/private-sessions/${sessionId}`, { method: "DELETE" });
       const json = await res.json();
       if (res.ok) {
-        alert("Sesi dibatalkan.");
+        toast.success("Sesi privat berhasil dibatalkan.");
         fetchData();
       } else {
-        alert(json.error || "Gagal membatalkan sesi");
+        toast.error(json.error || "Gagal membatalkan sesi.");
       }
-    } catch (e) {
-      alert("Terjadi kesalahan jaringan");
+    } catch {
+      toast.error("Terjadi kesalahan jaringan.");
     }
   }
 
@@ -205,25 +229,25 @@ export default function PrivateSessionsPage() {
   function nextMonth() { setCurrentMonth(addMonths(currentMonth, 1)); }
   function prevMonth() { setCurrentMonth(subMonths(currentMonth, 1)); }
 
-  if (!isMounted) return <div className="p-8 text-center text-zinc-500 animate-pulse font-medium">Memuat halaman...</div>;
-  if (loading) return <div className="p-8 text-center text-zinc-500 animate-pulse font-medium">Memuat jadwal instruktur...</div>;
+  if (!isMounted) return <div className="p-8 text-center text-zinc-500 animate-pulse font-medium">Loading page...</div>;
+  if (loading) return <div className="p-8 text-center text-zinc-500 animate-pulse font-medium">Loading instructor schedule...</div>;
 
   return (
     <div className="p-4 md:p-8 space-y-10 w-full">
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight font-[family-name:var(--font-heading)] mb-2 bg-gradient-to-r from-zinc-900 to-zinc-500 bg-clip-text text-transparent">
-          Booking Sesi Privat
+          Book Private Session
         </h1>
-        <p className="text-zinc-500 text-sm">Cari dan booking sesi 1-on-1 dengan instruktur dari kelas yang sudah kamu ikuti.</p>
+        <p className="text-zinc-500 text-sm">Find and book 1-on-1 private sessions with instructors from your enrolled courses.</p>
       </div>
 
       <div className="flex flex-col gap-10 items-stretch">
-        {/* Kolom Kalender Booking */}
+        {/* Calendar Booking Section */}
         <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl w-full">
           <div className="p-6 border-b border-zinc-100 bg-white/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-xl font-bold flex items-center gap-2 shrink-0">
               <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-              Jadwal Instruktur
+              Instructor Schedule
             </h2>
             
             {instructors.length > 0 && (
@@ -233,8 +257,8 @@ export default function PrivateSessionsPage() {
                     type="button"
                     onClick={() => scrollInstructors("left")}
                     disabled={!canScrollLeft}
-                    title="Geser ke kiri"
-                    aria-label="Geser ke kiri"
+                    title="Scroll left"
+                    aria-label="Scroll left"
                     className={`shrink-0 w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white text-zinc-700 border border-zinc-200 rounded-xl shadow-sm transition-all ${
                       canScrollLeft
                         ? "hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 active:scale-95 cursor-pointer"
@@ -268,7 +292,7 @@ export default function PrivateSessionsPage() {
                         : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
                     }`}
                   >
-                    Semua Instruktur Saya
+                    All My Instructors
                   </button>
                   {instructors.map((inst) => (
                     <button
@@ -294,8 +318,8 @@ export default function PrivateSessionsPage() {
                     type="button"
                     onClick={() => scrollInstructors("right")}
                     disabled={!canScrollRight}
-                    title="Geser ke kanan"
-                    aria-label="Geser ke kanan"
+                    title="Scroll right"
+                    aria-label="Scroll right"
                     className={`shrink-0 w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white text-zinc-700 border border-zinc-200 rounded-xl shadow-sm transition-all ${
                       canScrollRight
                         ? "hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 active:scale-95 cursor-pointer"
@@ -319,14 +343,14 @@ export default function PrivateSessionsPage() {
           {instructors.length === 0 ? (
             <div className="p-8">
               <div className="text-center py-10 px-4 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl text-sm font-medium">
-                Kamu belum mengikuti kelas apapun. Beli kelas dulu untuk bisa booking instruktur.
+                You haven&apos;t enrolled in any courses yet. Enroll in a course to book private sessions with instructors.
               </div>
             </div>
           ) : (
             <div className="p-4 md:p-8 bg-zinc-50/50">
               <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
                 <div className="flex items-center justify-between p-5 md:p-6 border-b border-zinc-100 bg-zinc-50/80">
-                  <h3 className="font-extrabold text-zinc-800 text-xl md:text-2xl capitalize">{format(currentMonth, "MMMM yyyy", { locale: id })}</h3>
+                  <h3 className="font-extrabold text-zinc-800 text-xl md:text-2xl capitalize">{format(currentMonth, "MMMM yyyy", { locale: enUS })}</h3>
                   <div className="flex gap-3">
                     <button className="p-2 md:p-3 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-sm" onClick={prevMonth}>
                       <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
@@ -338,7 +362,7 @@ export default function PrivateSessionsPage() {
                 </div>
                 
                 <div className="grid grid-cols-7 border-b border-zinc-100 bg-white">
-                  {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map(d => (
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
                     <div key={d} className="py-2.5 text-center text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-wider">{d}</div>
                   ))}
                 </div>
@@ -363,14 +387,14 @@ export default function PrivateSessionsPage() {
                           <div className="w-full mt-0.5">
                             <div className="bg-emerald-100 text-emerald-700 text-[8px] md:text-[9px] px-0.5 md:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-sm border border-emerald-200/50 leading-none md:leading-normal">
                               <span className="md:hidden">{daySlots.length} Free</span>
-                              <span className="hidden md:inline">{daySlots.length} Jam Free</span>
+                              <span className="hidden md:inline">{daySlots.length} Slots Available</span>
                             </div>
                           </div>
                         ) : (
                           day >= new Date(new Date().setHours(0,0,0,0)) && (
                             <div className="w-full mt-0.5">
                               <div className="bg-zinc-100 text-zinc-500 text-[8px] md:text-[9px] px-0.5 md:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-sm border border-zinc-200/50 leading-none md:leading-normal">
-                                <span>Penuh</span>
+                                <span>Fully Booked</span>
                               </div>
                             </div>
                           )
@@ -384,123 +408,298 @@ export default function PrivateSessionsPage() {
           )}
         </div>
 
-        {/* Kolom Riwayat */}
-        <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl w-full">
-          <div className="p-6 border-b border-zinc-100 bg-white/80">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              Riwayat Sesi Saya
-            </h2>
-          </div>
-          
-          <div className="p-6">
-            {sessions.length === 0 ? (
-              <div className="text-center py-10 px-4 border-2 border-dashed border-zinc-200 rounded-2xl">
-                <svg className="w-10 h-10 text-zinc-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                <p className="text-sm font-medium text-zinc-500">Anda belum memiliki riwayat sesi privat.</p>
+        {/* Session History Section */}
+        {(() => {
+          const confirmedCount = sessions.filter(s => s.status === 'confirmed').length;
+          const pendingCount = sessions.filter(s => s.status === 'pending').length;
+
+          const filteredSessions = sessions.filter(s => {
+            if (historyFilter === "confirmed") return s.status === "confirmed";
+            if (historyFilter === "pending") return s.status === "pending";
+            if (historyFilter === "completed") return s.status === "completed" || s.status === "rejected" || s.status === "cancelled";
+            return true;
+          });
+
+          // Prioritaskan yang diterima (confirmed) di paling atas
+          const sortedSessions = [...filteredSessions].sort((a, b) => {
+            const rank: Record<string, number> = {
+              confirmed: 1, // Diterima: Prioritas #1
+              pending: 2,   // Menunggu konfirmasi
+              completed: 3, // Selesai
+              rejected: 4,  // Ditolak
+              cancelled: 5, // Dibatalkan
+            };
+            const rA = rank[a.status] ?? 99;
+            const rB = rank[b.status] ?? 99;
+            if (rA !== rB) return rA - rB;
+
+            const timeA = a.startAt ? new Date(a.startAt).getTime() : 0;
+            const timeB = b.startAt ? new Date(b.startAt).getTime() : 0;
+            const now = Date.now();
+
+            if (a.status === "confirmed" && b.status === "confirmed") {
+              const isUpcomingA = timeA >= now - 60 * 60 * 1000;
+              const isUpcomingB = timeB >= now - 60 * 60 * 1000;
+              if (isUpcomingA && !isUpcomingB) return -1;
+              if (!isUpcomingA && isUpcomingB) return 1;
+              if (isUpcomingA && isUpcomingB) return timeA - timeB;
+              return timeB - timeA;
+            }
+
+            return timeB - timeA;
+          });
+
+          return (
+            <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl w-full">
+              <div className="p-6 border-b border-zinc-100 bg-white/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold flex items-center gap-2 text-zinc-900 font-[family-name:var(--font-heading)]">
+                    <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>My Session History</span>
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Sesi yang diterima (<span className="text-emerald-600 font-bold">Confirmed</span>) diprioritaskan di urutan paling atas.
+                  </p>
+                </div>
+
+                {sessions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100 rounded-xl text-xs font-semibold self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFilter("all")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        historyFilter === "all"
+                          ? "bg-white text-zinc-900 shadow-xs font-bold"
+                          : "text-zinc-600 hover:text-zinc-900"
+                      }`}
+                    >
+                      Semua ({sessions.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFilter("confirmed")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                        historyFilter === "confirmed"
+                          ? "bg-emerald-600 text-white shadow-xs font-bold"
+                          : "text-emerald-700 hover:bg-emerald-50"
+                      }`}
+                    >
+                      <span>Diterima</span>
+                      {confirmedCount > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          historyFilter === "confirmed" ? "bg-white text-emerald-700" : "bg-emerald-100 text-emerald-800"
+                        }`}>
+                          {confirmedCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFilter("pending")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                        historyFilter === "pending"
+                          ? "bg-amber-500 text-white shadow-xs font-bold"
+                          : "text-amber-700 hover:bg-amber-50"
+                      }`}
+                    >
+                      <span>Pending</span>
+                      {pendingCount > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          historyFilter === "pending" ? "bg-white text-amber-700" : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {pendingCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFilter("completed")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        historyFilter === "completed"
+                          ? "bg-white text-zinc-900 shadow-xs font-bold"
+                          : "text-zinc-600 hover:text-zinc-900"
+                      }`}
+                    >
+                      Riwayat Lampau
+                    </button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-4">
-                {sessions.map(sess => {
-                  const now = new Date();
-                  const start = sess.startAt ? new Date(sess.startAt) : new Date();
-                  const end = sess.endAt ? new Date(sess.endAt) : new Date(start.getTime() + 60 * 60 * 1000);
-                  
-                  // Tombol Gabung Zoom HANYA muncul saat waktu privat sudah mulai (atau 10 menit sebelum mulai agar siswa bisa bersiap) dan belum berakhir
-                  const hasStarted = now.getTime() >= (start.getTime() - 10 * 60 * 1000);
-                  const hasEnded = now.getTime() > end.getTime();
-                  const canJoinZoom = sess.status === 'confirmed' && hasStarted && !hasEnded;
-                  
-                  // Boleh membatalkan jika status 'pending', atau jika status 'confirmed' dan jadwal mulai masih minimal 24 jam ke depan
-                  const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
-                  const canCancel = sess.status === 'pending' || (sess.status === 'confirmed' && !hasEnded && hoursDiff >= 24);
+              
+              <div className="p-6">
+                {sessions.length === 0 ? (
+                  <div className="text-center py-10 px-4 border-2 border-dashed border-zinc-200 rounded-2xl">
+                    <svg className="w-10 h-10 text-zinc-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    <p className="text-sm font-medium text-zinc-500">You have no private session history yet.</p>
+                  </div>
+                ) : sortedSessions.length === 0 ? (
+                  <div className="text-center py-8 px-4 border border-zinc-200 rounded-2xl bg-zinc-50/50">
+                    <p className="text-sm font-medium text-zinc-500">
+                      Tidak ada sesi dengan status &quot;{historyFilter}&quot;.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sortedSessions.map(sess => {
+                      const now = new Date();
+                      const start = sess.startAt ? new Date(sess.startAt) : new Date();
+                      const end = sess.endAt ? new Date(sess.endAt) : new Date(start.getTime() + 60 * 60 * 1000);
+                      
+                      const isConfirmed = sess.status === 'confirmed';
+                      const hasStarted = now.getTime() >= (start.getTime() - 10 * 60 * 1000);
+                      const hasEnded = now.getTime() > end.getTime();
+                      const canJoinZoom = isConfirmed && hasStarted && !hasEnded;
+                      
+                      const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+                      const canCancel = sess.status === 'pending' || (isConfirmed && !hasEnded && hoursDiff >= 24);
 
-                  return (
-                    <div key={sess.id} className="border border-zinc-200 rounded-2xl p-5 bg-white shadow-sm hover:shadow-md transition-shadow">
-                      {/* Baris Atas: Info Instruktur & Status */}
-                      <div className="flex items-center gap-3.5 mb-3.5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={sess.instructorAvatar || "https://i.pravatar.cc/80?img=15"} alt="" className="w-11 h-11 rounded-full ring-2 ring-zinc-100 object-cover shrink-0" />
-                        <div className="flex flex-wrap items-center gap-2 min-w-0">
-                          <h3 className="font-bold text-zinc-900 text-base">{sess.instructorName}</h3>
-                          {sess.status === 'pending' && <span className="badge bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider animate-pulse">Menunggu</span>}
-                          {sess.status === 'confirmed' && <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Disetujui</span>}
-                          {sess.status === 'rejected' && <span className="badge bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Ditolak</span>}
-                          {sess.status === 'cancelled' && <span className="badge bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Dibatalkan</span>}
-                          {sess.status === 'completed' && <span className="badge bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">Selesai</span>}
+                      return (
+                        <div
+                          key={sess.id}
+                          className={`rounded-2xl p-5 transition-all ${
+                            isConfirmed
+                              ? "border-2 border-emerald-300 bg-gradient-to-r from-emerald-50/30 via-white to-white shadow-sm hover:shadow-md ring-1 ring-emerald-200/70"
+                              : "border border-zinc-200 bg-white shadow-sm hover:shadow-md"
+                          }`}
+                        >
+                          {/* Top: Instructor Info & Status */}
+                          <div className="flex items-center gap-3.5 mb-3.5">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={sess.instructorAvatar || "https://i.pravatar.cc/80?img=15"}
+                              alt=""
+                              className={`w-11 h-11 rounded-full object-cover shrink-0 ${
+                                isConfirmed ? "ring-2 ring-emerald-400" : "ring-2 ring-zinc-100"
+                              }`}
+                            />
+                            <div className="flex flex-wrap items-center gap-2 min-w-0">
+                              <h3 className="font-bold text-zinc-900 text-base">{sess.instructorName}</h3>
+                              {sess.status === 'pending' && (
+                                <span className="badge bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                                  Menunggu Konfirmasi
+                                </span>
+                              )}
+                              {isConfirmed && (
+                                <span className="badge bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-2xs">
+                                  <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  Diterima / Confirmed
+                                </span>
+                              )}
+                              {sess.status === 'rejected' && (
+                                <span className="badge bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                  Ditolak
+                                </span>
+                              )}
+                              {sess.status === 'cancelled' && (
+                                <span className="badge bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                  Dibatalkan
+                                </span>
+                              )}
+                              {sess.status === 'completed' && (
+                                <span className="badge bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                  Selesai
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Bottom: Date Card & Action Button */}
+                          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+                            <div className="flex-1 min-w-0 bg-zinc-50 p-4 rounded-xl relative overflow-hidden border border-zinc-100">
+                              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isConfirmed ? "bg-emerald-500" : "bg-zinc-300"}`} />
+                              <p className="font-bold text-zinc-800 text-sm flex items-center gap-1.5 mb-1.5">
+                                <svg className={`w-4 h-4 ${isConfirmed ? "text-emerald-600" : "text-zinc-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span>{format(start, "EEEE, d MMM yyyy • HH:mm", { locale: enUS })}{sess.endAt ? ` - ${format(end, "HH:mm")}` : ""}</span>
+                              </p>
+                              <p className="text-xs text-zinc-600">
+                                <span className="font-bold text-zinc-400 uppercase tracking-wider block mb-0.5 mt-1">Topic:</span>
+                                {sess.topic}
+                              </p>
+
+                              {/* Notification box for confirmed session */}
+                              {isConfirmed && !hasEnded && (
+                                <div className="mt-2.5 flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-[11px] text-emerald-800 font-medium">
+                                  <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span>
+                                    {canJoinZoom 
+                                      ? "Sesi privat sedang berlangsung! Klik tombol Join Zoom untuk bergabung." 
+                                      : "Sesi telah diterima instruktur. Tombol Join Zoom akan otomatis aktif 10 menit sebelum jadwal dimulai."}
+                                  </span>
+                                </div>
+                              )}
+
+                              {sess.rejectReason && (
+                                <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded border border-red-100">
+                                  <span className="font-bold">{sess.status === 'cancelled' ? 'Cancellation Reason:' : 'Decline Reason:'}</span> {sess.rejectReason}
+                                </p>
+                              )}
+                              {sess.instructorNotes && (
+                                <p className="text-xs text-indigo-700 mt-2 bg-indigo-50 p-2 rounded border border-indigo-100">
+                                  <span className="font-bold">Instructor Notes:</span> {sess.instructorNotes}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col gap-2 w-full md:w-44 shrink-0 justify-center">
+                              {canJoinZoom && (
+                                <a 
+                                  href={sess.zoomLink || sess.instructorZoomLink || "#"} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="btn bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md shadow-emerald-500/20 py-2.5 flex justify-center items-center gap-2 text-sm font-bold animate-pulse"
+                                  onClick={(e) => {
+                                    if (!sess.zoomLink && !sess.instructorZoomLink) {
+                                      e.preventDefault();
+                                      toast.warning("Link Zoom belum tersedia. Instruktur akan segera menyediakannya.");
+                                    }
+                                  }}
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                  </svg>
+                                  Join Zoom
+                                </a>
+                              )}
+
+                              {canCancel && (
+                                <button 
+                                  className="btn bg-white border border-zinc-200 text-red-600 hover:bg-red-50 rounded-xl py-2.5 shadow-sm text-sm font-medium transition-colors"
+                                  onClick={() => cancelSession(sess.id)}
+                                >
+                                  Cancel Session
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Baris Bawah: Kotak Tanggal & Tombol Aksi Sejajar */}
-                      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-                        <div className="flex-1 min-w-0 bg-zinc-50 p-4 rounded-xl relative overflow-hidden border border-zinc-100">
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-300"></div>
-                          <p className="font-bold text-zinc-800 text-sm flex items-center gap-1.5 mb-1.5">
-                            <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            {format(start, "EEEE, d MMM yyyy • HH:mm", { locale: id })}{sess.endAt ? ` - ${format(end, "HH:mm")}` : ""} WIB
-                          </p>
-                          <p className="text-xs text-zinc-600">
-                            <span className="font-bold text-zinc-400 uppercase tracking-wider block mb-0.5 mt-1">Topik:</span>
-                            {sess.topic}
-                          </p>
-                          {sess.rejectReason && (
-                            <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded border border-red-100">
-                              <span className="font-bold">{sess.status === 'cancelled' ? 'Alasan Pembatalan:' : 'Alasan Ditolak:'}</span> {sess.rejectReason}
-                            </p>
-                          )}
-                          {sess.instructorNotes && <p className="text-xs text-indigo-700 mt-2 bg-indigo-50 p-2 rounded border border-indigo-100"><span className="font-bold">Catatan Instruktur:</span> {sess.instructorNotes}</p>}
-                        </div>
-
-                        <div className="flex flex-col gap-2 w-full md:w-44 shrink-0 justify-center">
-                          {canJoinZoom && (
-                            <a 
-                              href={sess.zoomLink || sess.instructorZoomLink || "#"} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="btn bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 py-2.5 flex justify-center items-center gap-2 text-sm font-bold"
-                              onClick={(e) => {
-                                if (!sess.zoomLink && !sess.instructorZoomLink) {
-                                  e.preventDefault();
-                                  alert("Link Zoom belum tersedia. Instruktur akan memberikannya segera.");
-                                }
-                              }}
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                              Gabung Zoom
-                            </a>
-                          )}
-
-                          {canCancel && (
-                            <button 
-                              className="btn bg-white border border-zinc-200 text-red-600 hover:bg-red-50 rounded-xl py-2.5 shadow-sm text-sm font-medium transition-colors"
-                              onClick={() => {
-                                if(confirm("Yakin ingin membatalkan booking sesi ini?")) {
-                                  cancelSession(sess.id);
-                                }
-                              }}
-                            >
-                              Batalkan Sesi
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          );
+        })()}
       </div>
 
-      {/* Modal Booking */}
-      {selectedCalendarDate && (
+      {/* Booking Modal */}
+      {isMounted && selectedCalendarDate && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             <div className="p-5 border-b border-zinc-100 bg-zinc-50 flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-bold text-zinc-900 capitalize">{format(selectedCalendarDate, "EEEE, d MMMM yyyy", { locale: id })}</h3>
-                <p className="text-xs text-zinc-500 mt-1">Pilih jam untuk booking sesi privat</p>
+                <h3 className="text-xl font-bold text-zinc-900 capitalize">{format(selectedCalendarDate, "EEEE, d MMMM yyyy", { locale: enUS })}</h3>
+                <p className="text-xs text-zinc-500 mt-1">Select a time slot to book your private session</p>
               </div>
               <button className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/50 rounded-full transition-colors" onClick={() => {
                 setSelectedCalendarDate(null);
@@ -517,12 +716,12 @@ export default function PrivateSessionsPage() {
                 <>
                   <h4 className="text-sm font-bold text-zinc-900 mb-4 flex items-center gap-2">
                     <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Pilih Jam Instruktur
+                    Select Time Slot
                   </h4>
                   <div className="space-y-3">
                     {!groupedSlots[format(selectedCalendarDate, "yyyy-MM-dd")]?.length ? (
                       <div className="text-center py-8 border-2 border-dashed border-zinc-200 rounded-xl bg-zinc-50">
-                        <p className="text-sm font-medium text-zinc-500">Tidak ada instruktur yang luang di tanggal ini.</p>
+                        <p className="text-sm font-medium text-zinc-500">No instructor slots available on this date.</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -534,7 +733,7 @@ export default function PrivateSessionsPage() {
                               <div>
                                 <h4 className="text-sm font-bold text-zinc-900 leading-tight">{slot.instructorName}</h4>
                                 <p className="text-xs font-semibold text-emerald-600 mt-0.5">
-                                  {format(new Date(slot.startAt), "HH:mm")} - {format(new Date(slot.endAt), "HH:mm")} WIB
+                                  {format(new Date(slot.startAt), "HH:mm")} - {format(new Date(slot.endAt), "HH:mm")}
                                 </p>
                               </div>
                             </div>
@@ -542,7 +741,7 @@ export default function PrivateSessionsPage() {
                               className="bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors" 
                               onClick={() => setSelectedSlot(slot)}
                             >
-                              Pilih
+                              Select
                             </button>
                           </div>
                         ))}
@@ -559,22 +758,22 @@ export default function PrivateSessionsPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={selectedSlot.instructorAvatar || "https://i.pravatar.cc/80?img=11"} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
                     <div>
-                      <h4 className="text-sm font-bold text-blue-900 leading-tight">Booking dengan {selectedSlot.instructorName}</h4>
+                      <h4 className="text-sm font-bold text-blue-900 leading-tight">Book with {selectedSlot.instructorName}</h4>
                       <p className="text-xs font-semibold text-blue-700 mt-0.5">
-                        {format(new Date(selectedSlot.startAt), "HH:mm")} - {format(new Date(selectedSlot.endAt), "HH:mm")} WIB
+                        {format(new Date(selectedSlot.startAt), "HH:mm")} - {format(new Date(selectedSlot.endAt), "HH:mm")}
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">Pilih Kelas</label>
+                      <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">Select Course</label>
                       <select 
                         className="input w-full bg-white shadow-sm border-zinc-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl" 
                         value={courseId} 
                         onChange={(e) => setCourseId(e.target.value)}
                       >
-                        <option value="">-- Pilih Kelas --</option>
+                        <option value="">-- Select Course --</option>
                         {learnerCourses
                           .filter(c => Number(c.instructorId) === Number(selectedSlot.instructorId))
                           .map(c => (
@@ -584,10 +783,10 @@ export default function PrivateSessionsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">Topik Bahasan</label>
+                      <label className="block text-xs font-bold text-zinc-700 mb-1.5 uppercase tracking-wider">Discussion Topic</label>
                       <textarea 
                         className="input w-full bg-white shadow-inner border-zinc-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl h-28 py-3 px-4 resize-none" 
-                        placeholder="Tuliskan materi atau kesulitan apa yang ingin dibahas..."
+                        placeholder="Describe what topic, questions, or difficulties you want to discuss..."
                         value={topic}
                         onChange={(e) => setTopic(e.target.value)}
                       />
@@ -597,14 +796,15 @@ export default function PrivateSessionsPage() {
                       className="btn w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 hover:-translate-y-0.5 transition-all rounded-xl py-3 text-sm font-bold" 
                       onClick={bookSlot}
                     >
-                      Konfirmasi Booking
+                      Confirm Booking
                     </button>
                   </div>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -7,7 +7,7 @@ import { sql } from "@/lib/db/client";
 
 const Schema = z.object({
   sectionId: z.number().int().positive().optional(),
-  title: z.string().min(1).optional(),
+  title: z.string().trim().min(1, "Lesson title cannot be empty").optional(),
   contentType: z.enum(["youtube_video", "live_class", "document", "text", "exam"]).optional(),
   youtubeUrl: z.string().nullable().optional(),
   liveClassUrl: z.string().nullable().optional(),
@@ -30,7 +30,35 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const parsed = Schema.safeParse(await req.json());
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0]?.message || "Validation failed";
+    return NextResponse.json({ error: firstIssue }, { status: 422 });
+  }
+
+  if (parsed.data.title !== undefined && !parsed.data.title.trim()) {
+    return NextResponse.json({ error: "Lesson title cannot be empty." }, { status: 422 });
+  }
+
+  if (parsed.data.contentType === "youtube_video" && parsed.data.youtubeUrl !== undefined && (!parsed.data.youtubeUrl || !parsed.data.youtubeUrl.trim())) {
+    return NextResponse.json({ error: "YouTube video URL cannot be empty." }, { status: 422 });
+  }
+
+  if (parsed.data.contentType === "live_class" && parsed.data.liveClassUrl !== undefined && (!parsed.data.liveClassUrl || !parsed.data.liveClassUrl.trim())) {
+    return NextResponse.json({ error: "Meeting room URL cannot be empty." }, { status: 422 });
+  }
+
+  if (parsed.data.contentType === "document" && parsed.data.documentUrl !== undefined && (!parsed.data.documentUrl || !parsed.data.documentUrl.trim())) {
+    return NextResponse.json({ error: "Document URL cannot be empty." }, { status: 422 });
+  }
+
+  if (parsed.data.contentType === "text" && parsed.data.textContent !== undefined && (!parsed.data.textContent || !parsed.data.textContent.trim())) {
+    return NextResponse.json({ error: "Text content cannot be empty." }, { status: 422 });
+  }
+
+  if (parsed.data.durationMinutes !== undefined && parsed.data.contentType !== "live_class" && parsed.data.durationMinutes <= 0) {
+    return NextResponse.json({ error: "Lesson duration cannot be 0. Please specify estimated minutes (minimum 1 minute)." }, { status: 422 });
+  }
+
   if (parsed.data.sectionId) {
     const section = await getSectionById(parsed.data.sectionId);
     if (!section) return NextResponse.json({ error: "Section not found" }, { status: 404 });

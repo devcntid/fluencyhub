@@ -10,7 +10,7 @@ export function ExamConfigDialog({
   courseId,
   courseTitle,
   initialExam,
-  triggerLabel = "Upload Soal Ujian (PDF)",
+  triggerLabel = "Upload Exam Paper (PDF)",
   triggerClassName = "btn btn-secondary btn-sm",
   initialTab = "main",
   iconName = "FileText",
@@ -28,10 +28,10 @@ export function ExamConfigDialog({
   const [activeTab, setActiveTab] = useState<"main" | "remedial">(initialTab);
 
   const [title, setTitle] = useState(initialExam?.title || `Final Examination — ${courseTitle}`);
-  const [passingScore, setPassingScore] = useState(initialExam?.passingScore || 70);
+  const [passingScore, setPassingScore] = useState<number | string>(initialExam?.passingScore || 70);
   const [instructions, setInstructions] = useState(
     initialExam?.content?.examInstructions ||
-      "1. Unduh lembar soal PDF di bawah ini.\n2. Kerjakan seluruh instruksi dan pertanyaan secara mandiri.\n3. Unggah lembar jawaban Anda dalam format PDF atau Word pada formulir jawaban di bawah."
+      "1. Download the question paper PDF below.\n2. Complete all instructions and questions independently.\n3. Upload your completed answer sheet in PDF or DOC format using the submission form below."
   );
 
   const [fileUrl, setFileUrl] = useState(initialExam?.content?.questionFileUrl || "");
@@ -78,8 +78,15 @@ export function ExamConfigDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`Ukuran file soal ujian melebihi batas maksimal 5MB (ukuran file Anda: ${(file.size / (1024 * 1024)).toFixed(1)}MB). Silakan kompres atau pilih file yang lebih kecil.`);
+      e.target.value = "";
+      return;
+    }
+
     setUploading(true);
-    setUploadProgress("Mengunggah file soal ke cloud storage...");
+    setUploadProgress("Uploading exam question paper to cloud storage...");
     setError("");
 
     try {
@@ -94,15 +101,15 @@ export function ExamConfigDialog({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json.error || "Gagal mengunggah file soal.");
+        throw new Error(json.error || "Failed to upload exam paper.");
       }
 
       setFileUrl(json.data.url);
       setFileName(file.name);
-      setUploadProgress("File berhasil diunggah!");
+      setUploadProgress("File uploaded successfully!");
       setTimeout(() => setUploadProgress(""), 3000);
     } catch (err: any) {
-      setError(err.message || "Gagal mengunggah file soal.");
+      setError(err.message || "Failed to upload exam paper.");
     } finally {
       setUploading(false);
     }
@@ -112,8 +119,15 @@ export function ExamConfigDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`Ukuran file soal remedial melebihi batas maksimal 5MB (ukuran file Anda: ${(file.size / (1024 * 1024)).toFixed(1)}MB). Silakan kompres atau pilih file yang lebih kecil.`);
+      e.target.value = "";
+      return;
+    }
+
     setUploadingRemedial(true);
-    setUploadProgressRemedial("Mengunggah file soal remedial ke cloud storage...");
+    setUploadProgressRemedial("Uploading remedial question paper to cloud storage...");
     setError("");
 
     try {
@@ -128,15 +142,15 @@ export function ExamConfigDialog({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json.error || "Gagal mengunggah file soal remedial.");
+        throw new Error(json.error || "Failed to upload remedial paper.");
       }
 
       setRemedialFileUrl(json.data.url);
       setRemedialFileName(file.name);
-      setUploadProgressRemedial("File soal remedial berhasil diunggah!");
+      setUploadProgressRemedial("Remedial paper uploaded successfully!");
       setTimeout(() => setUploadProgressRemedial(""), 3000);
     } catch (err: any) {
-      setError(err.message || "Gagal mengunggah file soal remedial.");
+      setError(err.message || "Failed to upload remedial paper.");
     } finally {
       setUploadingRemedial(false);
     }
@@ -144,7 +158,13 @@ export function ExamConfigDialog({
 
   async function handleSave() {
     if (!fileUrl) {
-      setError("Silakan unggah file soal ujian utama (PDF) terlebih dahulu.");
+      setError("Please upload the main exam paper (PDF) first.");
+      return;
+    }
+
+    const numScore = Number(passingScore);
+    if (!passingScore || isNaN(numScore) || numScore < 1 || numScore > 100) {
+      setError("Passing Score Threshold (KKM) must be between 1 and 100.");
       return;
     }
 
@@ -162,11 +182,11 @@ export function ExamConfigDialog({
           passingScore: Number(passingScore) || 70,
           description: instructions.trim(),
           content: {
-            questionFileUrl: fileUrl,
-            questionFileName: fileName || "Soal_Ujian_Akhir.pdf",
+            questionFileUrl: fileUrl || undefined,
+            questionFileName: fileUrl ? (fileName || "Final_Exam_Paper.pdf") : undefined,
             examInstructions: instructions.trim(),
             remedialFileUrl: remedialFileUrl || undefined,
-            remedialFileName: remedialFileName || undefined,
+            remedialFileName: remedialFileUrl ? (remedialFileName || undefined) : undefined,
             remedialInstructions: remedialInstructions.trim() || undefined,
           },
         }),
@@ -174,17 +194,17 @@ export function ExamConfigDialog({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json.error || "Gagal menyimpan konfigurasi soal ujian.");
+        throw new Error(json.error || "Failed to save exam configuration.");
       }
 
-      setSuccess("File soal ujian berhasil disimpan dan dipublikasikan ke siswa!");
+      setSuccess("Exam paper saved and published to students successfully!");
       router.refresh();
       setTimeout(() => {
         setOpen(false);
         setSuccess("");
       }, 1500);
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan konfigurasi ujian.");
+      setError(err.message || "Failed to save exam configuration.");
     } finally {
       setSaving(false);
     }
@@ -194,7 +214,7 @@ export function ExamConfigDialog({
     <>
       <button
         type="button"
-        className={triggerClassName}
+        className={`inline-flex items-center justify-center gap-1.5 text-center cursor-pointer ${triggerClassName || "btn btn-secondary btn-sm"}`}
         onClick={() => {
           setActiveTab(initialTab);
           setOpen(true);
@@ -202,12 +222,12 @@ export function ExamConfigDialog({
           setSuccess("");
         }}
       >
-        <LandingIcon name={iconName} size={14} color="currentColor" />
-        {triggerLabel}
+        {iconName && <LandingIcon name={iconName} size={14} color="currentColor" className="shrink-0" />}
+        <span className="leading-none">{triggerLabel}</span>
       </button>
 
       <AdminFormDialog
-        title={`Kelola File Soal Ujian — ${courseTitle}`}
+        title={`Manage Exam Papers — ${courseTitle}`}
         open={open}
         onClose={() => setOpen(false)}
         maxWidth="min(720px, 95vw)"
@@ -237,14 +257,14 @@ export function ExamConfigDialog({
               }`}
             >
               <LandingIcon name="FileText" size={15} color={activeTab === "main" ? "#2563eb" : "currentColor"} />
-              <span>1. Soal Ujian Utama</span>
+              <span>1. Main Exam Paper</span>
               {fileUrl ? (
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                  ✓ Siap
+                  ✓ Ready
                 </span>
               ) : (
                 <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
-                  Wajib
+                  Required
                 </span>
               )}
             </button>
@@ -259,34 +279,39 @@ export function ExamConfigDialog({
               }`}
             >
               <LandingIcon name="RotateCcw" size={15} color={activeTab === "remedial" ? "#d97706" : "currentColor"} />
-              <span>2. Soal Khusus Remedial</span>
+              <span>2. Remedial Paper</span>
               {remedialFileUrl ? (
                 <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
-                  Paket B Aktif
+                  Set B Active
                 </span>
               ) : (
                 <span className="text-[10px] bg-zinc-200 text-zinc-600 px-2 py-0.5 rounded-full font-semibold">
-                  Default (Opsional)
+                  Default (Optional)
                 </span>
               )}
             </button>
           </div>
 
-          {/* TAB 1: SOAL UJIAN UTAMA */}
+          {/* TAB 1: MAIN EXAM PAPER */}
           {activeTab === "main" && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-200/80 text-xs text-blue-900 flex items-start gap-2">
                 <LandingIcon name="FileText" size={15} color="#2563eb" />
                 <p>
-                  <strong>Soal Ujian Utama:</strong> Lembar soal resmi yang wajib diunduh dan dikerjakan pertama kali oleh seluruh siswa kelas ini.
+                  <strong>Main Exam Paper:</strong> Official question paper that all students in this course must download and complete first.
                 </p>
               </div>
 
               {/* Main Question File Upload Card */}
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 space-y-3">
-                <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider block">
-                  File Lembar Soal Ujian Utama (PDF / DOC)
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider block">
+                    Main Exam Question Paper (PDF / DOC)
+                  </span>
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-100/70 border border-blue-200 px-2 py-0.5 rounded-md">
+                    Maks. 5MB
+                  </span>
+                </div>
 
                 {fileUrl ? (
                   <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-blue-200 shadow-xs">
@@ -296,7 +321,7 @@ export function ExamConfigDialog({
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-zinc-900 truncate">
-                          {fileName || "File_Soal_Ujian.pdf"}
+                          {fileName || "Final_Exam_Paper.pdf"}
                         </p>
                         <a
                           href={fileUrl}
@@ -304,20 +329,33 @@ export function ExamConfigDialog({
                           rel="noreferrer"
                           className="text-[11px] font-semibold text-blue-600 hover:underline inline-flex items-center gap-1"
                         >
-                          Buka / Unduh file soal &rarr;
+                          View / Download question paper &rarr;
                         </a>
                       </div>
                     </div>
-                    <label className="btn btn-secondary btn-sm cursor-pointer text-xs shrink-0">
-                      <span>Ganti File</span>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                        disabled={uploading}
-                      />
-                    </label>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="btn btn-secondary btn-sm cursor-pointer text-xs shrink-0 font-bold">
+                        <span>Replace File</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={uploading}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFileUrl("");
+                          setFileName("");
+                        }}
+                        className="btn btn-secondary btn-sm text-xs text-red-600 hover:bg-red-50 hover:border-red-200 shrink-0 font-bold flex items-center gap-1"
+                      >
+                        <LandingIcon name="Trash" size={13} color="currentColor" />
+                        <span>Remove File</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <label className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-zinc-300 bg-white hover:bg-zinc-50 hover:border-blue-400 cursor-pointer transition text-center">
@@ -325,10 +363,10 @@ export function ExamConfigDialog({
                       <LandingIcon name="Download" size={20} color="currentColor" />
                     </div>
                     <span className="text-xs font-bold text-zinc-800">
-                      {uploading ? "Sedang Mengunggah..." : "Klik untuk Unggah Lembar Soal Utama (PDF / DOC)"}
+                      {uploading ? "Uploading..." : "Click to Upload Main Question Paper (PDF / DOC)"}
                     </span>
-                    <span className="text-[11px] text-zinc-400 mt-0.5">
-                      Maksimal 20MB. Format didukung: PDF, DOCX
+                    <span className="text-[11px] text-zinc-500 font-medium mt-0.5">
+                      Maksimal 5MB. Format yang didukung: PDF, DOCX
                     </span>
                     <input
                       type="file"
@@ -348,40 +386,76 @@ export function ExamConfigDialog({
               {/* Exam Details */}
               <div className="space-y-3">
                 <label className="block">
-                  <span className="label font-bold text-xs text-zinc-700">Judul Ujian</span>
+                  <span className="label font-bold text-xs text-zinc-700">Exam Title</span>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Contoh: Final Exam — Applied English Proficiency"
+                    placeholder="e.g. Final Exam — Applied English Proficiency"
                     className="input input-default w-full text-xs sm:text-sm font-semibold"
                   />
                 </label>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="block">
-                    <span className="label font-bold text-xs text-zinc-700">Batas Nilai Kelulusan (Passing Score)</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={passingScore}
-                      onChange={(e) => setPassingScore(Number(e.target.value))}
-                      className="input input-default w-full text-xs sm:text-sm font-semibold"
-                    />
-                    <span className="text-[10px] text-zinc-400 mt-1 block">
-                      Nilai di bawah ini otomatis berstatus <strong>Remedial</strong>.
+                    <span className="label font-bold text-xs text-zinc-700 flex items-center justify-between">
+                      <span>Passing Score Threshold (KKM)</span>
+                      <span className="text-[10px] text-zinc-400 font-normal">Scale: 1 – 100</span>
                     </span>
+                    <div className="relative mt-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={passingScore}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            setPassingScore("");
+                            return;
+                          }
+                          const val = parseInt(raw, 10);
+                          if (isNaN(val)) return;
+                          if (val > 100) {
+                            setPassingScore(100);
+                          } else if (val < 0) {
+                            setPassingScore(0);
+                          } else {
+                            setPassingScore(val);
+                          }
+                        }}
+                        onBlur={() => {
+                          if (passingScore === "" || Number(passingScore) < 1) {
+                            setPassingScore(70);
+                          }
+                        }}
+                        placeholder="e.g. 70"
+                        className={`input input-default w-full text-xs sm:text-sm font-semibold pr-12 ${
+                          passingScore !== "" && (Number(passingScore) < 1 || Number(passingScore) > 100)
+                            ? "border-red-400 focus:border-red-500 bg-red-50/40 text-red-900"
+                            : ""
+                        }`}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400 pointer-events-none">
+                        / 100
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] mt-1 text-zinc-400">
+                      <span>Scores below this threshold require <strong>Remedial</strong>.</span>
+                      {passingScore !== "" && (Number(passingScore) < 1 || Number(passingScore) > 100) && (
+                        <span className="font-bold text-red-600">Must be 1 - 100</span>
+                      )}
+                    </div>
                   </label>
                 </div>
 
                 <label className="block">
-                  <span className="label font-bold text-xs text-zinc-700">Petunjuk & Instruksi Pengerjaan untuk Siswa</span>
+                  <span className="label font-bold text-xs text-zinc-700">Instructions & Guidelines for Students</span>
                   <textarea
                     rows={4}
                     value={instructions}
                     onChange={(e) => setInstructions(e.target.value)}
-                    placeholder="Tuliskan petunjuk pengerjaan ujian untuk murid..."
+                    placeholder="Write exam guidelines and instructions for students..."
                     className="input input-default w-full text-xs font-medium leading-relaxed"
                   />
                 </label>
@@ -392,7 +466,7 @@ export function ExamConfigDialog({
                 <div className="flex items-center gap-2 text-amber-900">
                   <LandingIcon name="RotateCcw" size={14} color="#d97706" />
                   <span>
-                    Ingin menggunakan lembar soal berbeda khusus ujian remedial?
+                    Need a separate question paper specifically for remedial exams?
                   </span>
                 </div>
                 <button
@@ -400,33 +474,33 @@ export function ExamConfigDialog({
                   onClick={() => setActiveTab("remedial")}
                   className="font-bold text-amber-700 hover:text-amber-800 hover:underline shrink-0"
                 >
-                  Buka Tab Soal Remedial &rarr;
+                  Open Remedial Tab &rarr;
                 </button>
               </div>
             </div>
           )}
 
-          {/* TAB 2: SOAL KHUSUS REMEDIAL (PAKET B) */}
+          {/* TAB 2: REMEDIAL EXAM PAPER (SET B) */}
           {activeTab === "remedial" && (
             <div className="space-y-4 animate-in fade-in duration-150">
               {/* Informative Callout Card */}
               <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1.5">
                 <div className="flex items-center gap-2 font-black text-amber-900">
                   <LandingIcon name="RotateCcw" size={15} color="#d97706" />
-                  <span>SOAL KHUSUS REMEDIAL (PAKET B) — OPSIONAL</span>
+                  <span>REMEDIAL EXAM PAPER (SET B) — OPTIONAL</span>
                 </div>
                 <p className="leading-relaxed text-amber-900/90 text-[11px]">
-                  Unggah file lembar soal ini jika Anda ingin siswa yang <strong>tidak lulus (nilai &lt; {passingScore})</strong> mengerjakan paket soal baru yang berbeda dari ujian utama.
+                  Upload this question paper if you want students who <strong>did not pass (score &lt; {passingScore})</strong> to work on a fresh set of questions instead of revising the main paper.
                 </p>
                 <div className="pt-1.5 flex items-center gap-2 text-[11px]">
-                  <span className="font-bold text-amber-900">Kebijakan Sistem:</span>
+                  <span className="font-bold text-amber-900">System Policy:</span>
                   {remedialFileUrl ? (
                     <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">
-                      ✓ Soal Khusus Paket B Aktif diunduh siswa remedial
+                      ✓ Dedicated Set B paper will be downloaded by remedial students
                     </span>
                   ) : (
                     <span className="px-2 py-0.5 rounded-md bg-zinc-200 text-zinc-700 font-semibold">
-                      Siswa remedial otomatis menggunakan Lembar Soal Utama untuk perbaikan
+                      Remedial students automatically use the Main Exam Paper for revisions
                     </span>
                   )}
                 </div>
@@ -434,9 +508,14 @@ export function ExamConfigDialog({
 
               {/* Remedial Question File Upload Card */}
               <div className="rounded-2xl border border-amber-200/90 bg-amber-50/30 p-4 space-y-3">
-                <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block">
-                  File Lembar Soal Khusus Remedial (PDF / DOC)
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block">
+                    Remedial Question Paper (PDF / DOC)
+                  </span>
+                  <span className="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md">
+                    Maks. 5MB
+                  </span>
+                </div>
 
                 {remedialFileUrl ? (
                   <div className="flex items-center justify-between p-3.5 rounded-xl bg-white border border-amber-300 shadow-xs">
@@ -447,10 +526,10 @@ export function ExamConfigDialog({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-xs font-bold text-zinc-900 truncate">
-                            {remedialFileName || "File_Soal_Remedial.pdf"}
+                            {remedialFileName || "Remedial_Question_Paper.pdf"}
                           </p>
                           <span className="bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full border border-amber-200 shrink-0">
-                            Paket B
+                            Set B
                           </span>
                         </div>
                         <a
@@ -459,13 +538,13 @@ export function ExamConfigDialog({
                           rel="noreferrer"
                           className="text-[11px] font-semibold text-amber-700 hover:underline inline-flex items-center gap-1"
                         >
-                          Buka file remedial &rarr;
+                          View remedial paper &rarr;
                         </a>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <label className="btn btn-secondary btn-sm cursor-pointer text-xs shrink-0 font-bold">
-                        <span>Ganti File</span>
+                        <span>Replace File</span>
                         <input
                           type="file"
                           accept=".pdf,.doc,.docx"
@@ -480,9 +559,10 @@ export function ExamConfigDialog({
                           setRemedialFileUrl("");
                           setRemedialFileName("");
                         }}
-                        className="btn btn-secondary btn-sm text-xs text-red-600 hover:bg-red-50 hover:border-red-200 shrink-0"
+                        className="btn btn-secondary btn-sm text-xs text-red-600 hover:bg-red-50 hover:border-red-200 shrink-0 font-bold flex items-center gap-1"
                       >
-                        Hapus File
+                        <LandingIcon name="Trash" size={13} color="currentColor" />
+                        <span>Remove File</span>
                       </button>
                     </div>
                   </div>
@@ -492,10 +572,13 @@ export function ExamConfigDialog({
                       <LandingIcon name="Download" size={20} color="currentColor" />
                     </div>
                     <span className="text-xs font-bold text-amber-950">
-                      {uploadingRemedial ? "Sedang Mengunggah..." : "+ Unggah Lembar Soal Khusus Remedial (Paket B)"}
+                      {uploadingRemedial ? "Uploading..." : "+ Upload Remedial Question Paper (Set B)"}
                     </span>
-                    <span className="text-[11px] text-zinc-500 mt-0.5">
-                      Biarkan kosong jika ingin murid merevisi dari lembar soal utama
+                    <span className="text-[11px] text-amber-800 font-semibold mt-0.5">
+                      Maksimal 5MB. Format yang didukung: PDF, DOCX
+                    </span>
+                    <span className="text-[10px] text-zinc-500">
+                      (Kosongkan jika siswa remedial menggunakan lembar soal utama)
                     </span>
                     <input
                       type="file"
@@ -516,17 +599,17 @@ export function ExamConfigDialog({
               <div className="space-y-1">
                 <label className="block">
                   <span className="label font-bold text-xs text-zinc-700">
-                    Instruksi Tambahan Khusus Remedial (Opsional)
+                    Additional Instructions for Remedial (Optional)
                   </span>
                   <textarea
                     rows={3}
                     value={remedialInstructions}
                     onChange={(e) => setRemedialInstructions(e.target.value)}
-                    placeholder="Contoh: Kerjakan hanya pertanyaan nomor 4 dan 5 pada lembar remedial ini untuk melengkapi nilai Anda..."
+                    placeholder="e.g. Complete questions 4 and 5 on this remedial sheet to improve your score..."
                     className="input input-default w-full text-xs font-medium leading-relaxed bg-white"
                   />
                   <span className="text-[10px] text-zinc-400 mt-1 block">
-                    Instruksi ini akan tampil khusus di halaman portal siswa yang berstatus remedial.
+                    This instruction note will only appear on the exam portal for remedial students.
                   </span>
                 </label>
               </div>
@@ -536,7 +619,7 @@ export function ExamConfigDialog({
           {/* Dialog Action Buttons */}
           <div className="flex justify-between items-center pt-3 border-t border-zinc-200">
             <span className="text-[11px] text-zinc-400">
-              {activeTab === "main" ? "Sedang mengedit: Soal Utama" : "Sedang mengedit: Soal Remedial (Paket B)"}
+              {activeTab === "main" ? "Currently editing: Main Exam Paper" : "Currently editing: Remedial Paper (Set B)"}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -545,7 +628,7 @@ export function ExamConfigDialog({
                 onClick={() => setOpen(false)}
                 disabled={saving}
               >
-                Tutup
+                Close
               </button>
               <button
                 type="button"
@@ -554,10 +637,10 @@ export function ExamConfigDialog({
                 disabled={saving || uploading || uploadingRemedial}
               >
                 {saving
-                  ? "Menyimpan..."
+                  ? "Saving..."
                   : activeTab === "remedial"
-                  ? "Simpan Soal Remedial"
-                  : "Simpan & Publikasikan Ujian"}
+                  ? "Save Remedial Paper"
+                  : "Save & Publish Exam"}
               </button>
             </div>
           </div>

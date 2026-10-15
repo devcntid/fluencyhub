@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
+import { useToast } from "@/components/ui/NotificationProvider";
 
 function slugify(value: string) {
   return value
@@ -22,9 +23,12 @@ export function InstructorCourseEditDialog({
     shortDescription: string | null;
     price: string;
     thumbnailUrl: string | null;
+    status?: "draft" | "published";
+    level?: "beginner" | "intermediate" | "advanced" | "all_levels";
   };
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -35,6 +39,10 @@ export function InstructorCourseEditDialog({
   const [shortDescription, setShortDescription] = useState(course.shortDescription || "");
   const [price, setPrice] = useState(course.price);
   const [thumbnailUrl, setThumbnailUrl] = useState(course.thumbnailUrl || "");
+  const [status, setStatus] = useState<"draft" | "published">(course.status || "draft");
+  const [level, setLevel] = useState<"beginner" | "intermediate" | "advanced" | "all_levels">(
+    course.level || "beginner"
+  );
 
   function startEdit() {
     setTitle(course.title);
@@ -42,6 +50,8 @@ export function InstructorCourseEditDialog({
     setShortDescription(course.shortDescription || "");
     setPrice(course.price);
     setThumbnailUrl(course.thumbnailUrl || "");
+    setStatus(course.status || "draft");
+    setLevel(course.level || "beginner");
     setError("");
     setUploading(false);
     setOpen(true);
@@ -57,14 +67,14 @@ export function InstructorCourseEditDialog({
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error || "Gagal mengunggah thumbnail.");
+        setError(json.error || "Failed to upload thumbnail.");
         return;
       }
       if (json.data?.url) {
         setThumbnailUrl(json.data.url);
       }
     } catch {
-      setError("Terjadi kesalahan jaringan saat mengunggah thumbnail.");
+      setError("Network error while uploading thumbnail.");
     } finally {
       setUploading(false);
     }
@@ -72,7 +82,7 @@ export function InstructorCourseEditDialog({
 
   async function save() {
     if (uploading) {
-      setError("Harap tunggu hingga thumbnail selesai diunggah.");
+      setError("Please wait until thumbnail upload finishes.");
       return;
     }
     setBusy(true);
@@ -83,6 +93,8 @@ export function InstructorCourseEditDialog({
       shortDescription: shortDescription || null,
       price: price ? price.replace(",", ".") : "0",
       thumbnailUrl: thumbnailUrl || null,
+      status,
+      level,
     };
     try {
       const res = await fetch(`/api/instructor/courses/${course.id}`, {
@@ -93,7 +105,7 @@ export function InstructorCourseEditDialog({
       setBusy(false);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        let errMsg = "Gagal menyimpan. Pastikan semua data valid.";
+        let errMsg = "Save failed. Please ensure all fields are valid.";
         if (typeof err.error === "string") {
           errMsg = err.error;
         } else if (err.error?.fieldErrors) {
@@ -102,13 +114,16 @@ export function InstructorCourseEditDialog({
           errMsg = err.message;
         }
         setError(errMsg);
+        toast.error(errMsg);
         return;
       }
       setOpen(false);
+      toast.success("Informasi kursus berhasil diperbarui!");
       router.refresh();
     } catch {
       setBusy(false);
-      setError("Terjadi kesalahan jaringan saat menyimpan perubahan.");
+      setError("Network error while saving changes.");
+      toast.error("Terjadi kesalahan jaringan saat menyimpan perubahan.");
     }
   }
 
@@ -136,6 +151,21 @@ export function InstructorCourseEditDialog({
             <input className="input" value={slug} onChange={(e) => setSlug(e.target.value)} />
           </label>
           <label>
+            <span className="label">Level</span>
+            <select
+              className="input"
+              value={level}
+              onChange={(e) =>
+                setLevel(e.target.value as "beginner" | "intermediate" | "advanced" | "all_levels")
+              }
+            >
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="all_levels">All Levels</option>
+            </select>
+          </label>
+          <label>
             <span className="label">Short description</span>
             <textarea
               className="input min-h-20"
@@ -155,6 +185,20 @@ export function InstructorCourseEditDialog({
             />
           </label>
           <label>
+            <span className="label">Course Status</span>
+            <select
+              className="input"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "draft" | "published")}
+            >
+              <option value="draft">Draft (Hidden from public catalog)</option>
+              <option value="published">Published (Visible in public catalog)</option>
+            </select>
+            <p className="mt-1 text-xs text-[var(--text-4)]">
+              Note: Publishing requires at least 1 module with both video and document materials.
+            </p>
+          </label>
+          <label>
             <span className="label">Thumbnail</span>
             <input
               className="input"
@@ -168,7 +212,7 @@ export function InstructorCourseEditDialog({
             />
             {uploading && (
               <p className="mt-1 text-xs font-semibold text-blue-600 animate-pulse">
-                Sedang mengunggah gambar... Mohon tunggu.
+                Uploading image... Please wait.
               </p>
             )}
           </label>
@@ -183,7 +227,7 @@ export function InstructorCourseEditDialog({
             Cancel
           </button>
           <button type="button" className="btn btn-primary btn-sm" disabled={busy || uploading} onClick={save}>
-            {busy ? "Menyimpan..." : uploading ? "Mengunggah..." : "Save Changes"}
+            {busy ? "Saving..." : uploading ? "Uploading..." : "Save Changes"}
           </button>
         </div>
       </AdminFormDialog>

@@ -49,9 +49,14 @@ export async function POST(req: Request) {
 
     // Recalculate and update enrollment progress_pct
     const countRes = await sql`
-      SELECT COUNT(*) as completed_count
-      FROM lesson_progress
-      WHERE enrollment_id = ${enrollment.id} AND is_completed = true
+      SELECT COUNT(lp.id) as completed_count
+      FROM lesson_progress lp
+      JOIN lessons l ON l.id = lp.lesson_id
+      JOIN sections s ON s.id = l.section_id
+      WHERE lp.enrollment_id = ${enrollment.id}
+        AND lp.is_completed = true
+        AND l.deleted_at IS NULL
+        AND l.content_type != 'exam'
     `;
     const completedCount = Number(countRes[0].completed_count);
 
@@ -59,7 +64,9 @@ export async function POST(req: Request) {
       SELECT COUNT(l.id) as total_count
       FROM lessons l
       JOIN sections s ON l.section_id = s.id
-      WHERE s.course_id = ${courseId} AND l.content_type != 'live_class'
+      WHERE s.course_id = ${courseId}
+        AND l.deleted_at IS NULL
+        AND l.content_type != 'exam'
     `;
     const totalCount = Number(totalRes[0].total_count);
     

@@ -9,8 +9,8 @@ export default async function InstructorStudentsPage() {
   const students = await listStudentsForInstructor(scope);
 
   return (
-    <div className="mx-auto max-w-[960px]">
-      <h1 className="mb-4 text-xl font-extrabold">Students</h1>
+    <div className="w-full flex flex-col gap-4">
+      <h1 className="text-xl font-extrabold text-zinc-900">Students</h1>
       <AdminSimpleGrid
         columns={["Name", "Email", "WhatsApp", "Course", "Progress", "Status", "Joined"]}
         rows={students.map((s) => ({

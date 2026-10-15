@@ -164,6 +164,7 @@ export type CourseAdminInput = {
   isFeatured?: boolean;
   marketingTag?: string | null;
   thumbnailUrl?: string | null;
+  level?: Course["level"];
 };
 
 export async function createCourseAdmin(data: {
@@ -177,16 +178,18 @@ export async function createCourseAdmin(data: {
   isFeatured: boolean;
   marketingTag?: string | null;
   thumbnailUrl?: string | null;
+  level?: Course["level"];
 }): Promise<Course> {
   const rows = await sql`
     INSERT INTO courses (
       instructor_id, title, slug, short_description, price, original_price,
-      status, is_featured, marketing_tag, thumbnail_url, published_at
+      status, is_featured, marketing_tag, thumbnail_url, published_at, level
     ) VALUES (
       ${data.instructorId}, ${data.title}, ${data.slug}, ${data.shortDescription ?? null},
       ${data.price}, ${data.originalPrice ?? null}, ${data.status}, ${data.isFeatured},
       ${data.marketingTag ?? null}, ${data.thumbnailUrl ?? null},
-      ${data.status === "published" ? new Date() : null}
+      ${data.status === "published" ? new Date() : null},
+      ${data.level ?? "all_levels"}
     )
     RETURNING *
   `;
@@ -204,6 +207,7 @@ export async function updateCourseAdmin(id: number, data: CourseAdminInput): Pro
       original_price = COALESCE(${data.originalPrice ?? null}, original_price),
       is_featured = COALESCE(${data.isFeatured ?? null}, is_featured),
       marketing_tag = COALESCE(${data.marketingTag ?? null}, marketing_tag),
+      level = COALESCE(${data.level ?? null}, level),
       thumbnail_url = CASE
         WHEN ${typeof data.thumbnailUrl !== "undefined"} THEN ${data.thumbnailUrl ?? null}
         ELSE thumbnail_url
@@ -255,4 +259,94 @@ export async function getInstructorUpcomingLiveClasses(instructorId: number | nu
     courseTitle: String(r.course_title),
     courseId: Number(r.course_id),
   }));
+}
+
+export type CoursePublishEligibility = {
+  eligible: boolean;
+  hasSection: boolean;
+  hasVideo: boolean;
+  hasDocument: boolean;
+  moduleWithBoth: boolean;
+  message: string;
+};
+
+export async function checkCoursePublishEligibility(courseId: number): Promise<CoursePublishEligibility> {
+  const sections = await sql`
+    SELECT s.id, s.title,
+      COUNT(CASE WHEN l.content_type = 'youtube_video' AND l.deleted_at IS NULL THEN 1 END) AS video_count,
+      COUNT(CASE WHEN l.content_type IN ('document', 'text') AND l.deleted_at IS NULL THEN 1 END) AS doc_count
+    FROM sections s
+    LEFT JOIN lessons l ON l.section_id = s.id AND l.deleted_at IS NULL
+    WHERE s.course_id = ${courseId}
+    GROUP BY s.id, s.title, s.sort_order
+    ORDER BY s.sort_order ASC
+  `;
+
+  if (sections.length === 0) {
+    return {
+      eligible: false,
+      hasSection: false,
+      hasVideo: false,
+      hasDocument: false,
+      moduleWithBoth: false,
+      message: "Cannot publish course yet: Please add at least 1 module (section).",
+    };
+  }
+
+  const totalVideos = sections.reduce((acc, s) => acc + Number(s.video_count || 0), 0);
+  const totalDocs = sections.reduce((acc, s) => acc + Number(s.doc_count || 0), 0);
+  const moduleWithBoth = sections.some((s) => Number(s.video_count || 0) > 0 && Number(s.doc_count || 0) > 0);
+
+  if (totalVideos === 0 && totalDocs === 0) {
+    return {
+      eligible: false,
+      hasSection: true,
+      hasVideo: false,
+      hasDocument: false,
+      moduleWithBoth: false,
+      message: "Cannot publish course yet: Please add at least 1 module containing both a video lesson and document material.",
+    };
+  }
+
+  if (totalVideos === 0) {
+    return {
+      eligible: false,
+      hasSection: true,
+      hasVideo: false,
+      hasDocument: totalDocs > 0,
+      moduleWithBoth: false,
+      message: "Cannot publish course yet: Please add at least 1 video lesson.",
+    };
+  }
+
+  if (totalDocs === 0) {
+    return {
+      eligible: false,
+      hasSection: true,
+      hasVideo: totalVideos > 0,
+      hasDocument: false,
+      moduleWithBoth: false,
+      message: "Cannot publish course yet: Please add at least 1 document or reading material.",
+    };
+  }
+
+  if (!moduleWithBoth) {
+    return {
+      eligible: false,
+      hasSection: true,
+      hasVideo: true,
+      hasDocument: true,
+      moduleWithBoth: false,
+      message: "Cannot publish course yet: At least 1 module must contain both a video lesson and document material.",
+    };
+  }
+
+  return {
+    eligible: true,
+    hasSection: true,
+    hasVideo: true,
+    hasDocument: true,
+    moduleWithBoth: true,
+    message: "Course is eligible to be published.",
+  };
 }

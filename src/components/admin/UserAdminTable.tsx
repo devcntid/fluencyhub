@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminDataGrid } from "@/components/admin/AdminDataGrid";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
+import { useConfirm, useToast } from "@/components/ui/NotificationProvider";
 
 type UserRow = {
   id: number;
@@ -49,6 +50,8 @@ export function UserAdminTable({
   courses?: { id: number; title: string }[];
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [values, setValues] = useState<Draft>(empty);
@@ -133,32 +136,60 @@ export function UserAdminTable({
 
   async function remove(u: UserRow) {
     if (currentUserId != null && u.id === currentUserId) {
-      alert("You cannot delete your own account.");
+      toast.warning("Anda tidak dapat menghapus akun Anda sendiri.");
       return;
     }
-    if (!confirm(`Delete ${u.name}? This hides the user from the platform.`)) return;
+    const ok = await confirm({
+      title: `Hapus Pengguna ${u.name}?`,
+      message: `Pengguna "${u.name}" (${u.email}) akan disembunyikan dan dinonaktifkan dari platform.`,
+      confirmText: "Ya, Hapus Pengguna",
+      cancelText: "Batal",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     setBusy(true);
-    const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
-    setBusy(false);
-    if (!res.ok) {
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
-      alert(typeof json.error === "string" ? json.error : "Delete failed");
-      return;
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(typeof json.error === "string" ? json.error : "Gagal menghapus pengguna.");
+        return;
+      }
+      toast.success(`Pengguna ${u.name} berhasil dihapus.`);
+      router.refresh();
+    } catch {
+      toast.error("Terjadi kesalahan jaringan.");
+    } finally {
+      setBusy(false);
     }
-    router.refresh();
   }
 
   async function restore(u: UserRow) {
-    if (!confirm(`Restore ${u.name}? This will make the user visible again.`)) return;
+    const ok = await confirm({
+      title: `Pulihkan Pengguna ${u.name}?`,
+      message: `Akun "${u.name}" (${u.email}) akan diaktifkan kembali dan dapat login ke platform.`,
+      confirmText: "Ya, Pulihkan",
+      cancelText: "Batal",
+      variant: "info",
+    });
+    if (!ok) return;
+
     setBusy(true);
-    const res = await fetch(`/api/admin/users/${u.id}/restore`, { method: "POST" });
-    setBusy(false);
-    if (!res.ok) {
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
-      alert(typeof json.error === "string" ? json.error : "Restore failed");
-      return;
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}/restore`, { method: "POST" });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(typeof json.error === "string" ? json.error : "Gagal memulihkan pengguna.");
+        return;
+      }
+      toast.success(`Pengguna ${u.name} berhasil dipulihkan!`);
+      router.refresh();
+    } catch {
+      toast.error("Terjadi kesalahan jaringan.");
+    } finally {
+      setBusy(false);
     }
-    router.refresh();
   }
 
   async function submitEnroll() {

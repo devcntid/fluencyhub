@@ -44,7 +44,11 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = ConfigSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
+    const firstIssue = parsed.error.issues?.[0];
+    const errorMsg = firstIssue
+      ? `${firstIssue.path.join(".") || "field"}: ${firstIssue.message}`
+      : "Invalid exam configuration. Passing score must be between 1 and 100.";
+    return NextResponse.json({ error: errorMsg }, { status: 422 });
   }
 
   if (parsed.data.courseId) {

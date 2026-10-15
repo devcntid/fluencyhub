@@ -218,7 +218,7 @@ select.input {
 .sidebar-footer { padding: 8px 8px 12px; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
 .dash-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--border); background: #fff; position: sticky; top: 0; z-index: 50; }
-.dash-content { flex: 1; padding: 20px 20px calc(108px + env(safe-area-inset-bottom, 20px)) 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.dash-content { flex: 1; padding: 20px 20px calc(108px + env(safe-area-inset-bottom, 20px)) 20px; overflow-y: auto; }
 @media (min-width: 768px) { .dash-content { padding: 24px 24px 40px 24px; } }
 .stat-card { background: #fff; border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; display: flex; gap: 12px; align-items: flex-start; }
 .stat-icon { width: 36px; height: 36px; border-radius: var(--r); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }

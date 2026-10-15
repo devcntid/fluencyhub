@@ -3,13 +3,51 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { UpcomingLiveClass } from "@/lib/db/lessons.queries";
 import { formatTimeWIB, formatFullDateWIB, formatDayLabelWIB } from "@/lib/utils/date";
 
 export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[] }) {
+  const router = useRouter();
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [filter, setFilter] = useState<"all" | "active" | "ended">("all");
+  const [submittingIds, setSubmittingIds] = useState<Record<number, boolean>>({});
+  const [completedMap, setCompletedMap] = useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {};
+    for (const c of liveClasses) {
+      if (c.isCompleted) init[c.id] = true;
+    }
+    return init;
+  });
+
+  async function handleToggleAttendance(session: UpcomingLiveClass, desiredState?: boolean) {
+    if (submittingIds[session.id]) return;
+    const currentCompleted = completedMap[session.id] ?? Boolean(session.isCompleted);
+    const nextState = desiredState !== undefined ? desiredState : !currentCompleted;
+
+    setSubmittingIds((prev) => ({ ...prev, [session.id]: true }));
+    setCompletedMap((prev) => ({ ...prev, [session.id]: nextState }));
+
+    try {
+      const res = await fetch("/api/dashboard/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: session.courseId,
+          lessonId: session.id,
+          isCompleted: nextState,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to record attendance");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      setCompletedMap((prev) => ({ ...prev, [session.id]: currentCompleted }));
+    } finally {
+      setSubmittingIds((prev) => ({ ...prev, [session.id]: false }));
+    }
+  }
 
   useEffect(() => {
     // Tick every 10 seconds so status transitions seamlessly if a session ends while on page
@@ -25,9 +63,9 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400">
           <LandingIcon name="Video" size={32} color="currentColor" />
         </div>
-        <h3 className="text-lg font-bold text-zinc-900">Belum ada jadwal Live Mentoring</h3>
+        <h3 className="text-lg font-bold text-zinc-900">No Live Mentoring scheduled yet</h3>
         <p className="mt-1 text-sm text-zinc-500">
-          Jadwal kelas interaktif Zoom untuk kelas ini akan muncul di sini saat instruktur menjadwalkannya.
+          Zoom interactive class schedules for this course will appear here once scheduled by the instructor.
         </p>
       </div>
     );
@@ -62,10 +100,10 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
   });
 
   // Sort sessions:
-  // 1. Sedang Live (priority 0) -> paling atas
-  // 2. Waiting Room Buka (priority 1)
-  // 3. Akan Datang (priority 2) -> diurutkan yang mau live duluan (startTime ASC)
-  // 4. Telah Selesai (priority 3) -> ditaruh di paling bawah
+  // 1. Live Now (priority 0) -> top
+  // 2. Waiting Room Open (priority 1)
+  // 3. Upcoming (priority 2) -> ordered by startTime ASC
+  // 4. Completed (priority 3) -> bottom
   const sortedSessions = [...sessionsWithStatus].sort((a, b) => {
     const getPriority = (item: (typeof sessionsWithStatus)[number]) => {
       if (item.isLiveNow) return 0;
@@ -81,14 +119,12 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
       return prioA - prioB;
     }
 
-    // Jika aktif / upcoming: urutkan yang mau live duluan (startTime ASC)
     if (prioA < 3) {
       const timeA = a.startDate ? a.startDate.getTime() : Infinity;
       const timeB = b.startDate ? b.startDate.getTime() : Infinity;
       return timeA - timeB;
     }
 
-    // Jika selesai: urutkan dari yang paling baru selesai (descending)
     const timeA = a.startDate ? a.startDate.getTime() : 0;
     const timeB = b.startDate ? b.startDate.getTime() : 0;
     return timeB - timeA;
@@ -108,7 +144,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
       {/* Top Filter and Info Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs font-semibold text-zinc-500">
-          Menampilkan {filteredSessions.length} dari {liveClasses.length} sesi live mentoring
+          Showing {filteredSessions.length} of {liveClasses.length} live mentoring sessions
         </p>
 
         {/* Tab Filters */}
@@ -121,7 +157,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                 : "text-zinc-500 hover:text-zinc-800"
             }`}
           >
-            Semua ({liveClasses.length})
+            All ({liveClasses.length})
           </button>
           <button
             onClick={() => setFilter("active")}
@@ -131,7 +167,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                 : "text-zinc-500 hover:text-zinc-800"
             }`}
           >
-            Aktif & Mendatang ({activeCount})
+            Active & Upcoming ({activeCount})
           </button>
           <button
             onClick={() => setFilter("ended")}
@@ -141,7 +177,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                 : "text-zinc-500 hover:text-zinc-800"
             }`}
           >
-            Selesai ({endedCount})
+            Completed ({endedCount})
           </button>
         </div>
       </div>
@@ -150,7 +186,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
       <div className="flex flex-col gap-4">
         {filteredSessions.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-200 py-12 text-center text-zinc-500">
-            Tidak ada sesi pada kategori filter ini.
+            No sessions found in this category.
           </div>
         ) : (
           filteredSessions.map(
@@ -181,7 +217,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                       <div className="h-px flex-1 bg-zinc-200" />
                       <span className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 uppercase tracking-wider">
                         <LandingIcon name="CheckCircle" size={13} color="currentColor" />
-                        Sesi yang Telah Selesai
+                        Completed Sessions
                       </span>
                       <div className="h-px flex-1 bg-zinc-200" />
                     </div>
@@ -240,7 +276,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                         <span className="text-zinc-300">•</span>
                         <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-600">
                           <LandingIcon name="Clock" size={11} color="currentColor" />
-                          {durationMin} Menit
+                          {durationMin} Mins
                         </span>
                         <span className="text-zinc-300 hidden sm:inline lg:hidden">•</span>
                         <span className="text-[11px] text-zinc-500 hidden sm:inline lg:hidden">
@@ -260,25 +296,25 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                         {isLiveNow && (
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700 border border-red-200 animate-pulse">
                             <span className="h-2 w-2 rounded-full bg-red-600 animate-ping inline-block" />
-                            SEDANG BERLANGSUNG
+                            HAPPENING NOW
                           </span>
                         )}
                         {isWaitingRoom && (
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 border border-blue-200">
                             <span className="h-2 w-2 rounded-full bg-blue-600 inline-block" />
-                            WAITING ROOM BUKA
+                            WAITING ROOM OPEN
                           </span>
                         )}
                         {isUpcoming && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 border border-amber-200">
                             <LandingIcon name="Clock" size={11} color="currentColor" />
-                            Belum Dimulai
+                            Upcoming
                           </span>
                         )}
                         {isEnded && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500 border border-zinc-200">
                             <LandingIcon name="CheckCircle" size={11} color="currentColor" />
-                            Selesai
+                            Completed
                           </span>
                         )}
 
@@ -286,6 +322,13 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                         <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 border border-blue-100 max-w-full truncate">
                           {session.moduleName}
                         </span>
+
+                        {Boolean(completedMap[session.id] ?? session.isCompleted) && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 border border-emerald-200">
+                            <LandingIcon name="Check" size={11} color="currentColor" />
+                            Attended ✓
+                          </span>
+                        )}
                       </div>
 
                       <h3 className="mb-1.5 text-base sm:text-lg font-bold text-zinc-900 leading-snug break-words">
@@ -299,25 +342,22 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                           className="h-5 w-5 rounded-full object-cover ring-1 ring-zinc-200 shrink-0"
                         />
                         <span className="truncate">
-                          Instruktur: <strong className="text-zinc-700 font-semibold">{session.coachName}</strong>
+                          Instructor: <strong className="text-zinc-700 font-semibold">{session.coachName}</strong>
                         </span>
                       </div>
                     </div>
 
-                    {/* Right Block: Action Button */}
-                    <div className="w-full lg:w-auto lg:min-w-[170px] flex flex-col items-stretch lg:items-end gap-1 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-zinc-100">
+                    {/* Right Block: Action Button & Attendance Toggle */}
+                    <div className="w-full lg:w-auto lg:min-w-[190px] flex flex-col items-stretch lg:items-end gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-zinc-100">
                       {isEnded ? (
                         <>
                           <div
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2.5 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed lg:w-auto select-none"
-                            title="Sesi ini telah selesai sesuai durasi yang ditentukan"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed lg:w-auto select-none"
+                            title="This session has ended based on the scheduled duration"
                           >
                             <LandingIcon name="CheckCircle" size={15} color="currentColor" />
-                            <span>Kelas Telah Selesai</span>
+                            <span>Session Ended</span>
                           </div>
-                          <span className="text-[10px] text-zinc-400 text-center lg:text-right">
-                            Waktu sesi telah berakhir
-                          </span>
                         </>
                       ) : isLiveNow ? (
                         <>
@@ -325,13 +365,18 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                             href={session.liveClassUrl || "#"}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={() => {
+                              if (!(completedMap[session.id] ?? session.isCompleted)) {
+                                handleToggleAttendance(session, true);
+                              }
+                            }}
                             className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-red-200 transition hover:bg-red-700 active:scale-95 lg:w-auto"
                           >
                             <LandingIcon name="Video" size={16} color="currentColor" />
                             <span>Join Live Room</span>
                           </a>
                           <span className="text-[10px] font-bold text-red-600 text-center lg:text-right animate-pulse">
-                            Sedang berlangsung sekarang
+                            Happening right now
                           </span>
                         </>
                       ) : isWaitingRoom ? (
@@ -340,35 +385,63 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                             href={session.liveClassUrl || "#"}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={() => {
+                              if (!(completedMap[session.id] ?? session.isCompleted)) {
+                                handleToggleAttendance(session, true);
+                              }
+                            }}
                             className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-95 lg:w-auto"
                           >
                             <LandingIcon name="Video" size={16} color="currentColor" />
-                            <span>Masuk Waiting Room</span>
+                            <span>Enter Waiting Room</span>
                           </a>
                           <span className="text-[10px] text-blue-600 font-semibold text-center lg:text-right">
-                            Ruang Zoom sudah dibuka
+                            Zoom room is open
                           </span>
                         </>
                       ) : (
                         <>
                           <div
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2.5 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed lg:w-auto select-none"
-                            title="Ruang Zoom akan dibuka 15 menit sebelum waktu kelas"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed lg:w-auto select-none"
+                            title="Zoom room will open 15 minutes before class starts"
                           >
                             <LandingIcon name="Clock" size={15} color="currentColor" />
-                            <span>Belum Dibuka</span>
+                            <span>Opens 15m before start</span>
                           </div>
-                          <span className="text-[10px] text-zinc-400 text-center lg:text-right">
-                            Dibuka 15 mnt sebelum mulai
-                          </span>
                         </>
                       )}
+
+                      {/* Manual Attendance Toggle */}
+                      <button
+                        type="button"
+                        disabled={submittingIds[session.id]}
+                        onClick={() => handleToggleAttendance(session)}
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition lg:w-auto ${
+                          (completedMap[session.id] ?? session.isCompleted)
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/80"
+                            : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 shadow-2xs"
+                        }`}
+                        title="Toggle whether you have attended this session"
+                      >
+                        <LandingIcon
+                          name={(completedMap[session.id] ?? session.isCompleted) ? "CheckCircle" : "Check"}
+                          size={13}
+                          color="currentColor"
+                        />
+                        <span>
+                          {submittingIds[session.id]
+                            ? "Updating..."
+                            : (completedMap[session.id] ?? session.isCompleted)
+                            ? "Attended ✓"
+                            : "Mark as Attended"}
+                        </span>
+                      </button>
                     </div>
                   </div>
-              </div>
-            );
-          }
-        )
+                </div>
+              );
+            }
+          )
         )}
       </div>
     </div>

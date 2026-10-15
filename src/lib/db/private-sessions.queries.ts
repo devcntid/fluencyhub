@@ -139,7 +139,18 @@ export async function getLearnerPrivateSessions(learnerId: number): Promise<any[
     JOIN users u ON ps.instructor_id = u.id
     LEFT JOIN users ui ON ps.instructor_id = ui.id
     WHERE ps.learner_id = ${learnerId}
-    ORDER BY COALESCE(s.start_at, ps.created_at) DESC
+    ORDER BY 
+      CASE 
+        WHEN ps.status = 'confirmed' THEN 1
+        WHEN ps.status = 'pending' THEN 2
+        WHEN ps.status = 'completed' THEN 3
+        ELSE 4
+      END ASC,
+      CASE 
+        WHEN ps.status = 'confirmed' AND s.start_at >= CURRENT_TIMESTAMP THEN s.start_at
+        ELSE NULL
+      END ASC NULLS LAST,
+      COALESCE(s.start_at, ps.created_at) DESC
   `;
   return rows;
 }

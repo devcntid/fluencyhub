@@ -5,6 +5,7 @@ import { LessonFormDialog } from "@/components/instructor/LessonFormDialog";
 import { SectionDeleteButton } from "@/components/instructor/SectionDeleteButton";
 import { SectionFormDialog } from "@/components/instructor/SectionFormDialog";
 import { InstructorExamsManager } from "@/components/instructor/InstructorExamsManager";
+import { InstructorCoursePublishButton } from "@/components/instructor/InstructorCoursePublishButton";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { InstructorSubmissionRow } from "@/components/instructor/InstructorExamReviewWorkbench";
 import type { InstructorCurriculumSection } from "@/lib/db/lessons.queries";
@@ -14,7 +15,7 @@ function typeBadge(type: string) {
   if (type === "live_class") return { cls: "badge-success", lbl: "Live Zoom" };
   if (type === "document") return { cls: "badge-warning", lbl: "Document" };
   if (type === "text") return { cls: "badge-primary", lbl: "Text" };
-  if (type === "exam") return { cls: "badge-danger", lbl: "Ujian / Exam" };
+  if (type === "exam") return { cls: "badge-danger", lbl: "Final Exam" };
   return { cls: "badge-primary", lbl: "YouTube" };
 }
 
@@ -28,7 +29,7 @@ export function CurriculumManager({
   activeTab = "curriculum",
   hrefTemplate,
 }: {
-  courses: Array<{ id: number; title: string }>;
+  courses: Array<{ id: number; title: string; status?: string }>;
   selectedId: number;
   allowed: boolean;
   curriculum: InstructorCurriculumSection[];
@@ -44,22 +45,29 @@ export function CurriculumManager({
   const totalLessons = curriculum.reduce((acc, s) => acc + s.lessons.length, 0);
 
   return (
-    <div className="mx-auto max-w-[1020px] w-full space-y-6 pb-6">
+    <div className="w-full space-y-6 pb-6">
       {/* Top Header & Course Picker */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[var(--brand)] border border-blue-100">
-              <LandingIcon name="BookOpen" size={13} color="currentColor" /> Manajemen Kelas
+              <LandingIcon name="BookOpen" size={13} color="currentColor" /> Course Management
             </span>
             <span className="text-zinc-300">•</span>
             <span className="text-xs text-zinc-500 font-medium">Instructor Portal</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)]">
-            Kurikulum
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)]">
+              Curriculum
+            </h1>
+            {selectedCourse?.status && (
+              <span className={`badge ${selectedCourse.status === "published" ? "badge-success" : "badge-warning"}`}>
+                {selectedCourse.status}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-xs text-zinc-500">
-            Kelola materi pelajaran (video, zoom, dokumen) dan lembar ujian akhir untuk kelas Anda.
+            Manage course lessons (videos, live sessions, documents) and final exams for your classes.
           </p>
         </div>
 
@@ -76,17 +84,17 @@ export function CurriculumManager({
 
       {courses.length === 0 && (
         <div className="rounded-2xl border border-zinc-200 bg-white p-12 text-center">
-          <p className="text-sm font-semibold text-zinc-600">Anda belum memiliki kelas.</p>
+          <p className="text-sm font-semibold text-zinc-600">You do not have any courses yet.</p>
           <Link href="/instructor/courses" className="btn btn-primary btn-sm mt-3 inline-block">
-            + Buat Kelas Baru
+            + Create New Course
           </Link>
         </div>
       )}
 
       {!allowed && courses.length > 0 && (
         <div className="p-8 text-center text-red-600 bg-red-50 rounded-2xl border border-red-200">
-          <h2 className="text-lg font-bold mb-1">Akses Ditolak / Kelas Tidak Ditemukan</h2>
-          <p className="text-xs text-red-500">Anda tidak memiliki hak akses untuk mengedit kurikulum kelas ini.</p>
+          <h2 className="text-lg font-bold mb-1">Access Denied / Course Not Found</h2>
+          <p className="text-xs text-red-500">You do not have permission to manage this course&apos;s curriculum.</p>
         </div>
       )}
 
@@ -107,9 +115,9 @@ export function CurriculumManager({
                 size={16}
                 color={activeTab === "curriculum" ? "var(--brand,#2563eb)" : "currentColor"}
               />
-              <span>1. Materi Pembelajaran (Silabus)</span>
+              <span>1. Learning Syllabus & Modules</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-700 font-bold">
-                {totalLessons} Materi
+                {totalLessons} {totalLessons === 1 ? "Lesson" : "Lessons"}
               </span>
             </Link>
 
@@ -126,14 +134,14 @@ export function CurriculumManager({
                 size={16}
                 color={activeTab === "exams" ? "var(--brand,#2563eb)" : "currentColor"}
               />
-              <span>2. Ujian Akhir & Penilaian</span>
+              <span>2. Final Exam & Grading</span>
               {pendingCount > 0 ? (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-extrabold animate-pulse">
-                  {pendingCount} Perlu Dinilai
+                  {pendingCount} Needs Review
                 </span>
               ) : (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-semibold">
-                  {submissions.length} Pengumpulan
+                  {submissions.length} {submissions.length === 1 ? "Submission" : "Submissions"}
                 </span>
               )}
             </Link>
@@ -146,29 +154,37 @@ export function CurriculumManager({
               <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 border border-zinc-200/80 rounded-2xl p-4">
                 <div>
                   <h3 className="text-xs font-bold text-zinc-800">
-                    Struktur Modul & Materi — {selectedCourse?.title}
+                    Modules & Lessons — {selectedCourse?.title}
                   </h3>
                   <p className="text-[11px] text-zinc-500 mt-0.5">
-                    Tambahkan bab materi dan pelajaran interaktif (Video YouTube, Live Zoom, atau Dokumen PDF).
+                    Organize modules and interactive lessons (YouTube videos, Live Zoom sessions, or PDF documents).
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
+                  {selectedCourse?.status && (
+                    <InstructorCoursePublishButton
+                      courseId={selectedId}
+                      courseTitle={selectedCourse.title}
+                      status={selectedCourse.status}
+                      compact
+                    />
+                  )}
                   <Link
                     href={`/dashboard/classroom?c=${selectedId}`}
                     target="_blank"
                     className="btn btn-secondary h-9 px-3.5 text-xs font-bold rounded-xl shadow-xs inline-flex items-center gap-1.5"
                   >
-                    <span>Preview Siswa</span>
+                    <span>Student Preview</span>
                     <LandingIcon name="ExternalLink" size={13} color="currentColor" />
                   </Link>
                   <SectionFormDialog
                     courseId={selectedId}
-                    triggerLabel="+ Tambah Section"
+                    triggerLabel="+ Add Section"
                     triggerClassName="btn btn-secondary h-9 px-3.5 text-xs font-bold rounded-xl shadow-xs"
                   />
                   <LessonFormDialog
                     sections={sectionOptions}
-                    triggerLabel="+ Tambah Materi"
+                    triggerLabel="+ Add Lesson"
                     triggerClassName="btn btn-primary h-9 px-3.5 text-xs font-bold rounded-xl shadow-xs"
                   />
                 </div>
@@ -177,9 +193,9 @@ export function CurriculumManager({
               {curriculum.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-12 text-center text-zinc-400">
                   <LandingIcon name="Layers" size={36} color="currentColor" className="mx-auto mb-2 opacity-50" />
-                  <p className="font-semibold text-zinc-700">Belum ada modul materi pada kelas ini.</p>
+                  <p className="font-semibold text-zinc-700">No modules created for this course yet.</p>
                   <p className="text-xs text-zinc-400 mt-1">
-                    Gunakan tombol <strong>+ Tambah Section</strong> di atas untuk membuat bab pertama.
+                    Click <strong>+ Add Section</strong> above to create your first module.
                   </p>
                 </div>
               ) : (
@@ -190,21 +206,21 @@ export function CurriculumManager({
                         {sec.title}
                       </span>
                       <span className="badge" style={{ background: "rgba(255,255,255,.15)", color: "white", border: "none", fontSize: 10 }}>
-                        {sec.lessons.length} pelajaran
+                        {sec.lessons.length} {sec.lessons.length === 1 ? "lesson" : "lessons"}
                       </span>
                       <SectionFormDialog
                         courseId={selectedId}
                         section={{ id: sec.id, title: sec.title, sortOrder: sec.sortOrder }}
                         triggerLabel="Edit"
-                        triggerClassName="btn btn-ghost btn-sm text-white text-xs"
+                        triggerClassName="px-3 py-1 text-xs font-semibold rounded-lg text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all cursor-pointer flex items-center gap-1"
                       />
-                      <SectionDeleteButton id={sec.id} />
+                      <SectionDeleteButton id={sec.id} title={sec.title} />
                     </div>
 
                     <div className="divide-y divide-zinc-100 p-2">
                       {sec.lessons.length === 0 ? (
                         <p className="text-xs text-zinc-400 p-4 text-center italic">
-                          Belum ada pelajaran di bab ini. Klik Tambah Materi di atas.
+                          No lessons in this module yet. Click &quot;+ Add Lesson&quot; above.
                         </p>
                       ) : (
                         sec.lessons.map((l) => {
@@ -220,11 +236,11 @@ export function CurriculumManager({
                                     {badge.lbl}
                                   </span>
                                   <span className="text-[10px] text-zinc-400 font-medium">
-                                    {l.durationMinutes ?? 0} menit
+                                    {l.durationMinutes ?? 0} mins
                                   </span>
                                   {l.isFreePreview && (
                                     <span className="badge badge-warning" style={{ fontSize: 10 }}>
-                                      Gratis
+                                      Free
                                     </span>
                                   )}
                                 </div>
@@ -249,7 +265,7 @@ export function CurriculumManager({
                                     sortOrder: l.sortOrder,
                                   }}
                                 />
-                                <LessonDeleteButton id={l.id} />
+                                <LessonDeleteButton id={l.id} title={l.title} />
                               </div>
                             </div>
                           );
@@ -267,7 +283,7 @@ export function CurriculumManager({
             <div className="animate-in fade-in duration-150">
               <InstructorExamsManager
                 courseId={selectedId}
-                courseTitle={selectedCourse?.title || "Kelas"}
+                courseTitle={selectedCourse?.title || "Course"}
                 exam={exam ?? null}
                 submissions={submissions}
               />

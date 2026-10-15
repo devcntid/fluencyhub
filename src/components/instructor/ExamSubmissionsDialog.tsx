@@ -22,12 +22,14 @@ export function ExamSubmissionsDialog({
   courseTitle,
   submissions,
   initialSubmissionId,
+  passingScore = 70,
   triggerLabel = "Review Submissions",
   triggerClassName = "btn btn-secondary btn-sm",
 }: {
   courseTitle: string;
   submissions: InstructorSubmissionRow[];
   initialSubmissionId?: number;
+  passingScore?: number;
   triggerLabel?: string;
   triggerClassName?: string;
 }) {
@@ -55,7 +57,7 @@ export function ExamSubmissionsDialog({
       null;
     setSelectedSubmission(target);
     setScore(target?.manualScore ?? 80);
-    setFeedback(target?.instructorFeedback ?? "Pelafalan artikulasi sangat jelas dan struktur presentasi teratur dengan baik.");
+    setFeedback(target?.instructorFeedback ?? "Clear articulation and well-structured presentation throughout the assessment.");
     setError("");
     setSuccessMsg("");
     setOpen(true);
@@ -80,17 +82,17 @@ export function ExamSubmissionsDialog({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error || "Gagal menyimpan penilaian.");
+        setError(json.error || "Failed to save grading evaluation.");
         setSaving(false);
         return;
       }
 
       setSaving(false);
-      setSuccessMsg(json.message || "Penilaian berhasil disimpan!");
+      setSuccessMsg(json.message || "Grading evaluation saved successfully!");
       router.refresh();
     } catch {
       setSaving(false);
-      setError("Terjadi kesalahan jaringan.");
+      setError("A network error occurred.");
     }
   }
 
@@ -113,7 +115,7 @@ export function ExamSubmissionsDialog({
       </button>
 
       <AdminFormDialog
-        title={`Review Jawaban Ujian — ${courseTitle}`}
+        title={`Review Exam Submissions — ${courseTitle}`}
         open={open}
         onClose={() => setOpen(false)}
         maxWidth="min(1100px, 95vw)"
@@ -123,7 +125,7 @@ export function ExamSubmissionsDialog({
           <div className="w-full md:w-72 shrink-0 border-b md:border-b-0 md:border-r border-zinc-200 pb-4 md:pb-0 pr-0 md:pr-4 space-y-2 max-h-[560px] overflow-y-auto">
             <div className="flex items-center justify-between pb-1">
               <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                Daftar Peserta ({submissions.length})
+                Enrolled Students ({submissions.length})
               </span>
               {pendingCount > 0 && (
                 <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
@@ -134,7 +136,7 @@ export function ExamSubmissionsDialog({
 
             {submissions.length === 0 ? (
               <div className="rounded-xl border border-dashed border-zinc-200 p-6 text-center text-xs text-zinc-400">
-                Belum ada murid yang mengumpulkan jawaban ujian.
+                No students have submitted answers yet.
               </div>
             ) : (
               submissions.map((s) => {
@@ -167,16 +169,16 @@ export function ExamSubmissionsDialog({
                             : "bg-amber-100 text-amber-800"
                         }`}
                       >
-                        {s.status === "passed" ? "Lulus" : s.status === "failed" ? "Gagal" : "Pending"}
+                        {s.status === "passed" ? "Passed" : s.status === "failed" ? "Failed" : "Pending"}
                       </span>
                     </div>
                     <span className="text-[11px] text-zinc-400 block truncate mt-0.5">{s.studentEmail}</span>
                     <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-zinc-100 text-[10px]">
                       <span className="text-zinc-500">
-                        {new Date(s.submittedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                        {new Date(s.submittedAt).toLocaleDateString("en-US", { day: "numeric", month: "short" })}
                       </span>
                       <span className="font-bold text-blue-600">
-                        {s.finalScore !== null ? `Nilai: ${s.finalScore}/100` : "Belum Dinilai"}
+                        {s.finalScore !== null ? `Score: ${s.finalScore}/100` : "Not Graded"}
                       </span>
                     </div>
                   </button>
@@ -204,7 +206,7 @@ export function ExamSubmissionsDialog({
                   </div>
                   <div className="flex items-center gap-2 self-start sm:self-auto">
                     <div className="text-right">
-                      <span className="text-[10px] text-zinc-400 block uppercase font-semibold">Status Ujian</span>
+                      <span className="text-[10px] text-zinc-400 block uppercase font-semibold">Exam Status</span>
                       <span
                         className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block ${
                           selectedSubmission.status === "passed"
@@ -215,10 +217,10 @@ export function ExamSubmissionsDialog({
                         }`}
                       >
                         {selectedSubmission.status === "passed"
-                          ? `Lulus (${selectedSubmission.finalScore}/100)`
+                          ? `Passed (${selectedSubmission.finalScore}/100)`
                           : selectedSubmission.status === "failed"
-                          ? `Gagal (${selectedSubmission.finalScore}/100)`
-                          : "Menunggu Penilaian"}
+                          ? `Failed (${selectedSubmission.finalScore}/100)`
+                          : "Pending Review"}
                       </span>
                     </div>
                   </div>
@@ -230,10 +232,10 @@ export function ExamSubmissionsDialog({
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
                         <LandingIcon name="FileText" size={14} color="currentColor" />
-                        Lembar Jawaban Ujian Siswa
+                        Student Answer Sheet
                       </span>
                       <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                        File Siap Dikoreksi
+                        Ready for Review
                       </span>
                     </div>
 
@@ -244,10 +246,10 @@ export function ExamSubmissionsDialog({
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs sm:text-sm font-bold text-zinc-900 truncate">
-                            {selectedSubmission.answers?.answerFileName || "Lembar_Jawaban_Ujian.pdf"}
+                            {selectedSubmission.answers?.answerFileName || "Answer_Sheet.pdf"}
                           </p>
                           <p className="text-[11px] text-zinc-500 mt-0.5">
-                            Dikirim: {new Date(selectedSubmission.submittedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} WIB
+                            Submitted: {new Date(selectedSubmission.submittedAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
                       </div>
@@ -260,7 +262,7 @@ export function ExamSubmissionsDialog({
                           className="btn btn-secondary btn-sm flex items-center gap-1.5 text-xs font-bold"
                         >
                           <LandingIcon name="ExternalLink" size={13} color="currentColor" />
-                          <span>Buka</span>
+                          <span>Open</span>
                         </a>
                         <a
                           href={selectedSubmission.answers.answerFileUrl}
@@ -270,14 +272,14 @@ export function ExamSubmissionsDialog({
                           className="btn btn-primary btn-sm flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
                         >
                           <LandingIcon name="Download" size={13} color="#fff" />
-                          <span>Download Jawaban</span>
+                          <span>Download Answers</span>
                         </a>
                       </div>
                     </div>
 
                     {selectedSubmission.answers?.studentNotes && (
                       <div className="text-xs bg-white/90 p-3 rounded-xl border border-blue-100 text-zinc-700">
-                        <span className="font-bold text-zinc-900 block mb-1">Catatan Tambahan Siswa:</span>
+                        <span className="font-bold text-zinc-900 block mb-1">Student Notes:</span>
                         <p className="italic text-zinc-600 leading-relaxed">&ldquo;{selectedSubmission.answers.studentNotes}&rdquo;</p>
                       </div>
                     )}
@@ -289,7 +291,7 @@ export function ExamSubmissionsDialog({
                   <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 space-y-2">
                     <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
                       <LandingIcon name="Video" size={14} color="currentColor" />
-                      Rekaman Video Speaking Siswa (Opsional)
+                      Student Speaking Assessment Video (Optional)
                     </span>
                     {ytId ? (
                       <div className="relative aspect-video w-full max-h-[260px] rounded-xl overflow-hidden border border-zinc-300 bg-black shadow-xs mx-auto">
@@ -303,7 +305,7 @@ export function ExamSubmissionsDialog({
                       </div>
                     ) : (
                       <div className="rounded-xl border border-zinc-200 p-3 bg-white text-xs">
-                        <span className="text-zinc-500 block mb-1">Link YouTube Siswa:</span>
+                        <span className="text-zinc-500 block mb-1">Student YouTube URL:</span>
                         <a
                           href={selectedSubmission.youtubeUrl || undefined}
                           target="_blank"
@@ -322,22 +324,22 @@ export function ExamSubmissionsDialog({
                   <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
                     <h4 className="text-xs font-extrabold uppercase tracking-wider text-zinc-800 flex items-center gap-1.5">
                       <LandingIcon name="Award" size={14} color="currentColor" />
-                      Formulir Penilaian & Koreksi Instruktur
+                      Instructor Grading & Feedback Form
                     </h4>
                     <span
                       className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                        score >= 70
+                        score >= passingScore
                           ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                           : "bg-red-100 text-red-800 border border-red-200"
                       }`}
                     >
-                      {score >= 70 ? "✓ LULUS (Sertifikat Terbit)" : "✕ BELUM LULUS (< 70)"}
+                      {score >= passingScore ? `✓ LULUS (>= ${passingScore})` : `✕ REMEDIAL (< ${passingScore})`}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <label className="block">
-                      <span className="label font-bold text-zinc-700">Nilai Ujian Siswa (0 - 100)</span>
+                      <span className="label font-bold text-zinc-700">Student Exam Score (0 - 100)</span>
                       <input
                         type="number"
                         min={0}
@@ -347,18 +349,18 @@ export function ExamSubmissionsDialog({
                         onChange={(e) => setScore(Number(e.target.value))}
                       />
                       <span className="text-[11px] text-zinc-500 mt-1 block">
-                        {score >= 70
-                          ? "✓ Nilai memenuhi syarat. Sertifikat resmi akan otomatis diterbitkan untuk siswa."
-                          : "✕ Nilai di bawah 70. Siswa berstatus Belum Lulus dan dapat mengirimkan lembar jawaban perbaikan (Remedial)."}
+                        {score >= passingScore
+                          ? "✓ Passing score achieved. An official certificate will automatically be issued to the student."
+                          : "✕ Score below passing threshold. Student requires Remedial and can submit a revised paper."}
                       </span>
                     </label>
 
                     <label className="block">
-                      <span className="label font-bold text-zinc-700">Komentar / Feedback Instruktur</span>
+                      <span className="label font-bold text-zinc-700">Instructor Feedback & Comments</span>
                       <textarea
                         rows={3}
                         className="input text-xs w-full bg-white border-zinc-300 rounded-xl leading-relaxed"
-                        placeholder="Tuliskan evaluasi artikulasi, kosakata, atau saran perbaikan..."
+                        placeholder="Provide feedback on articulation, grammar, vocabulary, or pronunciation..."
                         value={feedback}
                         onChange={(e) => setFeedback(e.target.value)}
                       />
@@ -380,30 +382,30 @@ export function ExamSubmissionsDialog({
                     className="btn btn-secondary btn-default font-semibold"
                     onClick={() => setOpen(false)}
                   >
-                    Tutup
+                    Close
                   </button>
                   <button
                     type="button"
                     disabled={saving}
                     onClick={handleGrade}
                     className={`btn btn-default text-white font-extrabold shadow-sm flex items-center gap-2 ${
-                      score >= 70
+                      score >= passingScore
                         ? "bg-blue-600 hover:bg-blue-700 btn-primary"
                         : "bg-amber-600 hover:bg-amber-700"
                     }`}
                   >
-                    <LandingIcon name={score >= 70 ? "Award" : "FileText"} size={15} color="#fff" />
+                    <LandingIcon name={score >= passingScore ? "Award" : "FileText"} size={15} color="#fff" />
                     {saving
-                      ? "Menyimpan..."
-                      : score >= 70
-                      ? "Simpan & Terbitkan Sertifikat"
-                      : "Simpan Evaluasi (Belum Lulus / Remedial)"}
+                      ? "Saving..."
+                      : score >= passingScore
+                      ? "Save & Issue Certificate"
+                      : "Save Evaluation (Remedial)"}
                   </button>
                 </div>
               </>
             ) : (
               <div className="flex h-64 items-center justify-center text-center p-8 text-zinc-400 text-xs">
-                Pilih murid di panel kiri untuk melihat jawaban dan memberikan nilai.
+                Select a student on the left panel to review answers and grade.
               </div>
             )}
           </div>

@@ -48,12 +48,12 @@ export function ProfileForm({ initialName, initialWhatsapp }: ProfileFormProps) 
   return (
     <>
       <form onSubmit={handleSubmit} className="flex flex-col rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-sm">
-        <h2 className="mb-6 text-xl font-bold text-zinc-900">Informasi Pribadi</h2>
+        <h2 className="mb-6 text-xl font-bold text-zinc-900">Personal Information</h2>
         
         <div className="flex flex-col gap-5">
           <div>
             <label className="mb-2 block text-sm font-semibold text-zinc-800">
-              Nama Lengkap
+              Full Name
             </label>
             <input
               type="text"
@@ -65,7 +65,7 @@ export function ProfileForm({ initialName, initialWhatsapp }: ProfileFormProps) 
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-zinc-800">Nomor WhatsApp</label>
+            <label className="mb-2 block text-sm font-semibold text-zinc-800">WhatsApp Number</label>
             <div className="flex">
               <span className="inline-flex items-center rounded-l-xl border border-r-0 border-zinc-200 bg-zinc-50 px-4 text-sm font-medium text-zinc-500">
                 +62
@@ -87,7 +87,7 @@ export function ProfileForm({ initialName, initialWhatsapp }: ProfileFormProps) 
             disabled={loading}
             className="rounded-xl bg-[var(--brand)] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--brand-600)] disabled:opacity-50"
           >
-            {loading ? "Menyimpan..." : "Simpan Perubahan"}
+            {loading ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>
@@ -100,7 +100,7 @@ export function ProfileForm({ initialName, initialWhatsapp }: ProfileFormProps) 
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
           </div>
-          <span className="font-semibold tracking-wide text-sm">Berhasil Memperbarui Profil</span>
+          <span className="font-semibold tracking-wide text-sm">Profile updated successfully</span>
         </div>
       )}
     </>

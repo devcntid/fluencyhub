@@ -47,7 +47,7 @@ export default async function ResourceDetailPage({
           className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-500 hover:text-zinc-900 transition"
         >
           <LandingIcon name="ArrowLeft" size={16} />
-          Kembali ke Resource Library
+          Back to Resource Library
         </Link>
       </div>
 
@@ -58,7 +58,7 @@ export default async function ResourceDetailPage({
               <LandingIcon name="BookOpen" size={20} color="currentColor" />
             </div>
             <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-600 border border-blue-100">
-              Teks Materi
+              Study Text
             </span>
           </div>
           <h1 className="font-[family-name:var(--font-heading)] text-2xl md:text-3xl font-extrabold text-zinc-900 leading-tight">

@@ -22,10 +22,10 @@ export default async function InstructorProfilePage() {
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-zinc-900">
-            Profil & Pengaturan
+            Profile & Settings
           </h1>
           <p className="text-sm text-zinc-500">
-            Atur informasi profil dan Link Zoom untuk kelas Anda
+            Manage your personal profile and Zoom meeting link for classes
           </p>
         </div>
       </div>
@@ -42,7 +42,7 @@ export default async function InstructorProfilePage() {
           )}
           <div className="flex flex-col">
             <span className="text-xl font-bold text-zinc-900">{userName}</span>
-            <span className="text-sm text-zinc-500">{dbUser?.email || session?.user?.email || "email@tidak-tersedia.com"}</span>
+            <span className="text-sm text-zinc-500">{dbUser?.email || session?.user?.email || "email@not-available.com"}</span>
           </div>
         </div>
         
@@ -56,7 +56,7 @@ export default async function InstructorProfilePage() {
         
         {/* Card Kiri: Informasi Pribadi (Client Component Form) */}
         <div className="flex flex-col w-full rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm">
-          <h2 className="mb-6 text-xl font-bold text-zinc-900">Informasi Pribadi</h2>
+          <h2 className="mb-6 text-xl font-bold text-zinc-900">Personal Information</h2>
           <ProfileForm 
             initialName={userName} 
             initialWhatsapp={dbUser?.whatsappNumber || ""} 

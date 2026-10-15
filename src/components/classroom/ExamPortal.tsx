@@ -40,14 +40,14 @@ export function ExamPortal({
   // Check whether instructor has actually submitted the exam to the database
   const hasInstructorSubmittedExam = Boolean(exam && exam.content?.questionFileUrl);
 
-  const examTitle = exam?.title || `Ujian Akhir — ${courseTitle}`;
+  const examTitle = exam?.title || `Final Exam — ${courseTitle}`;
   const passingScore = exam?.passingScore || 70;
   const questionFileUrl = exam?.content?.questionFileUrl || "";
-  const questionFileName = exam?.content?.questionFileName || "Lembar_Soal_Ujian.pdf";
+  const questionFileName = exam?.content?.questionFileName || "Exam_Paper.pdf";
   const instructions =
     exam?.content?.examInstructions ||
     exam?.description ||
-    "Petunjuk pengerjaan tertera pada lembar soal ujian.";
+    "Instructions are provided on the exam question sheet.";
 
   const isFailed = submission?.status === "failed";
   const hasRemedialFile = Boolean(isFailed && exam?.content?.remedialFileUrl);
@@ -56,7 +56,7 @@ export function ExamPortal({
     ? exam!.content!.remedialFileUrl!
     : questionFileUrl;
   const activeQuestionFileName = hasRemedialFile
-    ? exam?.content?.remedialFileName || "Lembar_Soal_Remedial.pdf"
+    ? exam?.content?.remedialFileName || "Remedial_Exam_Paper.pdf"
     : questionFileName;
   const activeInstructions = hasRemedialFile
     ? exam?.content?.remedialInstructions || instructions
@@ -67,9 +67,16 @@ export function ExamPortal({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const MAX_ANSWER_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_ANSWER_FILE_SIZE) {
+      setError(`Ukuran file jawaban melebihi batas maksimal 5MB (ukuran file Anda: ${(file.size / (1024 * 1024)).toFixed(1)}MB). Silakan kompres atau pilih file yang lebih kecil.`);
+      e.target.value = "";
+      return;
+    }
+
     setAnswerFile(file);
     setUploading(true);
-    setUploadProgress("Mengunggah lembar jawaban ke server...");
+    setUploadProgress("Uploading answer sheet to server...");
     setError("");
 
     try {
@@ -84,14 +91,14 @@ export function ExamPortal({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json.error || "Gagal mengunggah file lembar jawaban.");
+        throw new Error(json.error || "Failed to upload answer sheet.");
       }
 
       setAnswerFileUrl(json.data.url);
       setAnswerFileName(file.name);
-      setUploadProgress("Lembar jawaban siap dikirim!");
+      setUploadProgress("Answer sheet ready to submit!");
     } catch (err: any) {
-      setError(err.message || "Gagal mengunggah file. Silakan coba lagi.");
+      setError(err.message || "Failed to upload file. Please try again.");
       setAnswerFile(null);
       setAnswerFileUrl("");
       setAnswerFileName("");
@@ -105,12 +112,12 @@ export function ExamPortal({
     e.preventDefault();
 
     if (!hasInstructorSubmittedExam || !exam?.id) {
-      setError("Instruktur belum mengunggah lembar soal ujian untuk kelas ini.");
+      setError("The instructor has not uploaded the exam question sheet for this course yet.");
       return;
     }
 
     if (!answerFileUrl) {
-      setError("Silakan unggah file lembar jawaban Anda (PDF/DOC) terlebih dahulu.");
+      setError("Please upload your answer sheet (PDF/DOC) first.");
       return;
     }
 
@@ -127,7 +134,7 @@ export function ExamPortal({
           courseId,
           answers: {
             answerFileUrl,
-            answerFileName: answerFileName || answerFile?.name || "Lembar_Jawaban.pdf",
+            answerFileName: answerFileName || answerFile?.name || "Answer_Sheet.pdf",
             studentNotes: studentNotes.trim(),
             submittedAt: new Date().toISOString(),
           },
@@ -137,18 +144,18 @@ export function ExamPortal({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json.error || "Gagal mengirimkan lembar jawaban ujian.");
+        throw new Error(json.error || "Failed to submit exam answers.");
       }
 
       setSuccess(
         isEditingSubmission
-          ? "Lembar jawaban berhasil diperbarui! Menunggu penilaian instruktur."
-          : "Lembar jawaban ujian berhasil dikirim! Menunggu pemeriksaan dari instruktur."
+          ? "Answer sheet updated successfully! Waiting for instructor grading."
+          : "Exam answer sheet submitted successfully! Waiting for instructor grading."
       );
       setIsEditingSubmission(false);
       router.refresh();
     } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan saat mengirim jawaban.");
+      setError(err.message || "An error occurred while submitting your answers.");
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +172,7 @@ export function ExamPortal({
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[var(--brand)] border border-blue-100">
-                <LandingIcon name="Award" size={13} color="currentColor" /> Evaluasi Kompetensi & Sertifikasi
+                <LandingIcon name="Award" size={13} color="currentColor" /> Competency Evaluation & Certification
               </span>
               <span className="text-zinc-300">•</span>
               <span className="text-xs text-zinc-500 font-medium">{courseTitle}</span>
@@ -178,23 +185,23 @@ export function ExamPortal({
           <div>
             {isPassed ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
-                <LandingIcon name="Check" size={14} color="currentColor" /> Lulus & Bersertifikat
+                <LandingIcon name="Check" size={14} color="currentColor" /> Passed & Certified
               </span>
             ) : isPending ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
-                <LandingIcon name="Clock" size={14} color="currentColor" /> Menunggu Penilaian Instruktur
+                <LandingIcon name="Clock" size={14} color="currentColor" /> Pending Instructor Grading
               </span>
             ) : isFailed ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
-                <LandingIcon name="X" size={14} color="currentColor" /> Belum Lulus (Bisa Kirim Ulang)
+                <LandingIcon name="X" size={14} color="currentColor" /> Not Passed (Remedial Available)
               </span>
             ) : hasInstructorSubmittedExam ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                <LandingIcon name="FileText" size={14} color="currentColor" /> Soal Siap Dikerjakan
+                <LandingIcon name="FileText" size={14} color="currentColor" /> Exam Paper Available
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-zinc-100 text-zinc-600 border border-zinc-200">
-                <LandingIcon name="Clock" size={14} color="currentColor" /> Menunggu Soal dari Instruktur
+                <LandingIcon name="Clock" size={14} color="currentColor" /> Waiting for Exam Paper
               </span>
             )}
           </div>
@@ -202,23 +209,23 @@ export function ExamPortal({
 
         <div className="pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-100">
-            <span className="text-zinc-400 block font-medium">Batas Kelulusan:</span>
-            <span className="text-sm font-bold text-zinc-900">{passingScore} / 100 Poin</span>
+            <span className="text-zinc-400 block font-medium">Passing Score:</span>
+            <span className="text-sm font-bold text-zinc-900">{passingScore} / 100 Points</span>
           </div>
           <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-100">
-            <span className="text-zinc-400 block font-medium">Status Soal Ujian:</span>
+            <span className="text-zinc-400 block font-medium">Exam Paper Status:</span>
             <span className={`text-sm font-bold ${hasInstructorSubmittedExam ? "text-emerald-600" : "text-amber-600"}`}>
-              {hasInstructorSubmittedExam ? "Tersedia & Siap Diunduh" : "Belum Diunggah Instruktur"}
+              {hasInstructorSubmittedExam ? "Available for Download" : "Not Uploaded Yet"}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-100">
-            <span className="text-zinc-400 block font-medium">Sertifikat Resmi:</span>
-            <span className="text-sm font-bold text-blue-600">Terbit Otomatis Setelah Dinilai</span>
+            <span className="text-zinc-400 block font-medium">Official Certificate:</span>
+            <span className="text-sm font-bold text-blue-600">Issued Automatically After Grading</span>
           </div>
         </div>
       </div>
 
-      {/* CASE 1: SISWA TELAH LULUS (TAMPILKAN HASIL NILAI & SERTIFIKAT) */}
+      {/* CASE 1: STUDENT PASSED (SHOW CERTIFICATE & SCORE) */}
       {isPassed && certificate && (
         <div className="rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-b from-emerald-50/50 via-white to-white p-6 sm:p-8 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
@@ -230,18 +237,18 @@ export function ExamPortal({
                 Official Completion Credential
               </span>
               <h3 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">
-                Selamat, Anda Telah Dinyatakan Lulus!
+                Congratulations, You Have Passed!
               </h3>
               <p className="text-xs sm:text-sm text-zinc-600 mt-1">
-                Sertifikat kelulusan dan transkrip rapor nilai resmi Anda telah diterbitkan dan dapat diunduh atau diverifikasi secara publik.
+                Your official certificate of completion and academic transcript have been issued and can be downloaded or publicly verified.
               </p>
             </div>
           </div>
 
-          {/* Nilai & Feedback */}
+          {/* Scores & Feedback */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="rounded-xl border border-emerald-200 bg-white p-4 shadow-xs">
-              <span className="text-xs font-semibold text-zinc-500 block">Nilai Akhir Ujian:</span>
+              <span className="text-xs font-semibold text-zinc-500 block">Final Exam Score:</span>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-3xl font-black text-emerald-600">
                   {submission?.finalScore ?? certificate.finalScore}
@@ -254,21 +261,21 @@ export function ExamPortal({
             </div>
 
             <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-xs">
-              <span className="text-xs font-semibold text-zinc-500 block">Evaluasi Instruktur:</span>
+              <span className="text-xs font-semibold text-zinc-500 block">Instructor Feedback:</span>
               <p className="text-xs text-zinc-700 font-medium italic mt-1 leading-relaxed">
-                &ldquo;{submission?.instructorFeedback || "Kualitas pengerjaan sangat baik dan memenuhi standar kecakapan internasional."}&rdquo;
+                &ldquo;{submission?.instructorFeedback || "Excellent performance meeting international proficiency standards."}&rdquo;
               </p>
             </div>
           </div>
 
-          {/* Rincian 4 Aspek Kemahiran */}
+          {/* 4 Core Skills Score Breakdown */}
           <div className="rounded-xl border border-emerald-200/80 bg-white p-4 shadow-xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
                 <LandingIcon name="Award" size={14} color="#059669" />
-                Rincian Skor 4 Aspek Kemahiran
+                4 Core Skills Score Breakdown
               </span>
-              <span className="text-[11px] text-zinc-400 font-semibold">Skala 0 - 100</span>
+              <span className="text-[11px] text-zinc-400 font-semibold">Scale 0 - 100</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
               <div className="p-2.5 rounded-lg bg-blue-50/60 border border-blue-100 text-center">
@@ -298,21 +305,31 @@ export function ExamPortal({
             </div>
           </div>
 
-          {/* Action Button: Lihat Sertifikat & Transkrip Nilai */}
-          <div className="pt-2">
+          {/* Action Buttons: Unduh Sertifikat & Unduh Rapor Nilai */}
+          <div className="pt-2 flex flex-wrap items-center gap-3">
             <Link
-              href={`/certificates/${certificate.certificateCode}`}
+              href={`/certificates/${certificate.certificateCode}?view=certificate`}
               target="_blank"
               className="btn btn-primary btn-default inline-flex items-center gap-2 font-bold shadow-sm"
+              title="Unduh Sertifikat Kelulusan Resmi"
             >
               <LandingIcon name="Award" size={16} color="#fff" />
-              <span>Lihat Sertifikat & Transkrip Nilai &rarr;</span>
+              <span>Unduh Sertifikat (PDF) &rarr;</span>
+            </Link>
+            <Link
+              href={`/certificates/${certificate.certificateCode}?view=report`}
+              target="_blank"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 text-xs font-bold shadow-xs transition"
+              title="Unduh Rapor Nilai & Transkrip Akademik"
+            >
+              <LandingIcon name="FileText" size={15} color="currentColor" />
+              <span>Unduh Rapor Nilai (PDF) &rarr;</span>
             </Link>
           </div>
         </div>
       )}
 
-      {/* CASE 2: JAWABAN SUDAH DIKIRIM & MENUNGGU PENILAIAN */}
+      {/* CASE 2: SUBMITTED & WAITING FOR GRADING */}
       {isPending && !isEditingSubmission && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-6 sm:p-8 space-y-4">
           <div className="flex items-start gap-4">
@@ -321,10 +338,10 @@ export function ExamPortal({
             </div>
             <div className="min-w-0">
               <h3 className="text-base sm:text-lg font-bold text-zinc-900">
-                Lembar Jawaban Sedang Dikoreksi Instruktur
+                Answer Sheet Being Reviewed
               </h3>
               <p className="text-xs text-zinc-600 mt-1 leading-relaxed">
-                Jawaban ujian Anda telah berhasil kami terima pada sistem. Instruktur akan mengoreksi lembar jawaban Anda dan memberikan nilai evaluasi.
+                Your exam submission has been received. The instructor will review your answer sheet and provide an evaluation.
               </p>
             </div>
           </div>
@@ -336,10 +353,10 @@ export function ExamPortal({
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-zinc-900 truncate">
-                  {submission?.answers?.answerFileName || "Lembar_Jawaban_Ujian.pdf"}
+                  {submission?.answers?.answerFileName || "Answer_Sheet.pdf"}
                 </p>
                 <p suppressHydrationWarning className="text-[11px] text-zinc-400">
-                  Waktu Kirim: {submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Baru saja"}
+                  Submitted At: {submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Just now"}
                 </p>
               </div>
             </div>
@@ -354,7 +371,7 @@ export function ExamPortal({
                   className="btn btn-secondary btn-sm shrink-0 flex items-center gap-1.5 text-xs font-semibold"
                 >
                   <LandingIcon name="Download" size={13} color="currentColor" />
-                  <span>Cek Berkas</span>
+                  <span>View File</span>
                 </a>
               )}
               <button
@@ -371,14 +388,14 @@ export function ExamPortal({
                 className="btn btn-secondary btn-sm shrink-0 flex items-center gap-1.5 text-xs font-bold text-amber-800 border-amber-300 hover:bg-amber-100"
               >
                 <LandingIcon name="RotateCcw" size={13} color="currentColor" />
-                <span>Ganti / Upload Ulang Berkas</span>
+                <span>Replace / Re-upload File</span>
               </button>
             </div>
           </div>
 
           <div className="text-[11px] text-zinc-500 bg-white/70 rounded-lg p-2.5 border border-amber-200/60 flex items-center gap-2">
             <LandingIcon name="AlertCircle" size={13} color="#d97706" />
-            <span>Salah kirim berkas? Anda dapat klik <strong>&ldquo;Ganti / Upload Ulang Berkas&rdquo;</strong> di atas untuk memperbarui dokumen sebelum dinilai oleh instruktur.</span>
+            <span>Submitted the wrong file? You can click <strong>&ldquo;Replace / Re-upload File&rdquo;</strong> above to update your document before the instructor grades it.</span>
           </div>
         </div>
       )}
@@ -406,9 +423,9 @@ export function ExamPortal({
                     <LandingIcon name="RotateCcw" size={18} color="currentColor" />
                   </div>
                   <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-amber-950">Mode Perbarui / Ganti Berkas Jawaban</h4>
+                    <h4 className="text-xs sm:text-sm font-bold text-amber-950">Update / Replace Answer File Mode</h4>
                     <p className="text-[11px] text-amber-800 mt-0.5">
-                      Silakan pilih file jawaban baru Anda. Dokumen sebelumnya akan digantikan dan instruktur akan mengoreksi berkas terbaru ini.
+                      Select your new answer file. The previous file will be replaced, and the instructor will grade this latest document.
                     </p>
                   </div>
                 </div>
@@ -417,12 +434,12 @@ export function ExamPortal({
                   onClick={() => setIsEditingSubmission(false)}
                   className="btn btn-secondary btn-sm text-xs font-bold shrink-0 self-end sm:self-center"
                 >
-                  Batal Mengganti
+                  Cancel Replacement
                 </button>
               </div>
             )}
 
-            {/* KARTU HASIL EVALUASI REMEDIAL (JIKA STATUS FAILED) */}
+            {/* REMEDIAL EVALUATION CARD (IF FAILED) */}
             {isFailed && submission && !isEditingSubmission && (
               <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-amber-50/80 via-white to-white p-6 sm:p-7 shadow-xs space-y-4 animate-in fade-in">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 pb-4">
@@ -432,20 +449,20 @@ export function ExamPortal({
                     </div>
                     <div>
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full inline-block">
-                        Status: Belum Lulus (Remedial Terbuka)
+                        Status: Remedial Available
                       </span>
                       <h3 className="text-lg font-black text-zinc-900 mt-1">
-                        Hasil Ujian Anda: {submission.finalScore ?? submission.manualScore} / 100
+                        Your Exam Score: {submission.finalScore ?? submission.manualScore} / 100
                       </h3>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs text-zinc-500 block">Batas Minimal Kelulusan:</span>
-                    <span className="text-sm font-bold text-amber-800">{passingScore} Poin</span>
+                    <span className="text-xs text-zinc-500 block">Minimum Passing Score:</span>
+                    <span className="text-sm font-bold text-amber-800">{passingScore} Points</span>
                   </div>
                 </div>
 
-                {/* Skor 4 Aspek Kemahiran Sebelumnya */}
+                {/* Previous 4 Core Skills Scores */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div className="p-2 rounded-lg bg-white border border-amber-200 text-center shadow-2xs">
                     <span className="text-[10px] font-bold text-zinc-500 block">Reading</span>
@@ -476,23 +493,23 @@ export function ExamPortal({
                 <div className="rounded-xl border border-amber-200 bg-white p-4 space-y-1.5 shadow-2xs">
                   <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
                     <LandingIcon name="MessageSquare" size={14} color="var(--brand)" />
-                    Catatan & Evaluasi dari Instruktur:
+                    Instructor Notes & Feedback:
                   </span>
                   <p className="text-xs text-zinc-700 leading-relaxed italic bg-zinc-50 p-3 rounded-lg border border-zinc-100">
-                    &ldquo;{submission.instructorFeedback || "Nilai belum mencapai standar kelulusan. Pelajari kembali materi dan perbaiki lembar jawaban Anda."}&rdquo;
+                    &ldquo;{submission.instructorFeedback || "Score has not met the passing standard. Please review course materials and resubmit your answers."}&rdquo;
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2.5 text-xs text-amber-900 font-medium bg-amber-100/60 p-3 rounded-xl border border-amber-200/60">
                   <LandingIcon name="RotateCcw" size={15} color="currentColor" />
                   <span>
-                    <strong>Kesempatan Remedial:</strong> Anda dapat mengunduh ulang soal dan mengirimkan lembar jawaban perbaikan melalui formulir di bawah ini.
+                    <strong>Remedial Opportunity:</strong> You can download the question paper and submit your revised answers using the form below.
                   </span>
                 </div>
               </div>
             )}
 
-            {/* LANGKAH 1: DOWNLOAD SOAL UJIAN (PDF) */}
+            {/* STEP 1: DOWNLOAD EXAM PAPER (PDF) */}
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -501,21 +518,21 @@ export function ExamPortal({
                   </span>
                   <h3 className="text-base font-bold text-zinc-900 font-[family-name:var(--font-heading)]">
                     {hasRemedialFile
-                      ? "Unduh Lembar Soal Khusus Remedial (PDF)"
+                      ? "Download Remedial Question Paper (PDF)"
                       : isFailed
-                      ? "Unduh Lembar Soal Ujian untuk Perbaikan (PDF)"
-                      : "Unduh Lembar Soal Ujian (PDF)"}
+                      ? "Download Question Paper for Revision (PDF)"
+                      : "Download Exam Question Paper (PDF)"}
                   </h3>
                 </div>
 
                 {hasRemedialFile ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 self-start sm:self-auto">
                     <LandingIcon name="RotateCcw" size={11} color="currentColor" />
-                    Paket Soal Khusus Remedial
+                    Remedial Question Package
                   </span>
                 ) : isFailed ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 self-start sm:self-auto">
-                    Revisi Berdasarkan Feedback
+                    Revise Based on Feedback
                   </span>
                 ) : null}
               </div>
@@ -535,8 +552,8 @@ export function ExamPortal({
                     </p>
                     <p className="text-xs text-zinc-400">
                       {hasRemedialFile
-                        ? "File Soal Khusus Remedial • FluencyHub Examination"
-                        : "File Soal Resmi • FluencyHub Examination"}
+                        ? "Remedial Question Paper • FluencyHub Examination"
+                        : "Official Question Paper • FluencyHub Examination"}
                     </p>
                   </div>
                 </div>
@@ -551,14 +568,14 @@ export function ExamPortal({
                   <LandingIcon name="Download" size={15} color="#fff" />
                   <span>
                     {hasRemedialFile
-                      ? "Download Soal Remedial (PDF) \u2192"
-                      : "Download File Soal (PDF) \u2192"}
+                      ? "Download Remedial Paper (PDF) \u2192"
+                      : "Download Question Paper (PDF) \u2192"}
                   </span>
                 </a>
               </div>
             </div>
 
-            {/* LANGKAH 2: UPLOAD JAWABAN UJIAN */}
+            {/* STEP 2: UPLOAD EXAM ANSWERS */}
             <form onSubmit={handleSubmitAnswer} className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs space-y-5">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold">
@@ -566,25 +583,28 @@ export function ExamPortal({
                 </span>
                 <h3 className="text-base font-bold text-zinc-900 font-[family-name:var(--font-heading)]">
                   {isEditingSubmission
-                    ? "Perbarui Lembar Jawaban Ujian"
+                    ? "Update Exam Answer Sheet"
                     : isFailed
-                    ? "Kirim Lembar Jawaban Remedial (Perbaikan)"
-                    : "Kirim Lembar Jawaban Ujian"}
+                    ? "Submit Remedial Answer Sheet"
+                    : "Submit Exam Answer Sheet"}
                 </h3>
               </div>
 
               <p className="text-xs text-zinc-500">
                 {isEditingSubmission
-                  ? "Pilih file lembar jawaban baru yang ingin Anda unggah untuk menggantikan dokumen sebelumnya."
+                  ? "Select a new answer file to replace the previous submission."
                   : isFailed
-                  ? "Unggah dokumen perbaikan jawaban Anda yang telah disesuaikan dengan masukan instruktur dalam format PDF atau Word (DOCX)."
-                  : "Setelah selesai mengerjakan, simpan dokumen jawaban Anda dalam format PDF atau Word (DOCX), kemudian unggah melalui form di bawah ini."}
+                  ? "Upload your revised answer sheet incorporating instructor feedback in PDF or Word (DOCX) format."
+                  : "Once finished, save your answer sheet in PDF or Word (DOCX) format, then upload it using the form below."}
               </p>
 
               {/* Dropzone Upload Lembar Jawaban */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-800 block">
-                  Unggah File Lembar Jawaban <span className="text-red-500">*</span>
+                <label className="text-xs font-bold text-zinc-800 flex items-center justify-between">
+                  <span>Upload Answer Sheet File <span className="text-red-500">*</span></span>
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                    Maks. 5MB
+                  </span>
                 </label>
 
                 {answerFileUrl ? (
@@ -598,13 +618,13 @@ export function ExamPortal({
                           {answerFileName}
                         </p>
                         <p className="text-[11px] text-emerald-700 font-medium">
-                          File berhasil diunggah dan siap dikirim ke instruktur.
+                          File uploaded successfully {answerFile ? `(${(answerFile.size / (1024 * 1024)).toFixed(2)} MB)` : ""} and ready to submit to instructor.
                         </p>
                       </div>
                     </div>
 
                     <label className="btn btn-secondary btn-sm cursor-pointer text-xs shrink-0">
-                      <span>Ganti File</span>
+                      <span>Change File</span>
                       <input
                         type="file"
                         accept=".pdf,.doc,.docx"
@@ -620,10 +640,10 @@ export function ExamPortal({
                       <LandingIcon name="FileText" size={24} color="currentColor" />
                     </div>
                     <span className="text-sm font-bold text-zinc-800">
-                      {uploading ? "Sedang Mengunggah File..." : "Klik untuk Pilih File Lembar Jawaban (PDF / DOCX)"}
+                      {uploading ? "Uploading File..." : "Click to Select Answer Sheet File (PDF / DOCX)"}
                     </span>
-                    <span className="text-xs text-zinc-400 mt-1">
-                      Format didukung: PDF, Word (DOC/DOCX). Maksimal 20MB.
+                    <span className="text-xs text-zinc-500 font-medium mt-1">
+                      Supported formats: PDF, Word (DOC/DOCX). Max 5MB.
                     </span>
                     <input
                       type="file"
@@ -640,25 +660,25 @@ export function ExamPortal({
                 )}
               </div>
 
-              {/* Catatan Tambahan Siswa (Opsional) */}
+              {/* Student Additional Notes */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-zinc-800 block">
-                  Catatan Tambahan untuk Instruktur <span className="text-zinc-400 font-normal">(Opsional)</span>
+                  Additional Notes for Instructor <span className="text-zinc-400 font-normal">(Optional)</span>
                 </label>
                 <textarea
                   rows={3}
                   value={studentNotes}
                   onChange={(e) => setStudentNotes(e.target.value)}
-                  placeholder="Tuliskan catatan, rangkuman, atau pesan khusus terkait pengerjaan ujian Anda..."
+                  placeholder="Write any notes, summaries, or special messages regarding your exam work..."
                   className="input input-default w-full text-xs font-medium leading-relaxed"
                   disabled={submitting}
                 />
               </div>
 
-              {/* Link YouTube Speaking Video (Opsional) */}
+              {/* YouTube Speaking Video Link */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-zinc-800 block">
-                  Link Video Speaking YouTube <span className="text-zinc-400 font-normal">(Opsional — jika terdapat tugas berbicara)</span>
+                  YouTube Speaking Video Link <span className="text-zinc-400 font-normal">(Optional — if there is a speaking assessment)</span>
                 </label>
                 <input
                   type="url"
@@ -670,7 +690,7 @@ export function ExamPortal({
                 />
               </div>
 
-              {/* Tombol Submit */}
+              {/* Submit Button */}
               <div className="flex justify-end pt-2 border-t border-zinc-100">
                 <button
                   type="submit"
@@ -680,12 +700,12 @@ export function ExamPortal({
                   <LandingIcon name="CheckCircle" size={16} color="#fff" />
                   <span>
                     {submitting
-                      ? "Mengirimkan Jawaban..."
+                      ? "Submitting Answers..."
                       : isEditingSubmission
-                      ? "Perbarui & Simpan Berkas Jawaban \u2192"
+                      ? "Update & Save Answer File \u2192"
                       : isFailed
-                      ? "Kirim Jawaban Remedial ke Instruktur \u2192"
-                      : "Kirim Lembar Jawaban Ujian \u2192"}
+                      ? "Submit Remedial Answers \u2192"
+                      : "Submit Exam Answers \u2192"}
                   </span>
                 </button>
               </div>
@@ -699,44 +719,44 @@ export function ExamPortal({
 
             <div className="max-w-md mx-auto space-y-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                Menunggu Soal dari Instruktur
+                Waiting for Exam Paper
               </span>
               <h3 className="text-xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)]">
-                Soal Ujian Belum Tersedia
+                Exam Paper Not Yet Available
               </h3>
               <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">
-                Instruktur kelas belum mengunggah lembar soal ujian untuk kelas <strong>{courseTitle}</strong>. Ujian akhir dan formulir pengumpulan jawaban akan otomatis muncul begitu instruktur mempublikasikan lembar soal ujian ke sistem.
+                The instructor has not uploaded the exam question paper for <strong>{courseTitle}</strong> yet. The final exam and submission form will appear automatically once published by the instructor.
               </p>
             </div>
 
             {/* Timeline Guide */}
             <div className="mx-auto max-w-xl pt-4 border-t border-zinc-100">
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">
-                Alur Sertifikasi Kelas Ini
+                Course Certification Roadmap
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
                 <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/60">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold">1</span>
-                    <span className="text-xs font-bold text-amber-900">Upload Soal</span>
+                    <span className="text-xs font-bold text-amber-900">Question Upload</span>
                   </div>
-                  <p className="text-[11px] text-zinc-600">Instruktur mengunggah dokumen lembar soal PDF ke sistem.</p>
+                  <p className="text-[11px] text-zinc-600">Instructor uploads the question paper PDF to the system.</p>
                 </div>
 
                 <div className="p-3.5 rounded-xl border border-zinc-200 bg-zinc-50 opacity-70">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-300 text-zinc-700 text-[10px] font-bold">2</span>
-                    <span className="text-xs font-bold text-zinc-700">Kerjakan Soal</span>
+                    <span className="text-xs font-bold text-zinc-700">Complete Exam</span>
                   </div>
-                  <p className="text-[11px] text-zinc-500">Siswa mendownload soal & mengirimkan lembar jawaban.</p>
+                  <p className="text-[11px] text-zinc-500">Student downloads questions & submits completed answer sheet.</p>
                 </div>
 
                 <div className="p-3.5 rounded-xl border border-zinc-200 bg-zinc-50 opacity-70">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-300 text-zinc-700 text-[10px] font-bold">3</span>
-                    <span className="text-xs font-bold text-zinc-700">Nilai & Sertifikat</span>
+                    <span className="text-xs font-bold text-zinc-700">Grading & Certificate</span>
                   </div>
-                  <p className="text-[11px] text-zinc-500">Instruktur menilai jawaban, sertifikat resmi diterbitkan.</p>
+                  <p className="text-[11px] text-zinc-500">Instructor grades answers, and official certificate is issued.</p>
                 </div>
               </div>
             </div>

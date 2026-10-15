@@ -7,12 +7,47 @@ import Image from "next/image";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { PlayerSection, PlayerLesson } from "@/lib/db/lessons.queries";
 
+function getLessonMeta(contentType: string) {
+  if (contentType === "live_class") {
+    return {
+      label: "Live Zoom",
+      icon: "Video",
+      badgeClass: "bg-red-50 text-red-600 border-red-200",
+      btnBg: "bg-red-600",
+    };
+  }
+  if (contentType === "document") {
+    return {
+      label: "PDF Document",
+      icon: "FileText",
+      badgeClass: "bg-blue-50 text-blue-600 border-blue-200",
+      btnBg: "bg-blue-600",
+    };
+  }
+  if (contentType === "text") {
+    return {
+      label: "Reading Material",
+      icon: "BookOpen",
+      badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+      btnBg: "bg-amber-600",
+    };
+  }
+  return {
+    label: "Video Lesson",
+    icon: "Play",
+    badgeClass: "bg-zinc-100 text-zinc-700 border-zinc-200",
+    btnBg: "bg-[var(--brand)]",
+  };
+}
+
 export function CourseVideoPlayer({
   course,
   curriculum,
+  overallProgress,
 }: {
   course: { id: number; title: string; thumbnail_url?: string | null; thumbnailUrl?: string | null };
   curriculum: PlayerSection[];
+  overallProgress?: { total: number; completed: number };
 }) {
   const router = useRouter();
   const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
@@ -56,7 +91,7 @@ export function CourseVideoPlayer({
       router.refresh();
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan. Silakan coba lagi.");
+      alert("An error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -86,7 +121,7 @@ export function CourseVideoPlayer({
   async function handleSaveNote() {
     if (!activeLessonId || isSavingNote) return;
     setIsSavingNote(true);
-    setNoteStatus("Menyimpan...");
+    setNoteStatus("Saving...");
     try {
       const res = await fetch("/api/dashboard/notes", {
         method: "POST",
@@ -96,12 +131,12 @@ export function CourseVideoPlayer({
           content: noteContent,
         }),
       });
-      if (!res.ok) throw new Error("Gagal menyimpan");
-      setNoteStatus("Tersimpan!");
+      if (!res.ok) throw new Error("Failed to save");
+      setNoteStatus("Saved!");
       setTimeout(() => setNoteStatus(""), 3000);
     } catch (err) {
       console.error(err);
-      setNoteStatus("Gagal menyimpan");
+      setNoteStatus("Failed to save");
     } finally {
       setIsSavingNote(false);
     }
@@ -113,7 +148,7 @@ export function CourseVideoPlayer({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Catatan - ${activeLesson.title}.txt`;
+    a.download = `Notes - ${activeLesson.title}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -131,7 +166,7 @@ export function CourseVideoPlayer({
           className="mb-4 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition"
           onClick={() => setActiveLessonId(null)}
         >
-          <LandingIcon name="ArrowLeft" size={14} /> Kembali ke Grid Silabus
+          <LandingIcon name="ArrowLeft" size={14} /> Back to Syllabus Grid
         </button>
 
         <div className="player-shell border border-[var(--border)] rounded-[var(--r-lg)] overflow-hidden shadow-sm" style={{ minHeight: 'auto' }}>
@@ -150,11 +185,119 @@ export function CourseVideoPlayer({
           </div>
           
           <div className="player-grid">
-            {/* Main Video Area */}
+            {/* Main Content Area */}
             <div className="player-main">
-              <p className="mb-3 font-[family-name:var(--font-heading)] text-lg font-extrabold">{activeLesson.title}</p>
+              <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+                <p className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-zinc-900">{activeLesson.title}</p>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getLessonMeta(activeLesson.contentType).badgeClass}`}>
+                  <LandingIcon name={getLessonMeta(activeLesson.contentType).icon} size={12} color="currentColor" />
+                  {getLessonMeta(activeLesson.contentType).label}
+                </span>
+              </div>
               
-              {activeLesson.youtubeVideoId ? (
+              {activeLesson.contentType === "document" || (activeLesson.documentUrl && !activeLesson.youtubeVideoId) ? (
+                <div className="rounded-[var(--r-lg)] border border-zinc-200 bg-white p-5 sm:p-6 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[var(--brand)] shadow-xs">
+                        <LandingIcon name="FileText" size={22} color="currentColor" />
+                      </div>
+                      <div>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-[var(--brand)] uppercase tracking-wider mb-0.5">
+                          Study Resource / Document
+                        </span>
+                        <h4 className="text-sm sm:text-base font-bold text-zinc-900 leading-snug">{activeLesson.title}</h4>
+                      </div>
+                    </div>
+                    {activeLesson.documentUrl && (
+                      <a
+                        href={activeLesson.documentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--brand)] text-white text-xs font-bold shadow-xs hover:opacity-95 transition active:scale-95 shrink-0"
+                      >
+                        <LandingIcon name="ExternalLink" size={13} color="#fff" />
+                        <span>Open / Download PDF</span>
+                      </a>
+                    )}
+                  </div>
+                  {activeLesson.description && (
+                    <div className="pt-4 text-xs sm:text-sm text-zinc-600 leading-relaxed whitespace-pre-line">
+                      {activeLesson.description}
+                    </div>
+                  )}
+                  {activeLesson.documentUrl?.match(/\.(pdf)($|\?)/i) && (
+                    <div className="mt-4 aspect-[4/3] w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+                      <iframe src={activeLesson.documentUrl} className="h-full w-full" title={activeLesson.title} />
+                    </div>
+                  )}
+                </div>
+              ) : activeLesson.contentType === "text" || (activeLesson.textContent && !activeLesson.youtubeVideoId) ? (
+                <div className="rounded-[var(--r-lg)] border border-zinc-200 bg-white p-5 sm:p-6 shadow-xs">
+                  <div className="flex items-start sm:items-center gap-3 pb-4 border-b border-zinc-100">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 shadow-xs">
+                      <LandingIcon name="BookOpen" size={22} color="currentColor" />
+                    </div>
+                    <div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-50 text-amber-700 uppercase tracking-wider mb-0.5">
+                        Reading Material
+                      </span>
+                      <h4 className="text-sm sm:text-base font-bold text-zinc-900 leading-snug">{activeLesson.title}</h4>
+                    </div>
+                  </div>
+                  <div className="prose max-w-none text-zinc-700 leading-relaxed pt-5 whitespace-pre-line text-xs sm:text-sm">
+                    {activeLesson.textContent || activeLesson.description || "No written content provided."}
+                  </div>
+                </div>
+              ) : activeLesson.contentType === "live_class" || (activeLesson.liveClassUrl && !activeLesson.youtubeVideoId) ? (
+                <div className="rounded-[var(--r-lg)] border border-blue-200 bg-gradient-to-br from-blue-50/60 via-white to-white p-5 sm:p-6 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-blue-100">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+                        <LandingIcon name="Video" size={22} color="#fff" />
+                      </div>
+                      <div>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-100 text-blue-700 uppercase tracking-wider mb-0.5">
+                          Live Zoom Mentoring Session
+                        </span>
+                        <h4 className="text-sm sm:text-base font-bold text-zinc-900 leading-snug">{activeLesson.title}</h4>
+                      </div>
+                    </div>
+                    {activeLesson.liveClassUrl ? (
+                      <a
+                        href={activeLesson.liveClassUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold shadow-xs hover:bg-red-700 transition active:scale-95 shrink-0"
+                      >
+                        <LandingIcon name="Video" size={14} color="#fff" />
+                        <span>Join Live Room</span>
+                      </a>
+                    ) : (
+                      <Link
+                        href={course.id ? `/dashboard/classroom?tab=live&c=${course.id}` : `/dashboard/classroom?tab=live&c=all`}
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-xs hover:bg-blue-700 transition active:scale-95 shrink-0"
+                      >
+                        <LandingIcon name="Video" size={13} color="#fff" />
+                        <span>View Live Schedule &rarr;</span>
+                      </Link>
+                    )}
+                  </div>
+                  <div className="pt-4 space-y-3">
+                    {activeLesson.liveClassDatetime && (
+                      <div className="flex items-center gap-2 text-xs font-semibold text-zinc-700">
+                        <LandingIcon name="Clock" size={14} color="var(--brand)" />
+                        <span>
+                          Schedule: {new Date(activeLesson.liveClassDatetime).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" })} WIB
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-xs text-zinc-600 leading-relaxed">
+                      This is an interactive Live Mentoring session. Click above to join the Zoom meeting, or visit the <strong>Live Zoom</strong> tab for room status and schedule details.
+                    </p>
+                  </div>
+                </div>
+              ) : activeLesson.youtubeVideoId ? (
                 <iframe
                   className="aspect-video w-full rounded-[var(--r-lg)] bg-black"
                   src={`https://www.youtube-nocookie.com/embed/${activeLesson.youtubeVideoId}?autoplay=1`}
@@ -169,7 +312,7 @@ export function CourseVideoPlayer({
                       <LandingIcon name="Video" size={26} color="rgba(255,255,255,0.7)" />
                     </div>
                     <p className="text-white font-bold">{activeLesson.title}</p>
-                    <p className="text-xs text-white/40 mt-1">Video tidak tersedia</p>
+                    <p className="text-xs text-white/40 mt-1">Video not available</p>
                   </div>
                 </div>
               )}
@@ -185,7 +328,7 @@ export function CourseVideoPlayer({
                   }`}
                 >
                   <LandingIcon name={activeLesson.isCompleted ? "X" : "CheckCircle"} size={14} color="#fff" />
-                  {activeLesson.isCompleted ? "Batal Tandai Selesai" : "Tandai Selesai"}
+                  {activeLesson.isCompleted ? "Mark as Incomplete" : "Mark as Completed"}
                 </button>
                 <button
                   onClick={() => setShowNotes(!showNotes)}
@@ -195,7 +338,7 @@ export function CourseVideoPlayer({
                       : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
                   }`}
                 >
-                  <LandingIcon name="StickyNote" size={14} /> Catatan
+                  <LandingIcon name="StickyNote" size={14} /> Notes
                 </button>
               </div>
 
@@ -203,14 +346,14 @@ export function CourseVideoPlayer({
                 <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm animate-in fade-in slide-in-from-top-2">
                   <div className="mb-3 flex items-center justify-between">
                     <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                      <LandingIcon name="Pencil" size={14} /> Catatan Pribadi
+                      <LandingIcon name="Pencil" size={14} /> Personal Notes
                     </h4>
                     <span className="text-xs font-semibold text-green-600">{noteStatus}</span>
                   </div>
                   <textarea
                     value={noteContent}
                     onChange={(e) => setNoteContent(e.target.value)}
-                    placeholder="Ketik catatan Anda di sini..."
+                    placeholder="Type your notes here..."
                     className="w-full min-h-[150px] rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
                   />
                   <div className="mt-3 flex justify-between gap-2">
@@ -226,13 +369,13 @@ export function CourseVideoPlayer({
                       disabled={isSavingNote}
                       className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {isSavingNote ? "Menyimpan..." : "Simpan"}
+                      {isSavingNote ? "Saving..." : "Save"}
                     </button>
                   </div>
                 </div>
               )}
               
-              {activeLesson.description && (
+              {activeLesson.description && activeLesson.contentType !== "document" && (
                 <div className="mt-6 text-sm text-[var(--text-2)] whitespace-pre-wrap">
                   {activeLesson.description}
                 </div>
@@ -242,7 +385,7 @@ export function CourseVideoPlayer({
             {/* Sidebar Curriculum */}
             <aside className="player-aside">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-[family-name:var(--font-heading)] text-sm font-bold">Daftar Materi</h3>
+                <h3 className="font-[family-name:var(--font-heading)] text-sm font-bold">Lesson List</h3>
               </div>
               <div className="max-h-[500px] overflow-y-auto pr-2">
                 {curriculum.map((sec) => (
@@ -255,6 +398,7 @@ export function CourseVideoPlayer({
                     <p className="mb-2 text-xs font-bold text-[var(--text-3)]">{sec.title}</p>
                     {sec.lessons.map((l) => {
                       const isPlaying = l.id === activeLessonId;
+                      const meta = getLessonMeta(l.contentType);
                       return (
                         <button
                           key={l.id}
@@ -270,8 +414,9 @@ export function CourseVideoPlayer({
                           )}
                           <div className="min-w-0 flex-1">
                             <span className={`block truncate text-[13px] font-semibold ${isPlaying ? 'text-[var(--brand)]' : 'text-zinc-900'}`}>{l.title}</span>
-                            <span className="text-[10px] text-[var(--text-4)]">
-                              Video {l.durationMinutes ? ` · ${l.durationMinutes} min` : ""}
+                            <span className="text-[10px] text-[var(--text-4)] flex items-center gap-1 mt-0.5">
+                              <LandingIcon name={meta.icon} size={11} color="currentColor" />
+                              <span>{meta.label}{l.durationMinutes ? ` · ${l.durationMinutes} min` : ""}</span>
                             </span>
                           </div>
                         </button>
@@ -289,10 +434,10 @@ export function CourseVideoPlayer({
 
   // --- GRID VIEW (Modules List) ---
   const allLessons = curriculum.flatMap((sec) => sec.lessons);
-  const totalLessons = allLessons.length;
-  const completedLessons = allLessons.filter((l) => l.isCompleted).length;
+  const totalVideos = allLessons.length;
+  const totalLessons = overallProgress?.total ?? allLessons.length;
+  const completedLessons = overallProgress?.completed ?? allLessons.filter((l) => l.isCompleted).length;
   const is100Percent = totalLessons > 0 && completedLessons >= totalLessons;
-  const totalVideos = totalLessons;
 
   return (
     <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -305,10 +450,10 @@ export function CourseVideoPlayer({
             </div>
             <div>
               <h3 className="font-[family-name:var(--font-heading)] text-sm sm:text-base font-extrabold text-emerald-950">
-                🎉 Semua Materi Selesai 100%! Fitur Ujian Akhir Terbuka!
+                🎉 All Course Lessons Completed 100%! Final Exam Unlocked!
               </h3>
               <p className="text-xs text-emerald-700 mt-0.5">
-                Selamat! Anda telah menyelesaikan seluruh {totalLessons} materi. Akses tab <strong>Ujian Akhir</strong> untuk mengunduh lembar soal & mengerjakan ujian sertifikasi.
+                Congratulations! You have completed all {totalLessons} course requirements. Head to the <strong>Final Exam</strong> tab to download your question sheet & complete the certification exam.
               </p>
             </div>
           </div>
@@ -317,7 +462,7 @@ export function CourseVideoPlayer({
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition shrink-0"
           >
             <LandingIcon name="Award" size={14} color="#fff" />
-            Buka Ujian Akhir &rarr;
+            Open Final Exam &rarr;
           </Link>
         </div>
       ) : totalLessons > 0 ? (
@@ -327,11 +472,11 @@ export function CourseVideoPlayer({
               <LandingIcon name="Lock" size={14} color="currentColor" />
             </span>
             <span>
-              Progres Materi: <strong className="text-zinc-900">{completedLessons}/{totalLessons} ({Math.round((completedLessons / totalLessons) * 100)}%)</strong>. Selesaikan 100% materi untuk membuka tab <strong>Ujian Akhir & Sertifikasi</strong>.
+              Course Progress: <strong className="text-zinc-900">{completedLessons}/{totalLessons} ({Math.round((completedLessons / totalLessons) * 100)}%)</strong>. Complete 100% of course materials (videos, live zoom, and study resources) to unlock the <strong>Final Exam & Certification</strong> tab.
             </span>
           </div>
           <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-full self-start lg:self-auto shrink-0">
-            {totalLessons - completedLessons} materi lagi
+            {totalLessons - completedLessons} items left
           </span>
         </div>
       ) : null}
@@ -339,15 +484,15 @@ export function CourseVideoPlayer({
       <div className="mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-zinc-200 pb-4">
         <div>
           <h2 className="font-[family-name:var(--font-heading)] text-lg sm:text-xl font-bold text-zinc-900">
-            Daftar Modul & Video Pembelajaran
+            Modules & Video Lessons
           </h2>
           <p className="mt-0.5 text-xs text-zinc-500">
-            Pelajari seluruh video teori secara mandiri sebelum sesi Live Roleplay dan Ujian Sertifikasi.
+            Study all theory video lessons independently prior to Live Roleplay sessions and Certification Exam.
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 self-start lg:self-auto rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-xs shrink-0">
           <LandingIcon name="PlayCircle" size={14} color="var(--brand)" />
-          {totalVideos} Video Tersedia
+          {totalVideos} Videos Available
         </span>
       </div>
 
@@ -357,28 +502,28 @@ export function CourseVideoPlayer({
             <LandingIcon name="Video" size={32} color="currentColor" />
           </div>
           <h3 className="font-[family-name:var(--font-heading)] text-base sm:text-lg font-bold text-zinc-900 mb-1">
-            Materi Video Sedang Dipersiapkan
+            Lessons in Preparation
           </h3>
           <p className="max-w-md mx-auto text-xs sm:text-sm text-zinc-500 mb-6 leading-relaxed">
-            Instruktur sedang menyusun video pembelajaran untuk kursus ini. Sembari menunggu, Anda dapat mengikuti sesi interaktif di <strong className="text-zinc-700">Live Zoom</strong> atau mengunduh bahan bacaan di tab <strong className="text-zinc-700">Resources</strong>.
+            The instructor is preparing curriculum lessons for this course. In the meantime, you can participate in interactive sessions on <strong className="text-zinc-700">Live Zoom</strong> or download reading materials under the <strong className="text-zinc-700">Resources</strong> tab.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
               href={course.id ? `/dashboard/classroom?tab=live&c=${course.id}` : `/dashboard/classroom?tab=live&c=all`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-xs transition"
             >
-              <LandingIcon name="Video" size={14} color="currentColor" /> Buka Jadwal Live Zoom &rarr;
+              <LandingIcon name="Video" size={14} color="currentColor" /> View Live Zoom Schedule &rarr;
             </Link>
             <Link
               href={course.id ? `/dashboard/classroom?tab=resources&c=${course.id}` : `/dashboard/classroom?tab=resources&c=all`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-xs transition"
             >
-              <LandingIcon name="BookOpen" size={14} color="currentColor" /> Buka Dokumen & Resources &rarr;
+              <LandingIcon name="BookOpen" size={14} color="currentColor" /> View Documents & Resources &rarr;
             </Link>
           </div>
         </div>
       ) : (
-        curriculum.map((sec) => (
+        curriculum.map((sec, secIdx) => (
           <div key={sec.id} className="mb-8">
             <div className="mb-4">
               {sec.courseTitle && (
@@ -391,9 +536,10 @@ export function CourseVideoPlayer({
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sec.lessons.map((l) => {
+              {sec.lessons.map((l, lIdx) => {
                 const isLocked = false;
                 const isDone = l.isCompleted;
+                const meta = getLessonMeta(l.contentType);
 
                 return (
                   <button
@@ -410,6 +556,7 @@ export function CourseVideoPlayer({
                           alt={l.title}
                           fill
                           unoptimized
+                          priority={secIdx === 0 && lIdx === 0}
                           className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       )}
@@ -419,15 +566,17 @@ export function CourseVideoPlayer({
                           <LandingIcon name="Lock" size={24} color="rgba(255,255,255,0.6)" />
                         </div>
                       ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors group-hover:bg-black/30">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand)] shadow-[0_4px_14px_rgba(26,86,219,0.5)] transition-transform duration-200 group-hover:scale-110">
-                            <LandingIcon name="Play" size={16} color="#fff" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/15 transition-colors group-hover:bg-black/35">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-full text-white shadow-md transition-transform duration-200 group-hover:scale-110 ${meta.btnBg}`}>
+                            <LandingIcon name={meta.icon} size={meta.icon === "Play" ? 16 : 18} color="#fff" />
                           </div>
                         </div>
                       )}
 
-                      <div className="absolute bottom-2 right-2 rounded px-1.5 py-0.5 text-[9px] font-bold text-white bg-black/75">
-                        {l.durationMinutes} min
+                      <div className="absolute bottom-2 right-2 rounded px-1.5 py-0.5 text-[9px] font-bold text-white bg-black/75 flex items-center gap-1">
+                        <LandingIcon name={meta.icon} size={10} color="#fff" />
+                        <span>{meta.label}</span>
+                        {l.durationMinutes ? <span>· {l.durationMinutes}m</span> : null}
                       </div>
                       
                       {isDone && (
@@ -448,7 +597,10 @@ export function CourseVideoPlayer({
                     
                     <div className="flex flex-1 flex-col p-3">
                       <div className="mb-1 flex items-center justify-between gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--brand)]">
-                        <span>Lesson {l.id}</span>
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold ${meta.badgeClass}`}>
+                          <LandingIcon name={meta.icon} size={10} color="currentColor" />
+                          {meta.label}
+                        </span>
                         {l.courseTitle && (
                           <span className="truncate max-w-[130px] text-zinc-400 font-medium normal-case">
                             {l.courseTitle}

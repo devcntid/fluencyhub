@@ -21,7 +21,7 @@ export function ClassroomClientTabs({
   const tabs = [
     {
       id: "videos",
-      label: "Video Materi",
+      label: "Video Lessons",
       icon: "Play",
       href: `/dashboard/classroom?tab=videos${cParam}`,
     },
@@ -41,9 +41,9 @@ export function ClassroomClientTabs({
       ? [
           {
             id: "exam",
-            label: isCertified ? "Sertifikat & Ujian" : "Ujian Akhir",
+            label: isCertified ? "Certificate & Exam" : "Final Exam",
             icon: "Award",
-            badge: isCertified ? "Lulus" : hasExam ? "Dibuka" : "Segera",
+            badge: isCertified ? "Passed" : hasExam ? "Unlocked" : "Soon",
             badgeColor: isCertified
               ? "bg-emerald-100 text-emerald-800"
               : hasExam

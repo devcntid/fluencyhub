@@ -29,20 +29,20 @@ export function formatDateDayWIB(date: Date | string | number | null | undefined
   if (!date) return "--";
   const d = typeof date === "object" ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return "--";
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat("en-US", {
     timeZone: JAKARTA_TZ,
     day: "numeric",
   }).format(d);
 }
 
 /**
- * Format month abbreviation in WIB (e.g. "OKT")
+ * Format month abbreviation in WIB (e.g. "OCT")
  */
 export function formatDateMonthWIB(date: Date | string | number | null | undefined): string {
   if (!date) return "--";
   const d = typeof date === "object" ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return "--";
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat("en-US", {
     timeZone: JAKARTA_TZ,
     month: "short",
   })
@@ -52,13 +52,13 @@ export function formatDateMonthWIB(date: Date | string | number | null | undefin
 }
 
 /**
- * Format full date in WIB (e.g. "Rabu, 14 Oktober 2026")
+ * Format full date in WIB (e.g. "Wednesday, October 14, 2026")
  */
 export function formatFullDateWIB(date: Date | string | number | null | undefined): string {
-  if (!date) return "Tanggal belum ditentukan";
+  if (!date) return "Date to be announced";
   const d = typeof date === "object" ? date : new Date(date);
-  if (Number.isNaN(d.getTime())) return "Tanggal belum ditentukan";
-  return new Intl.DateTimeFormat("id-ID", {
+  if (Number.isNaN(d.getTime())) return "Date to be announced";
+  return new Intl.DateTimeFormat("en-US", {
     timeZone: JAKARTA_TZ,
     weekday: "long",
     day: "numeric",
@@ -86,7 +86,7 @@ export function getLocalDateStringWIB(date: Date | string | number = new Date())
 }
 
 /**
- * Format relative day label in WIB: "HARI INI", "BESOK", or "RAB, 14 OKT"
+ * Format relative day label in WIB: "TODAY", "TOMORROW", or "WED, OCT 14"
  */
 export function formatDayLabelWIB(d: Date | string | number | null, now: Date = new Date()): string {
   if (!d) return "TBA";
@@ -99,10 +99,10 @@ export function formatDayLabelWIB(d: Date | string | number | null, now: Date = 
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const tomorrowStr = getLocalDateStringWIB(tomorrow);
 
-  if (targetDayStr === todayStr) return "HARI INI";
-  if (targetDayStr === tomorrowStr) return "BESOK";
+  if (targetDayStr === todayStr) return "TODAY";
+  if (targetDayStr === tomorrowStr) return "TOMORROW";
 
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat("en-US", {
     timeZone: JAKARTA_TZ,
     weekday: "short",
     day: "numeric",
