@@ -50,6 +50,15 @@ export async function POST(req: Request) {
         : "Nilai berhasil disimpan. Siswa belum mencapai nilai kelulusan.",
     });
   } catch (err: any) {
+    if (err?.code === "INSTRUCTOR_SIGNATURE_REQUIRED") {
+      return NextResponse.json(
+        {
+          error: err.message,
+          requiresSignature: true,
+        },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: err.message || "Gagal menyimpan penilaian." }, { status: 500 });
   }
 }

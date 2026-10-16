@@ -216,7 +216,7 @@ export function CourseAdminTable({
                   <Link href={`${curriculumHrefPrefix}/${c.id}`} className="btn btn-secondary btn-sm">
                     Lessons
                   </Link>
-                  <Link href={`/dashboard/courses/${c.id}`} className="btn btn-secondary btn-sm">
+                  <Link href={`/dashboard/classroom?tab=videos&c=${c.id}`} className="btn btn-secondary btn-sm">
                     Preview
                   </Link>
                 </div>

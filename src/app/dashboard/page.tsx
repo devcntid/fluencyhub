@@ -92,7 +92,7 @@ export default async function DashboardHomePage() {
           <div className="mb-6 flex items-center justify-between">
             <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold text-zinc-900">Continue Learning</h3>
             {activeEnrollment && (
-              <Link href={`/dashboard/classroom?c=${activeEnrollment.course.id}`} className="flex items-center gap-1 text-sm font-semibold text-zinc-500 hover:text-[var(--brand)]">
+              <Link href={`/dashboard/classroom?tab=videos&c=${activeEnrollment.course.id}`} className="flex items-center gap-1 text-sm font-semibold text-zinc-500 hover:text-[var(--brand)]">
                 View All <LandingIcon name="ArrowRight" color="currentColor" />
               </Link>
             )}
@@ -102,10 +102,10 @@ export default async function DashboardHomePage() {
             <Link 
               href={
                 activeEnrollment.nextLesson.contentType === "live_class" 
-                  ? `/dashboard/live#live-${activeEnrollment.nextLesson.id}` 
+                  ? `/dashboard/classroom?tab=live&c=${activeEnrollment.course.id}` 
                   : (activeEnrollment.nextLesson.contentType === "document" || activeEnrollment.nextLesson.contentType === "text")
-                  ? `/dashboard/resources/${activeEnrollment.nextLesson.id}`
-                  : `/dashboard/courses/${activeEnrollment.course.id}/${activeEnrollment.nextLesson.id}`
+                  ? `/dashboard/classroom?tab=resources&c=${activeEnrollment.course.id}`
+                  : `/dashboard/classroom?tab=videos&c=${activeEnrollment.course.id}&lesson=${activeEnrollment.nextLesson.id}`
               } 
               className="group block"
             >

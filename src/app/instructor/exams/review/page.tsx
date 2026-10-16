@@ -3,6 +3,7 @@ import { auth } from "@/lib/session";
 import { instructorScopeId } from "@/lib/instructor-scope";
 import { listInstructorCoursesWithRevenue } from "@/lib/db/courses.queries";
 import { listExamSubmissionsForCourse, getExamForCourse } from "@/lib/db/exams.queries";
+import { getUserById } from "@/lib/db/users.queries";
 import { InstructorExamReviewWorkbench } from "@/components/instructor/InstructorExamReviewWorkbench";
 
 export default async function InstructorExamReviewPage({
@@ -33,11 +34,13 @@ export default async function InstructorExamReviewPage({
   const selectedCourse = courses.find((c) => c.id === requestedId) || courses[0];
   const selectedId = selectedCourse.id;
 
-  const [submissions, exam] = await Promise.all([
+  const [submissions, exam, dbUser] = await Promise.all([
     listExamSubmissionsForCourse(selectedId),
     getExamForCourse(selectedId),
+    session?.user?.id ? getUserById(Number(session.user.id)) : Promise.resolve(null),
   ]);
 
+  const instructorHasSignature = Boolean(dbUser?.signatureUrl);
   const initialSubmissionId = params.submissionId ? Number(params.submissionId) : undefined;
 
   return (
@@ -48,6 +51,7 @@ export default async function InstructorExamReviewPage({
       submissions={submissions}
       exam={exam}
       initialSubmissionId={initialSubmissionId}
+      instructorHasSignature={instructorHasSignature}
     />
   );
 }

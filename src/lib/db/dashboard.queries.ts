@@ -15,6 +15,8 @@ export async function getUserDashboardStats(userId: number) {
     JOIN sections s ON l.section_id = s.id
     JOIN enrollments e ON s.course_id = e.course_id
     WHERE e.user_id = ${userId}
+      AND l.deleted_at IS NULL
+      AND e.status IN ('active', 'completed')
   `;
   
   const totalLessons = lessonsRes.length;
@@ -36,6 +38,7 @@ export async function getActiveEnrollment(userId: number) {
     FROM enrollments e
     JOIN courses c ON e.course_id = c.id
     WHERE e.user_id = ${userId}
+      AND c.deleted_at IS NULL
     ORDER BY e.updated_at DESC
     LIMIT 1
   `;
@@ -52,6 +55,7 @@ export async function getActiveEnrollment(userId: number) {
     SELECT l.* FROM lessons l
     JOIN sections s ON l.section_id = s.id
     WHERE s.course_id = ${course.id}
+      AND l.deleted_at IS NULL
     ORDER BY s.sort_order ASC, l.sort_order ASC
   `;
   const progressRes = await sql`

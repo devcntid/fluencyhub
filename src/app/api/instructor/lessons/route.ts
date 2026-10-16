@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createLessonForSection } from "@/lib/db/lessons.queries";
+import {
+  createLessonForSection,
+  checkLiveClassDuplicateOrOverlap,
+  checkInstructorSlotConflict,
+} from "@/lib/db/lessons.queries";
 import { getSectionById } from "@/lib/db/sections.queries";
 import { assertCourseAccess, requireInstructor } from "@/lib/instructor";
 import { sql } from "@/lib/db/client";
@@ -41,6 +45,13 @@ export async function POST(req: Request) {
     if (!liveClassDatetime) {
       return NextResponse.json({ error: "Session date and time are required for live classes." }, { status: 422 });
     }
+    const startAt = new Date(liveClassDatetime);
+    if (Number.isNaN(startAt.getTime())) {
+      return NextResponse.json({ error: "Format tanggal atau waktu kelas live tidak valid." }, { status: 422 });
+    }
+    if (startAt.getTime() < Date.now() - 5 * 60000) {
+      return NextResponse.json({ error: "Waktu pelaksanaan kelas live tidak boleh di masa lalu." }, { status: 400 });
+    }
   } else if (contentType === "document") {
     if (!documentUrl || !documentUrl.trim()) {
       return NextResponse.json({ error: "Document file or URL is required." }, { status: 422 });
@@ -70,6 +81,53 @@ export async function POST(req: Request) {
   `;
   if (existing.length > 0) {
     return NextResponse.json({ error: "Duplikat nama tidak diizinkan." }, { status: 400 });
+  }
+
+  // Validasi bentrok / tumpang tindih jadwal kelas live
+  if (contentType === "live_class" && liveClassDatetime) {
+    const courseRows = await sql`SELECT instructor_id FROM courses WHERE id = ${section.courseId}`;
+    const instructorId = Number(courseRows[0]?.instructor_id) || gate.userId;
+    const startAt = new Date(liveClassDatetime);
+    const durationMinutes = parsed.data.durationMinutes ?? 60;
+
+    const conflict = await checkLiveClassDuplicateOrOverlap({
+      instructorId,
+      courseId: section.courseId,
+      startAt,
+      durationMinutes,
+    });
+
+    if (conflict) {
+      if (conflict.isDuplicate) {
+        return NextResponse.json(
+          {
+            error: `Jadwal kelas live bentrok! Sudah ada sesi live dengan waktu yang sama (${conflict.conflictingLesson.title} pada ${conflict.conflictingLesson.formattedTime}). Silakan tentukan waktu lain.`,
+          },
+          { status: 400 }
+        );
+      } else {
+        return NextResponse.json(
+          {
+            error: `Jadwal kelas live bentrok dengan sesi lain (${conflict.conflictingLesson.title} pada ${conflict.conflictingLesson.formattedTime}). Silakan tentukan waktu lain.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const slotConflict = await checkInstructorSlotConflict({
+      instructorId,
+      startAt,
+      durationMinutes,
+    });
+    if (slotConflict) {
+      return NextResponse.json(
+        {
+          error: `Jadwal kelas live bentrok dengan slot sesi privat Anda (${slotConflict.formattedTime}). Silakan tentukan waktu lain.`,
+        },
+        { status: 400 }
+      );
+    }
   }
 
   const lesson = await createLessonForSection({

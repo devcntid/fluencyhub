@@ -19,7 +19,7 @@ import { LandingIcon } from "@/components/landing/LandingIcon";
 export default async function ClassroomPage({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string; tab?: string }>;
+  searchParams: Promise<{ c?: string; tab?: string; lesson?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -371,6 +371,7 @@ export default async function ClassroomPage({
                 course={course}
                 curriculum={curriculum}
                 overallProgress={{ total: totalLessons, completed: completedLessons }}
+                initialLessonId={resolvedParams.lesson ? Number(resolvedParams.lesson) : undefined}
               />
             )}
           </div>

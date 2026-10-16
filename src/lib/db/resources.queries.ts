@@ -30,6 +30,8 @@ export async function listUserResources(userId: number): Promise<UserResource[]>
     JOIN enrollments e ON c.id = e.course_id
     LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id AND lp.user_id = e.user_id
     WHERE e.user_id = ${userId}
+      AND l.deleted_at IS NULL
+      AND c.deleted_at IS NULL
       AND l.content_type IN ('document', 'text')
       AND e.status IN ('active', 'completed')
     ORDER BY l.created_at DESC
@@ -65,6 +67,7 @@ export async function listCourseResources(courseId: number): Promise<UserResourc
     JOIN courses c ON s.course_id = c.id
     WHERE c.id = ${courseId}
       AND l.deleted_at IS NULL
+      AND c.deleted_at IS NULL
       AND l.content_type IN ('document', 'text')
     ORDER BY l.created_at DESC
   `;

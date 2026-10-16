@@ -26,6 +26,8 @@ export function mapUser(row: Row): User {
     passwordHash: (row.password_hash as string) ?? null,
     role: row.role as User["role"],
     avatarUrl: (row.avatar_url as string) ?? null,
+    zoomLink: (row.zoom_link as string) ?? null,
+    signatureUrl: (row.signature_url as string) ?? null,
     isActive: Boolean(row.is_active),
     revenueSharePct: String(row.revenue_share_pct ?? "70.00"),
     lastLoginAt: asDateOrNull(row.last_login_at),

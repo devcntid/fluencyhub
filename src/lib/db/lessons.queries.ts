@@ -246,7 +246,12 @@ export async function listUpcomingLiveClasses(userId: number): Promise<UpcomingL
       c.id as course_id,
       u.name as coach_name,
       u.avatar_url as coach_avatar,
-      COALESCE(lp.is_completed, false) as is_completed
+      CASE 
+        WHEN l.live_class_datetime IS NOT NULL 
+          AND (l.live_class_datetime + (COALESCE(l.duration_minutes, l.live_class_duration_min, 60) * INTERVAL '1 minute')) > NOW() 
+        THEN false
+        ELSE COALESCE(lp.is_completed, false)
+      END as is_completed
     FROM lessons l
     JOIN sections s ON s.id = l.section_id
     JOIN courses c ON c.id = s.course_id
@@ -289,7 +294,12 @@ export async function listUpcomingLiveClassesForCourse(courseId: number, userId?
       c.id as course_id,
       u.name as coach_name,
       u.avatar_url as coach_avatar,
-      COALESCE(lp.is_completed, false) as is_completed
+      CASE 
+        WHEN l.live_class_datetime IS NOT NULL 
+          AND (l.live_class_datetime + (COALESCE(l.duration_minutes, l.live_class_duration_min, 60) * INTERVAL '1 minute')) > NOW() 
+        THEN false
+        ELSE COALESCE(lp.is_completed, false)
+      END as is_completed
     FROM lessons l
     JOIN sections s ON s.id = l.section_id
     JOIN courses c ON c.id = s.course_id
@@ -316,5 +326,148 @@ export async function listUpcomingLiveClassesForCourse(courseId: number, userId?
       isCompleted: Boolean(raw.is_completed),
     };
   });
+}
+
+export type LiveClassConflictResult = {
+  isDuplicate: boolean;
+  isOverlap: boolean;
+  conflictingLesson: {
+    id: number;
+    title: string;
+    courseTitle: string;
+    startAt: Date;
+    endAt: Date;
+    formattedTime: string;
+  };
+};
+
+export async function checkLiveClassDuplicateOrOverlap(params: {
+  instructorId: number;
+  courseId: number;
+  startAt: Date;
+  durationMinutes: number;
+  excludeLessonId?: number;
+}): Promise<LiveClassConflictResult | null> {
+  const proposedStart = params.startAt;
+  const durMin = Math.max(1, params.durationMinutes || 60);
+  const proposedEnd = new Date(proposedStart.getTime() + durMin * 60000);
+
+  const instructorFilter =
+    params.instructorId > 0
+      ? params.courseId > 0
+        ? sql`(c.instructor_id = ${params.instructorId} OR c.id = ${params.courseId})`
+        : sql`c.instructor_id = ${params.instructorId}`
+      : sql`c.id = ${params.courseId}`;
+
+  const rows = await sql`
+    SELECT
+      l.id,
+      l.title,
+      l.live_class_datetime,
+      COALESCE(l.duration_minutes, l.live_class_duration_min, 60) as duration_minutes,
+      c.title as course_title
+    FROM lessons l
+    JOIN sections s ON s.id = l.section_id
+    JOIN courses c ON c.id = s.course_id
+    WHERE ${instructorFilter}
+      AND l.content_type = 'live_class'
+      AND l.deleted_at IS NULL
+      AND l.live_class_datetime IS NOT NULL
+      ${params.excludeLessonId ? sql`AND l.id != ${params.excludeLessonId}` : sql``}
+      AND l.live_class_datetime < ${proposedEnd.toISOString()}::timestamptz
+      AND (l.live_class_datetime + (COALESCE(l.duration_minutes, l.live_class_duration_min, 60) * INTERVAL '1 minute')) > ${proposedStart.toISOString()}::timestamptz
+    LIMIT 1
+  `;
+
+  if (rows.length === 0) return null;
+
+  const r = rows[0] as Record<string, unknown>;
+  const exStart = new Date(String(r.live_class_datetime));
+  const exDur = Number(r.duration_minutes ?? 60);
+  const exEnd = new Date(exStart.getTime() + exDur * 60000);
+
+  const isDup =
+    exStart.getTime() === proposedStart.getTime() &&
+    exEnd.getTime() === proposedEnd.getTime();
+
+  const formatTime = (d: Date) => {
+    return d.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Jakarta",
+    });
+  };
+  const formatDate = (d: Date) => {
+    return d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "Asia/Jakarta",
+    });
+  };
+
+  const formattedTime = `${formatDate(exStart)} ${formatTime(exStart)} - ${formatTime(exEnd)} WIB`;
+
+  return {
+    isDuplicate: isDup,
+    isOverlap: !isDup,
+    conflictingLesson: {
+      id: Number(r.id),
+      title: String(r.title),
+      courseTitle: String(r.course_title),
+      startAt: exStart,
+      endAt: exEnd,
+      formattedTime,
+    },
+  };
+}
+
+export async function checkInstructorSlotConflict(params: {
+  instructorId: number;
+  startAt: Date;
+  durationMinutes: number;
+}): Promise<{ startAt: Date; endAt: Date; formattedTime: string } | null> {
+  if (!params.instructorId || params.instructorId <= 0) return null;
+  const proposedStart = params.startAt;
+  const durMin = Math.max(1, params.durationMinutes || 60);
+  const proposedEnd = new Date(proposedStart.getTime() + durMin * 60000);
+
+  const rows = await sql`
+    SELECT id, start_at, end_at
+    FROM instructor_slots
+    WHERE instructor_id = ${params.instructorId}
+      AND status != 'cancelled'
+      AND start_at < ${proposedEnd.toISOString()}::timestamptz
+      AND end_at > ${proposedStart.toISOString()}::timestamptz
+    LIMIT 1
+  `;
+
+  if (rows.length === 0) return null;
+
+  const r = rows[0] as Record<string, unknown>;
+  const exStart = new Date(String(r.start_at));
+  const exEnd = new Date(String(r.end_at));
+
+  const formatTime = (d: Date) => {
+    return d.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Jakarta",
+    });
+  };
+  const formatDate = (d: Date) => {
+    return d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "Asia/Jakarta",
+    });
+  };
+
+  return {
+    startAt: exStart,
+    endAt: exEnd,
+    formattedTime: `${formatDate(exStart)} ${formatTime(exStart)} - ${formatTime(exEnd)} WIB`,
+  };
 }
 

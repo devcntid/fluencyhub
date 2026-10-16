@@ -428,6 +428,28 @@ export async function gradeExamSubmission(data: {
   const isPassed = finalScore >= passingScore;
   const status: ExamSubmission["status"] = isPassed ? "passed" : "failed";
 
+  // Wajib periksa apakah instruktur sudah mengunggah tanda tangan di profil sebelum menerbitkan sertifikat
+  if (isPassed) {
+    const courseInstructor = await sql`
+      SELECT u.id, u.name, u.signature_url
+      FROM courses co
+      LEFT JOIN users u ON u.id = co.instructor_id
+      WHERE co.id = ${sub.course_id}
+      LIMIT 1
+    `;
+    const gradingInst = await sql`
+      SELECT id, name, signature_url FROM users WHERE id = ${data.instructorId} LIMIT 1
+    `;
+    const hasSignature = Boolean(courseInstructor[0]?.signature_url || gradingInst[0]?.signature_url);
+    if (!hasSignature) {
+      const err = new Error(
+        "Tanda tangan digital instruktur belum diatur di profil. Harap lengkapi tanda tangan digital di menu Profil Instruktur sebelum menerbitkan sertifikat kelulusan siswa."
+      );
+      (err as any).code = "INSTRUCTOR_SIGNATURE_REQUIRED";
+      throw err;
+    }
+  }
+
   const rows = await sql`
     UPDATE exam_submissions SET
       reading_score = ${readingScore},

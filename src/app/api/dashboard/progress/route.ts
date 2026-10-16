@@ -25,6 +25,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden: Not enrolled" }, { status: 403 });
     }
 
+    // Check if lesson is a live class that hasn't ended yet
+    if (isCompleted) {
+      const lessonRes = await sql`
+        SELECT id, content_type, live_class_datetime, COALESCE(duration_minutes, live_class_duration_min, 60) as duration_minutes
+        FROM lessons
+        WHERE id = ${lessonId}
+        LIMIT 1
+      `;
+      if (lessonRes.length > 0 && lessonRes[0].content_type === "live_class") {
+        const liveTime = lessonRes[0].live_class_datetime ? new Date(lessonRes[0].live_class_datetime).getTime() : 0;
+        const durMin = Number(lessonRes[0].duration_minutes || 60);
+        const endTime = liveTime + durMin * 60 * 1000;
+        if (endTime > 0 && Date.now() < endTime) {
+          return NextResponse.json(
+            { error: "Sesi Live Mentoring belum selesai. Status Attended hanya dapat diberikan setelah sesi Live Mentoring selesai." },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Check if progress already exists
     const existing = await sql`
       SELECT id FROM lesson_progress 

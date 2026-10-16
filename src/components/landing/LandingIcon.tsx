@@ -173,6 +173,7 @@ export function LandingIcon({
         </>
       )}
       {name === "ChevronDown" && <polyline points="6 9 12 15 18 9" />}
+      {name === "ChevronLeft" && <polyline points="15 18 9 12 15 6" />}
       {name === "ChevronRight" && <polyline points="9 18 15 12 9 6" />}
       {name === "User" && (
         <>

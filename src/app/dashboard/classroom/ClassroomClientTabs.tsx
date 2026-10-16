@@ -37,22 +37,18 @@ export function ClassroomClientTabs({
       icon: "BookOpen",
       href: `/dashboard/classroom?tab=resources${cParam}`,
     },
-    ...(isExamUnlocked
-      ? [
-          {
-            id: "exam",
-            label: isCertified ? "Certificate & Exam" : "Final Exam",
-            icon: "Award",
-            badge: isCertified ? "Passed" : hasExam ? "Unlocked" : "Soon",
-            badgeColor: isCertified
-              ? "bg-emerald-100 text-emerald-800"
-              : hasExam
-              ? "bg-blue-100 text-blue-800"
-              : "bg-zinc-100 text-zinc-600",
-            href: `/dashboard/classroom?tab=exam${cParam}`,
-          },
-        ]
-      : []),
+    {
+      id: "exam",
+      label: isCertified ? "Certificate & Exam" : "Final Exam",
+      icon: isCertified ? "Award" : isExamUnlocked ? "Award" : "Lock",
+      badge: isCertified ? "Passed" : isExamUnlocked ? (hasExam ? "Unlocked" : "Ready") : "Locked",
+      badgeColor: isCertified
+        ? "bg-emerald-100 text-emerald-800 border border-emerald-200/60"
+        : isExamUnlocked
+        ? "bg-blue-100 text-blue-800 border border-blue-200/60"
+        : "bg-amber-100 text-amber-800 border border-amber-200/60",
+      href: `/dashboard/classroom?tab=exam${cParam}`,
+    },
   ];
 
   return (

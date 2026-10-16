@@ -72,6 +72,7 @@ export default async function CertificatePage({
         studentName: certificate.studentName,
         courseTitle: certificate.courseTitle,
         instructorName: certificate.instructorName,
+        instructorSignatureUrl: certificate.instructorSignatureUrl,
         finalScore: certificate.finalScore,
         grade: certificate.grade,
         readingScore: certificate.readingScore,

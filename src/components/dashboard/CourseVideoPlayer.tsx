@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { LandingIcon } from "@/components/landing/LandingIcon";
@@ -44,14 +44,48 @@ export function CourseVideoPlayer({
   course,
   curriculum,
   overallProgress,
+  initialLessonId,
 }: {
   course: { id: number; title: string; thumbnail_url?: string | null; thumbnailUrl?: string | null };
   curriculum: PlayerSection[];
   overallProgress?: { total: number; completed: number };
+  initialLessonId?: number;
 }) {
   const router = useRouter();
-  const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
+  const searchParams = useSearchParams();
+  const urlLesson = searchParams.get("lesson");
+  const parsedLesson = urlLesson ? Number(urlLesson) : null;
+
+  const [activeLessonId, setActiveLessonId] = useState<number | null>(
+    parsedLesson || initialLessonId || null
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const qLesson = searchParams.get("lesson");
+    if (qLesson) {
+      const lid = Number(qLesson);
+      if (!isNaN(lid) && lid !== activeLessonId) {
+        setActiveLessonId(lid);
+      }
+    } else if (qLesson === null && activeLessonId !== null && !initialLessonId) {
+      setActiveLessonId(null);
+    }
+  }, [searchParams]);
+
+  function handleSelectLesson(lessonId: number) {
+    setActiveLessonId(lessonId);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("lesson", String(lessonId));
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
+
+  function handleClosePlayer() {
+    setActiveLessonId(null);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("lesson");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
 
   // Notes state
   const [showNotes, setShowNotes] = useState(false);
@@ -156,15 +190,18 @@ export function CourseVideoPlayer({
 
   // --- PLAYER VIEW ---
   if (activeLesson) {
-    const total = curriculum.reduce((n, s) => n + s.lessons.length, 0);
-    const index = curriculum.flatMap((s) => s.lessons).findIndex((l) => l.id === activeLessonId);
+    const allFlatLessons = curriculum.flatMap((s) => s.lessons);
+    const total = allFlatLessons.length;
+    const index = allFlatLessons.findIndex((l) => l.id === activeLessonId);
     const pct = total ? Math.round(((index + 1) / total) * 100) : 0;
+    const prevLesson = index > 0 ? allFlatLessons[index - 1] : null;
+    const nextLesson = index >= 0 && index < allFlatLessons.length - 1 ? allFlatLessons[index + 1] : null;
 
     return (
       <div className="animate-in fade-in zoom-in-95 duration-300">
         <button
-          className="mb-4 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition"
-          onClick={() => setActiveLessonId(null)}
+          className="mb-4 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition cursor-pointer"
+          onClick={handleClosePlayer}
         >
           <LandingIcon name="ArrowLeft" size={14} /> Back to Syllabus Grid
         </button>
@@ -178,7 +215,7 @@ export function CourseVideoPlayer({
               <span className="text-xs font-semibold text-[var(--text-3)]">
                 {index + 1}/{total} · {pct}%
               </span>
-              <button onClick={() => setActiveLessonId(null)} className="btn btn-ghost btn-sm" aria-label="Close">
+              <button onClick={handleClosePlayer} className="btn btn-ghost btn-sm" aria-label="Close">
                 ✕
               </button>
             </div>
@@ -317,29 +354,50 @@ export function CourseVideoPlayer({
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2 mt-5">
-                <button
-                  disabled={isSubmitting}
-                  onClick={handleToggleComplete}
-                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-95 ${
-                    activeLesson.isCompleted
-                      ? "bg-zinc-600 hover:bg-zinc-700"
-                      : "bg-green-600 hover:bg-green-700"
-                  }`}
-                >
-                  <LandingIcon name={activeLesson.isCompleted ? "X" : "CheckCircle"} size={14} color="#fff" />
-                  {activeLesson.isCompleted ? "Mark as Incomplete" : "Mark as Completed"}
-                </button>
-                <button
-                  onClick={() => setShowNotes(!showNotes)}
-                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition ${
-                    showNotes
-                      ? "border-blue-200 bg-blue-50 text-blue-700"
-                      : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
-                  }`}
-                >
-                  <LandingIcon name="StickyNote" size={14} /> Notes
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-3 mt-5 pt-4 border-t border-zinc-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    disabled={isSubmitting}
+                    onClick={handleToggleComplete}
+                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-95 ${
+                      activeLesson.isCompleted
+                        ? "bg-zinc-600 hover:bg-zinc-700"
+                        : "bg-green-600 hover:bg-green-700"
+                    }`}
+                  >
+                    <LandingIcon name={activeLesson.isCompleted ? "X" : "CheckCircle"} size={14} color="#fff" />
+                    {activeLesson.isCompleted ? "Mark as Incomplete" : "Mark as Completed"}
+                  </button>
+                  <button
+                    onClick={() => setShowNotes(!showNotes)}
+                    className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition ${
+                      showNotes
+                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                    }`}
+                  >
+                    <LandingIcon name="StickyNote" size={14} /> Notes
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {prevLesson && (
+                    <button
+                      onClick={() => handleSelectLesson(prevLesson.id)}
+                      className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition shadow-2xs active:scale-95 cursor-pointer"
+                    >
+                      <LandingIcon name="ChevronLeft" size={14} color="currentColor" /> Previous
+                    </button>
+                  )}
+                  {nextLesson && (
+                    <button
+                      onClick={() => handleSelectLesson(nextLesson.id)}
+                      className="flex items-center gap-1.5 rounded-lg bg-[var(--brand)] px-3.5 py-2 text-xs font-bold text-white hover:opacity-95 transition shadow-2xs active:scale-95 cursor-pointer"
+                    >
+                      Next Lesson <LandingIcon name="ChevronRight" size={14} color="#fff" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {showNotes && (
@@ -402,7 +460,7 @@ export function CourseVideoPlayer({
                       return (
                         <button
                           key={l.id}
-                          onClick={() => setActiveLessonId(l.id)}
+                          onClick={() => handleSelectLesson(l.id)}
                           className={`player-item w-full text-left transition ${isPlaying ? "active" : "hover:bg-zinc-50"}`}
                         >
                           {l.isCompleted ? (
@@ -544,7 +602,7 @@ export function CourseVideoPlayer({
                 return (
                   <button
                     key={l.id}
-                    onClick={() => !isLocked && setActiveLessonId(l.id)}
+                    onClick={() => !isLocked && handleSelectLesson(l.id)}
                     className={`group flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white text-left transition-all duration-200 ${
                       isLocked ? "cursor-default opacity-70" : "cursor-pointer hover:-translate-y-1 hover:shadow-md hover:border-zinc-300"
                     }`}

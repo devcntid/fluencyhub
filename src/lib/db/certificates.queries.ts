@@ -15,17 +15,18 @@ export function calculateGrade(score: number): string {
   return "D";
 }
 
-export async function getCertificateByCode(certificateCode: string): Promise<(Certificate & { studentName: string; courseTitle: string; instructorName: string }) | null> {
+export async function getCertificateByCode(certificateCode: string): Promise<(Certificate & { studentName: string; courseTitle: string; instructorName: string; instructorSignatureUrl?: string | null }) | null> {
   const rows = await sql`
     SELECT 
       c.*,
       u.name as student_name,
       co.title as course_title,
-      inst.name as instructor_name
+      inst.name as instructor_name,
+      inst.signature_url as instructor_signature_url
     FROM certificates c
     JOIN users u ON u.id = c.user_id
     JOIN courses co ON co.id = c.course_id
-    JOIN users inst ON inst.id = co.instructor_id
+    LEFT JOIN users inst ON inst.id = co.instructor_id
     WHERE c.certificate_code = ${certificateCode}
     LIMIT 1
   `;
@@ -49,6 +50,7 @@ export async function getCertificateByCode(certificateCode: string): Promise<(Ce
     studentName: String(r.student_name || "Siswa FluencyHub"),
     courseTitle: String(r.course_title || "Program Kursus"),
     instructorName: String(r.instructor_name || "Instruktur FluencyHub"),
+    instructorSignatureUrl: r.instructor_signature_url ? String(r.instructor_signature_url) : null,
   };
 }
 

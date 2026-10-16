@@ -285,6 +285,19 @@ export function LessonFormDialog({
           }
         }
         setError(msg);
+        if (msg.toLowerCase().includes("bentrok") || msg.toLowerCase().includes("jadwal")) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            liveDate: "Jadwal bentrok",
+            startTime: "Jadwal bentrok",
+            endTime: "Jadwal bentrok",
+          }));
+        } else if (msg.toLowerCase().includes("duplikat nama")) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            title: "Duplikat nama materi",
+          }));
+        }
         return;
       }
       setOpen(false);
@@ -605,8 +618,16 @@ export function LessonFormDialog({
           <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700 animate-in fade-in duration-150">
             <span className="text-sm shrink-0">⚠️</span>
             <div className="flex-1">
-              <p className="font-bold text-red-800">Please complete all required fields:</p>
-              <p className="mt-0.5 text-red-600 font-normal">{error}</p>
+              <p className="font-bold text-red-800">
+                {error.toLowerCase().includes("bentrok")
+                  ? "Jadwal Bentrok:"
+                  : error.toLowerCase().includes("duplikat")
+                  ? "Data Duplikat:"
+                  : Object.keys(fieldErrors).length > 0
+                  ? "Harap lengkapi semua kolom yang wajib diisi:"
+                  : "Gagal Menyimpan Materi:"}
+              </p>
+              <p className="mt-0.5 text-red-600 font-normal leading-relaxed">{error}</p>
             </div>
           </div>
         ) : null}

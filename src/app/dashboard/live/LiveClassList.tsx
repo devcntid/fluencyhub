@@ -23,8 +23,21 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
 
   async function handleToggleAttendance(session: UpcomingLiveClass, desiredState?: boolean) {
     if (submittingIds[session.id]) return;
+
+    // Hitung apakah sesi sudah selesai
+    const durationMin = session.durationMinutes > 0 ? session.durationMinutes : 60;
+    const startTime = session.liveClassDatetime ? new Date(session.liveClassDatetime).getTime() : 0;
+    const endTime = startTime > 0 ? startTime + durationMin * 60 * 1000 : 0;
+    const isEnded = endTime > 0 && currentTime.getTime() >= endTime;
+
     const currentCompleted = completedMap[session.id] ?? Boolean(session.isCompleted);
     const nextState = desiredState !== undefined ? desiredState : !currentCompleted;
+
+    // Status Attended hanya dapat diberikan setelah sesi Live Mentoring selesai
+    if (nextState && !isEnded) {
+      alert("Sesi Live Mentoring belum selesai. Status Attended hanya dapat diberikan setelah sesi Live Mentoring selesai.");
+      return;
+    }
 
     setSubmittingIds((prev) => ({ ...prev, [session.id]: true }));
     setCompletedMap((prev) => ({ ...prev, [session.id]: nextState }));
@@ -323,7 +336,8 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                           {session.moduleName}
                         </span>
 
-                        {Boolean(completedMap[session.id] ?? session.isCompleted) && (
+                        {/* Attended Badge - Hanya tampil jika sesi sudah selesai dan dihadiri */}
+                        {isEnded && Boolean(completedMap[session.id] ?? session.isCompleted) && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 border border-emerald-200">
                             <LandingIcon name="Check" size={11} color="currentColor" />
                             Attended ✓
@@ -365,11 +379,6 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                             href={session.liveClassUrl || "#"}
                             target="_blank"
                             rel="noreferrer"
-                            onClick={() => {
-                              if (!(completedMap[session.id] ?? session.isCompleted)) {
-                                handleToggleAttendance(session, true);
-                              }
-                            }}
                             className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-red-200 transition hover:bg-red-700 active:scale-95 lg:w-auto"
                           >
                             <LandingIcon name="Video" size={16} color="currentColor" />
@@ -385,11 +394,6 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                             href={session.liveClassUrl || "#"}
                             target="_blank"
                             rel="noreferrer"
-                            onClick={() => {
-                              if (!(completedMap[session.id] ?? session.isCompleted)) {
-                                handleToggleAttendance(session, true);
-                              }
-                            }}
                             className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-95 lg:w-auto"
                           >
                             <LandingIcon name="Video" size={16} color="currentColor" />
@@ -411,31 +415,33 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                         </>
                       )}
 
-                      {/* Manual Attendance Toggle */}
-                      <button
-                        type="button"
-                        disabled={submittingIds[session.id]}
-                        onClick={() => handleToggleAttendance(session)}
-                        className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition lg:w-auto ${
-                          (completedMap[session.id] ?? session.isCompleted)
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/80"
-                            : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 shadow-2xs"
-                        }`}
-                        title="Toggle whether you have attended this session"
-                      >
-                        <LandingIcon
-                          name={(completedMap[session.id] ?? session.isCompleted) ? "CheckCircle" : "Check"}
-                          size={13}
-                          color="currentColor"
-                        />
-                        <span>
-                          {submittingIds[session.id]
-                            ? "Updating..."
-                            : (completedMap[session.id] ?? session.isCompleted)
-                            ? "Attended ✓"
-                            : "Mark as Attended"}
-                        </span>
-                      </button>
+                      {/* Attendance Toggle - Hanya dapat ditandai setelah sesi selesai */}
+                      {isEnded && (
+                        <button
+                          type="button"
+                          disabled={submittingIds[session.id]}
+                          onClick={() => handleToggleAttendance(session)}
+                          className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition lg:w-auto cursor-pointer ${
+                            (completedMap[session.id] ?? session.isCompleted)
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/80"
+                              : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 shadow-2xs"
+                          }`}
+                          title="Tandai kehadiran sesi ini setelah selesai"
+                        >
+                          <LandingIcon
+                            name={(completedMap[session.id] ?? session.isCompleted) ? "CheckCircle" : "Check"}
+                            size={13}
+                            color="currentColor"
+                          />
+                          <span>
+                            {submittingIds[session.id]
+                              ? "Updating..."
+                              : (completedMap[session.id] ?? session.isCompleted)
+                              ? "Attended ✓"
+                              : "Mark as Attended"}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

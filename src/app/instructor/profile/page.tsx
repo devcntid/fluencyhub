@@ -4,6 +4,7 @@ import { getUserById } from "@/lib/db/users.queries";
 import { ProfileForm } from "@/app/dashboard/profile/ProfileForm";
 import { AvatarUploader } from "@/app/dashboard/profile/AvatarUploader";
 import { InstructorZoomForm } from "./InstructorZoomForm";
+import { InstructorSignatureForm } from "./InstructorSignatureForm";
 
 export default async function InstructorProfilePage() {
   const session = await auth();
@@ -25,7 +26,7 @@ export default async function InstructorProfilePage() {
             Profile & Settings
           </h1>
           <p className="text-sm text-zinc-500">
-            Manage your personal profile and Zoom meeting link for classes
+            Manage your personal profile, certificate signature, and Zoom meeting link
           </p>
         </div>
       </div>
@@ -52,7 +53,7 @@ export default async function InstructorProfilePage() {
       </div>
 
       {/* Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         
         {/* Card Kiri: Informasi Pribadi (Client Component Form) */}
         <div className="flex flex-col w-full rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm">
@@ -66,6 +67,14 @@ export default async function InstructorProfilePage() {
         {/* Card Kanan: Pengaturan Zoom */}
         <div className="flex flex-col w-full rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm">
           <InstructorZoomForm />
+        </div>
+
+        {/* Card Bawah: Tanda Tangan Sertifikat */}
+        <div className="lg:col-span-2 flex flex-col w-full rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm">
+          <InstructorSignatureForm 
+            initialSignatureUrl={dbUser?.signatureUrl ?? null}
+            instructorName={userName}
+          />
         </div>
 
       </div>

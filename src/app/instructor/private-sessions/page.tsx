@@ -28,6 +28,7 @@ export default function InstructorPrivateSessionsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState<{ id: number; isBooked: boolean; bookedBy?: string | null } | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
+  const [isAddingSlot, setIsAddingSlot] = useState(false);
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
     setToast({ show: true, type, message });
@@ -83,10 +84,46 @@ export default function InstructorPrivateSessionsPage() {
   }
 
   async function addSlot() {
-    if (!slotDate || !slotStart || !slotEnd) return showToast("Please fill in all fields", "error");
-    const startAt = new Date(`${slotDate}T${slotStart}:00`).toISOString();
-    const endAt = new Date(`${slotDate}T${slotEnd}:00`).toISOString();
+    if (!slotDate || !slotStart || !slotEnd) return showToast("Harap isi waktu mulai dan selesai", "error");
 
+    const startAtDate = new Date(`${slotDate}T${slotStart}:00`);
+    const endAtDate = new Date(`${slotDate}T${slotEnd}:00`);
+
+    if (endAtDate <= startAtDate) {
+      return showToast("Waktu selesai harus lebih besar dari waktu mulai", "error");
+    }
+
+    if (startAtDate <= new Date()) {
+      return showToast("Waktu tidak boleh di masa lalu", "error");
+    }
+
+    // Client-side duplicate check
+    const isDuplicate = slots.some((s: any) => {
+      if (s.status === "cancelled") return false;
+      const sStart = new Date(s.startAt).getTime();
+      const sEnd = new Date(s.endAt).getTime();
+      return sStart === startAtDate.getTime() && sEnd === endAtDate.getTime();
+    });
+
+    if (isDuplicate) {
+      return showToast("Jadwal dengan tanggal dan waktu tersebut sudah tersedia", "error");
+    }
+
+    const isOverlap = slots.some((s: any) => {
+      if (s.status === "cancelled") return false;
+      const sStart = new Date(s.startAt).getTime();
+      const sEnd = new Date(s.endAt).getTime();
+      return startAtDate.getTime() < sEnd && endAtDate.getTime() > sStart;
+    });
+
+    if (isOverlap) {
+      return showToast("Jadwal bentrok dengan jadwal yang sudah ada", "error");
+    }
+
+    const startAt = startAtDate.toISOString();
+    const endAt = endAtDate.toISOString();
+
+    setIsAddingSlot(true);
     try {
       const res = await fetch("/api/instructor/slots", {
         method: "POST",
@@ -96,15 +133,17 @@ export default function InstructorPrivateSessionsPage() {
       const json = await res.json();
       if (res.ok) {
         fetchData();
-        showToast("Available slot added successfully!");
+        showToast("Slot jadwal berhasil ditambahkan!");
         setSlotStart("");
         setSlotEnd("");
       } else {
-        showToast(json.error || "Failed to add slot", "error");
+        showToast(json.error || "Gagal menambahkan slot jadwal", "error");
       }
     } catch (e) {
       console.error(e);
-      showToast("Network error occurred", "error");
+      showToast("Terjadi kesalahan jaringan", "error");
+    } finally {
+      setIsAddingSlot(false);
     }
   }
 
@@ -535,8 +574,12 @@ export default function InstructorPrivateSessionsPage() {
                       <input type="time" className="input w-full bg-zinc-50" value={slotEnd} onChange={(e) => setSlotEnd(e.target.value)} />
                     </div>
                   </div>
-                  <button className="btn w-full bg-zinc-900 hover:bg-zinc-800 text-white shadow-md hover:-translate-y-0.5 transition-all rounded-xl py-2.5 text-sm font-bold" onClick={addSlot}>
-                    + Save Slot
+                  <button 
+                    className="btn w-full bg-zinc-900 hover:bg-zinc-800 text-white shadow-md hover:-translate-y-0.5 transition-all rounded-xl py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed" 
+                    onClick={addSlot}
+                    disabled={isAddingSlot}
+                  >
+                    {isAddingSlot ? "Menyimpan..." : "+ Save Slot"}
                   </button>
                 </div>
               )}

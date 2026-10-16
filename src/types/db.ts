@@ -28,6 +28,8 @@ export interface User {
   passwordHash: string | null;
   role: UserRole;
   avatarUrl: string | null;
+  zoomLink?: string | null;
+  signatureUrl?: string | null;
   isActive: boolean;
   revenueSharePct: string;
   lastLoginAt: Date | null;

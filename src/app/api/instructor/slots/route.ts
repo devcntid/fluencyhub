@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/session";
-import { getInstructorSlots, addInstructorSlot } from "@/lib/db/private-sessions.queries";
+import { getInstructorSlots, addInstructorSlot, checkSlotDuplicateOrOverlap } from "@/lib/db/private-sessions.queries";
+import { checkLiveClassDuplicateOrOverlap } from "@/lib/db/lessons.queries";
 
 export async function GET() {
   const session = await auth();
@@ -39,13 +40,56 @@ export async function POST(request: Request) {
     }
     
     if (start <= new Date()) {
-       return NextResponse.json({ error: "Waktu tidak boleh di masa lalu" }, { status: 400 });
+      return NextResponse.json({ error: "Waktu tidak boleh di masa lalu" }, { status: 400 });
     }
 
-    // A more thorough check would also check for overlap with existing slots
-    
-    const slot = await addInstructorSlot(Number(session.user.id), startAt, endAt);
-    return NextResponse.json({ data: slot });
+    const instructorId = Number(session.user.id);
+
+    // Cek apakah slot pada waktu yang sama atau tumpang tindih sudah ada
+    const check = await checkSlotDuplicateOrOverlap(instructorId, startAt, endAt);
+    if (check) {
+      if (check.isDuplicate) {
+        return NextResponse.json(
+          { error: "Jadwal dengan tanggal dan waktu tersebut sudah tersedia" },
+          { status: 400 }
+        );
+      } else {
+        return NextResponse.json(
+          { error: "Jadwal bentrok dengan jadwal yang sudah ada" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Cek apakah bentrok dengan sesi kelas live yang dijadwalkan instruktur
+    const liveConflict = await checkLiveClassDuplicateOrOverlap({
+      instructorId,
+      courseId: 0,
+      startAt: start,
+      durationMinutes: Math.round((end.getTime() - start.getTime()) / 60000),
+    });
+    if (liveConflict) {
+      return NextResponse.json(
+        {
+          error: `Jadwal bentrok dengan sesi kelas live Anda (${liveConflict.conflictingLesson.title} pada ${liveConflict.conflictingLesson.formattedTime})`,
+        },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const slot = await addInstructorSlot(instructorId, startAt, endAt);
+      return NextResponse.json({ data: slot });
+    } catch (err: unknown) {
+      const errorObj = err as { code?: string; message?: string };
+      if (errorObj?.code === "23505" || errorObj?.message?.includes("idx_instructor_slots_unique_active")) {
+        return NextResponse.json(
+          { error: "Jadwal dengan tanggal dan waktu tersebut sudah tersedia" },
+          { status: 400 }
+        );
+      }
+      throw err;
+    }
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

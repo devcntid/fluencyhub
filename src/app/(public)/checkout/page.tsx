@@ -30,7 +30,7 @@ export default async function CheckoutPage({
 
   if (session?.user.id) {
     const enrolled = await checkEnrollment(Number(session.user.id), courseId);
-    if (enrolled) redirect(`/dashboard/courses/${courseId}`);
+    if (enrolled) redirect(`/dashboard/classroom?tab=videos&c=${courseId}`);
   }
 
   let dbUser = null;

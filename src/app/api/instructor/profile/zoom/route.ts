@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/session";
 import { updateZoomLink, getInstructorZoomLink } from "@/lib/db/private-sessions.queries";
+import { validateZoomLink } from "@/lib/utils/zoom";
 
 export async function GET() {
   const session = await auth();
@@ -27,12 +28,27 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { link } = body;
 
-    if (typeof link !== "string" && link !== null) {
-      return NextResponse.json({ error: "Invalid link format" }, { status: 400 });
+    // Allow explicitly clearing the link
+    if (link === null || link === "") {
+      await updateZoomLink(Number(session.user.id), null);
+      return NextResponse.json({ success: true, data: null });
     }
 
-    await updateZoomLink(Number(session.user.id), link);
-    return NextResponse.json({ success: true });
+    if (typeof link !== "string") {
+      return NextResponse.json({ error: "Format link tidak valid" }, { status: 400 });
+    }
+
+    // Validate Zoom URL format and domain
+    const validation = validateZoomLink(link);
+    if (!validation.isValid) {
+      return NextResponse.json(
+        { error: validation.error || "Tautan Zoom tidak valid" },
+        { status: 400 }
+      );
+    }
+
+    await updateZoomLink(Number(session.user.id), validation.normalizedUrl);
+    return NextResponse.json({ success: true, data: validation.normalizedUrl });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

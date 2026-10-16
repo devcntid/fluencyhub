@@ -29,7 +29,7 @@ export default async function ResourceDetailPage({
   const ownerInfo = await getLessonCourseOwner(lessonId);
   
   if (!lesson || !lesson.textContent || !ownerInfo) {
-    return notFound();
+    redirect("/dashboard/classroom?tab=resources&c=all");
   }
 
   const progress = await sql`

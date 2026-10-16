@@ -69,9 +69,13 @@ export function DashboardChrome({
     { id: "videos", label: "Video Lessons", icon: "PlayCircle", href: `/dashboard/classroom?tab=videos${cParam}` },
     { id: "live", label: "Live Zoom", icon: "Video", href: `/dashboard/classroom?tab=live${cParam}` },
     { id: "resources", label: "Resources", icon: "BookOpen", href: `/dashboard/classroom?tab=resources${cParam}` },
-    ...(isExamUnlocked
-      ? [{ id: "exam", label: "Final Exam", icon: "Award", href: `/dashboard/classroom?tab=exam${cParam}` }]
-      : []),
+    {
+      id: "exam",
+      label: "Final Exam",
+      icon: "Award",
+      isLocked: !isExamUnlocked,
+      href: `/dashboard/classroom?tab=exam${cParam}`,
+    },
   ];
 
   const menu = [
@@ -170,14 +174,31 @@ export function DashboardChrome({
                           <Link
                             key={sub.id}
                             href={sub.href}
-                            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                            className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold transition ${
                               isSubActive
                                 ? "bg-blue-600/25 text-blue-400 font-bold border border-blue-500/30"
+                                : sub.isLocked
+                                ? "text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300"
                                 : "text-zinc-400 hover:bg-zinc-800/40 hover:text-white"
                             }`}
                           >
-                            <LandingIcon name={sub.icon} size={14} color="currentColor" />
-                            <span>{sub.label}</span>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <LandingIcon name={sub.icon} size={14} color="currentColor" />
+                              <span className="truncate">{sub.label}</span>
+                            </div>
+                            {sub.id === "exam" && (
+                              sub.isLocked ? (
+                                <span className="flex items-center gap-1 rounded bg-zinc-800/90 px-1.5 py-0.5 text-[10px] font-bold text-zinc-400 border border-zinc-700/60 ml-1.5 shrink-0">
+                                  <LandingIcon name="Lock" size={10} color="currentColor" />
+                                  <span>Locked</span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/30 ml-1.5 shrink-0">
+                                  <LandingIcon name="CheckCircle" size={10} color="currentColor" />
+                                  <span>Open</span>
+                                </span>
+                              )
+                            )}
                           </Link>
                         );
                       })}

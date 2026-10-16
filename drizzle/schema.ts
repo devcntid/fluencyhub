@@ -28,6 +28,7 @@ export const users = pgTable(
     role: varchar("role", { length: 50 }).notNull().default("user"),
     avatarUrl: text("avatar_url"),
     zoomLink: text("zoom_link"),
+    signatureUrl: text("signature_url"),
     isActive: boolean("is_active").notNull().default(true),
     revenueSharePct: numeric("revenue_share_pct", { precision: 5, scale: 2 }).default("70.00"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),

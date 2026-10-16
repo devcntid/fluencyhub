@@ -27,6 +27,16 @@ export async function getUserById(id: number): Promise<User | null> {
   return rows[0] ? mapUser(rows[0] as Record<string, unknown>) : null;
 }
 
+export async function updateUserSignature(id: number, signatureUrl: string | null): Promise<User> {
+  const rows = await sql`
+    UPDATE users
+    SET signature_url = ${signatureUrl}, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ${id}
+    RETURNING *
+  `;
+  return mapUser(rows[0] as Record<string, unknown>);
+}
+
 export async function createUser(data: {
   name: string;
   email: string;

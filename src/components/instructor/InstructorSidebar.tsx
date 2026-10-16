@@ -12,6 +12,7 @@ const NAV = [
   { href: "/instructor/curriculum", label: "Curriculum", icon: "BookOpen" },
   { href: "/instructor/students", label: "Students", icon: "Users" },
   { href: "/instructor/private-sessions", label: "Private Sessions", icon: "Calendar" },
+  { href: "/instructor/profile", label: "Profile & Settings", icon: "User" },
 ];
 
 export function InstructorSidebar({

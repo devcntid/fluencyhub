@@ -10,16 +10,47 @@ export async function getInstructorSlots(instructorId: number): Promise<any[]> {
       status
     FROM instructor_slots
     WHERE instructor_id = ${instructorId}
+      AND status != 'cancelled'
       AND end_at > CURRENT_TIMESTAMP
     ORDER BY start_at ASC
   `;
   return rows;
 }
 
+export async function checkSlotDuplicateOrOverlap(
+  instructorId: number,
+  startAt: string,
+  endAt: string
+): Promise<{ isDuplicate: boolean; isOverlap: boolean } | null> {
+  const rows = await sql`
+    SELECT id, start_at, end_at
+    FROM instructor_slots
+    WHERE instructor_id = ${instructorId}
+      AND status != 'cancelled'
+      AND (
+        (start_at = ${startAt}::timestamptz AND end_at = ${endAt}::timestamptz)
+        OR (start_at < ${endAt}::timestamptz AND end_at > ${startAt}::timestamptz)
+      )
+    LIMIT 1
+  `;
+
+  if (rows.length === 0) return null;
+
+  const r = rows[0];
+  const isDup =
+    new Date(r.start_at).getTime() === new Date(startAt).getTime() &&
+    new Date(r.end_at).getTime() === new Date(endAt).getTime();
+
+  return {
+    isDuplicate: isDup,
+    isOverlap: !isDup,
+  };
+}
+
 export async function addInstructorSlot(instructorId: number, startAt: string, endAt: string) {
   const rows = await sql`
     INSERT INTO instructor_slots (instructor_id, start_at, end_at, status)
-    VALUES (${instructorId}, ${startAt}::timestamp, ${endAt}::timestamp, 'available')
+    VALUES (${instructorId}, ${startAt}::timestamptz, ${endAt}::timestamptz, 'available')
     RETURNING *
   `;
   return rows[0];
@@ -98,7 +129,7 @@ export async function deleteInstructorSlot(slotId: number, instructorId: number,
   }
 }
 
-export async function updateZoomLink(instructorId: number, link: string) {
+export async function updateZoomLink(instructorId: number, link: string | null) {
   await sql`
     UPDATE users
     SET zoom_link = ${link}, updated_at = CURRENT_TIMESTAMP

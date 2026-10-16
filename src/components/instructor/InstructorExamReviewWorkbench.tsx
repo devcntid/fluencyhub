@@ -25,12 +25,14 @@ export function InstructorExamReviewWorkbench({
   submissions: initialSubmissions,
   exam,
   initialSubmissionId,
+  instructorHasSignature = true,
 }: {
   course: { id: number; title: string };
   courses?: Array<{ id: number; title: string }>;
   submissions: InstructorSubmissionRow[];
   exam: Exam | null;
   initialSubmissionId?: number;
+  instructorHasSignature?: boolean;
 }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -155,6 +157,20 @@ export function InstructorExamReviewWorkbench({
     setSaving(true);
     setError("");
     setSuccessMsg("");
+
+    const calculatedAverage = Math.round(
+      (Number(readingScore) + Number(listeningScore) + Number(writingScore) + Number(speakingScore)) / 4
+    );
+    const isPassed = calculatedAverage >= passingScore;
+
+    // Cek apakah instruktur sudah memiliki tanda tangan di profil sebelum menerbitkan sertifikat
+    if (isPassed && !instructorHasSignature) {
+      setSaving(false);
+      setError(
+        "Tanda tangan digital Anda belum diunggah di profil. Harap lengkapi tanda tangan digital di menu Profil Instruktur sebelum menerbitkan sertifikat kelulusan siswa."
+      );
+      return;
+    }
 
     try {
       const res = await fetch("/api/instructor/exams/grade", {
@@ -1002,9 +1018,22 @@ export function InstructorExamReviewWorkbench({
 
                     {/* Feedback Messages */}
                     {error && (
-                      <p className="text-[11px] text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-200">
-                        {error}
-                      </p>
+                      <div className="text-[11px] text-red-700 font-bold bg-red-50 p-2.5 rounded-xl border border-red-200 flex flex-col gap-2">
+                        <div className="flex items-start gap-1.5">
+                          <LandingIcon name="X" size={14} color="#dc2626" className="shrink-0 mt-0.5" />
+                          <span>{error}</span>
+                        </div>
+                        {error.toLowerCase().includes("tanda tangan") && (
+                          <Link
+                            href="/instructor/profile"
+                            target="_blank"
+                            className="inline-flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900 font-extrabold underline mt-0.5"
+                          >
+                            <LandingIcon name="Award" size={14} color="currentColor" />
+                            <span>Buka Profil Instruktur untuk Upload Tanda Tangan &rarr;</span>
+                          </Link>
+                        )}
+                      </div>
                     )}
                     {successMsg && (
                       <p className="text-[11px] text-emerald-800 font-bold bg-emerald-50 p-2 rounded-lg border border-emerald-200 flex items-center gap-1.5">
@@ -1013,6 +1042,27 @@ export function InstructorExamReviewWorkbench({
                       </p>
                     )}
                   </div>
+
+                  {/* Warning if instructor signature is missing and score is passing */}
+                  {!instructorHasSignature && isPassingGrade && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex flex-col gap-2 shadow-2xs">
+                      <div className="flex items-center gap-1.5 font-extrabold text-amber-900">
+                        <LandingIcon name="Lock" size={15} color="#d97706" />
+                        <span>Wajib Tanda Tangan Digital Sebelum Menerbitkan Sertifikat</span>
+                      </div>
+                      <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
+                        Nilai siswa memenuhi standar kelulusan (Lulus). Namun, Anda belum mengunggah tanda tangan digital di profil sehingga sertifikat belum dapat diterbitkan.
+                      </p>
+                      <Link
+                        href="/instructor/profile"
+                        target="_blank"
+                        className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition shadow-xs"
+                      >
+                        <LandingIcon name="Award" size={13} color="#fff" />
+                        <span>Unggah Tanda Tangan di Profil Instruktur &rarr;</span>
+                      </Link>
+                    </div>
+                  )}
 
                   {/* Primary CTA Submit Button */}
                   <div className="pt-2 border-t border-zinc-100 space-y-2">

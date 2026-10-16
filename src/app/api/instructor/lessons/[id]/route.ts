@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getLessonCourseOwner, softDeleteLesson, updateLessonForSection } from "@/lib/db/lessons.queries";
+import {
+  getLessonCourseOwner,
+  softDeleteLesson,
+  updateLessonForSection,
+  checkLiveClassDuplicateOrOverlap,
+  checkInstructorSlotConflict,
+} from "@/lib/db/lessons.queries";
 import { getSectionById } from "@/lib/db/sections.queries";
 import { assertCourseAccess, requireInstructor } from "@/lib/instructor";
 import { sql } from "@/lib/db/client";
@@ -66,10 +72,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (access.error) return access.error;
   }
 
+  const currentLessonRows = await sql`
+    SELECT section_id, content_type, live_class_datetime, duration_minutes, live_class_duration_min
+    FROM lessons WHERE id = ${Number(id)} AND deleted_at IS NULL
+  `;
+  if (currentLessonRows.length === 0) {
+    return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
+  }
+  const curr = currentLessonRows[0] as Record<string, unknown>;
+
   // Duplicate check
   if (parsed.data.title) {
-    const lessonData = await sql`SELECT section_id FROM lessons WHERE id = ${Number(id)}`;
-    const currentSectionId = lessonData[0] ? Number(lessonData[0].section_id) : 0;
+    const currentSectionId = curr.section_id ? Number(curr.section_id) : 0;
     const targetSectionId = parsed.data.sectionId || currentSectionId;
     
     const existing = await sql`
@@ -85,8 +99,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   if (parsed.data.sortOrder !== undefined) {
-    const lessonData = await sql`SELECT section_id FROM lessons WHERE id = ${Number(id)}`;
-    const currentSectionId = lessonData[0] ? Number(lessonData[0].section_id) : 0;
+    const currentSectionId = curr.section_id ? Number(curr.section_id) : 0;
     const targetSectionId = parsed.data.sectionId || currentSectionId;
 
     const existingSort = await sql`
@@ -98,6 +111,72 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     `;
     if (existingSort.length > 0) {
       return NextResponse.json({ error: "Duplikat nomor urut (sort order) tidak diizinkan." }, { status: 400 });
+    }
+  }
+
+  // Validasi bentrok / tumpang tindih jadwal kelas live
+  const effectiveType = parsed.data.contentType ?? String(curr.content_type);
+  if (effectiveType === "live_class") {
+    const hasDatetimeUpdate = parsed.data.liveClassDatetime !== undefined;
+    const datetimeStr = hasDatetimeUpdate
+      ? parsed.data.liveClassDatetime
+      : curr.live_class_datetime
+        ? new Date(String(curr.live_class_datetime)).toISOString()
+        : null;
+
+    if (hasDatetimeUpdate && !datetimeStr) {
+      return NextResponse.json({ error: "Session date and time are required for live classes." }, { status: 422 });
+    }
+
+    if (datetimeStr) {
+      const startAt = new Date(datetimeStr);
+      if (Number.isNaN(startAt.getTime())) {
+        return NextResponse.json({ error: "Format tanggal atau waktu kelas live tidak valid." }, { status: 422 });
+      }
+
+      const durationMinutes =
+        parsed.data.durationMinutes ??
+        Number(curr.duration_minutes ?? curr.live_class_duration_min ?? 60);
+
+      const conflict = await checkLiveClassDuplicateOrOverlap({
+        instructorId: owner.instructorId,
+        courseId: owner.courseId,
+        startAt,
+        durationMinutes,
+        excludeLessonId: Number(id),
+      });
+
+      if (conflict) {
+        if (conflict.isDuplicate) {
+          return NextResponse.json(
+            {
+              error: `Jadwal kelas live bentrok! Sudah ada sesi live dengan waktu yang sama (${conflict.conflictingLesson.title} pada ${conflict.conflictingLesson.formattedTime}). Silakan tentukan waktu lain.`,
+            },
+            { status: 400 }
+          );
+        } else {
+          return NextResponse.json(
+            {
+              error: `Jadwal kelas live bentrok dengan sesi lain (${conflict.conflictingLesson.title} pada ${conflict.conflictingLesson.formattedTime}). Silakan tentukan waktu lain.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      const slotConflict = await checkInstructorSlotConflict({
+        instructorId: owner.instructorId,
+        startAt,
+        durationMinutes,
+      });
+      if (slotConflict) {
+        return NextResponse.json(
+          {
+            error: `Jadwal kelas live bentrok dengan slot sesi privat Anda (${slotConflict.formattedTime}). Silakan tentukan waktu lain.`,
+          },
+          { status: 400 }
+        );
+      }
     }
   }
 

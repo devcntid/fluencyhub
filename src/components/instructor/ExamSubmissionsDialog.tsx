@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
 import { LandingIcon } from "@/components/landing/LandingIcon";
@@ -368,7 +369,24 @@ export function ExamSubmissionsDialog({
                   </div>
                 </div>
 
-                {error && <p className="text-xs text-red-600 font-bold bg-red-50 p-2.5 rounded-xl border border-red-200">{error}</p>}
+                {error && (
+                  <div className="text-xs text-red-700 font-bold bg-red-50 p-3 rounded-xl border border-red-200 flex flex-col gap-2">
+                    <div className="flex items-start gap-1.5">
+                      <LandingIcon name="X" size={15} color="#dc2626" className="shrink-0 mt-0.5" />
+                      <span>{error}</span>
+                    </div>
+                    {error.toLowerCase().includes("tanda tangan") && (
+                      <Link
+                        href="/instructor/profile"
+                        target="_blank"
+                        className="inline-flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900 font-extrabold underline mt-0.5"
+                      >
+                        <LandingIcon name="Award" size={14} color="currentColor" />
+                        <span>Buka Profil Instruktur untuk Upload Tanda Tangan &rarr;</span>
+                      </Link>
+                    )}
+                  </div>
+                )}
                 {successMsg && (
                   <p className="text-xs text-emerald-700 font-bold bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex items-center gap-2">
                     <LandingIcon name="CheckCircle" size={15} color="currentColor" />
