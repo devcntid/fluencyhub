@@ -35,11 +35,41 @@ export default function PrivateSessionsPage() {
   }, []);
 
   const scrollInstructors = (direction: "left" | "right") => {
-    if (!instructorScrollRef.current) return;
-    const scrollAmount = 260;
-    instructorScrollRef.current.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth"
+    const el = instructorScrollRef.current;
+    if (!el) return;
+
+    const items = Array.from(el.children) as HTMLElement[];
+    if (items.length === 0) return;
+
+    const containerLeft = el.getBoundingClientRect().left;
+
+    if (direction === "right") {
+      const target = items.find((item) => {
+        const itemLeft = item.getBoundingClientRect().left - containerLeft;
+        return itemLeft > 25;
+      });
+      if (target) {
+        const targetScrollLeft = el.scrollLeft + (target.getBoundingClientRect().left - containerLeft);
+        el.scrollTo({ left: targetScrollLeft, behavior: "smooth" });
+        return;
+      }
+    } else {
+      const reversed = [...items].reverse();
+      const target = reversed.find((item) => {
+        const itemLeft = item.getBoundingClientRect().left - containerLeft;
+        return itemLeft < -25;
+      });
+      if (target) {
+        const targetScrollLeft = el.scrollLeft + (target.getBoundingClientRect().left - containerLeft);
+        el.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: "smooth" });
+        return;
+      }
+    }
+
+    const fallbackAmount = Math.max(140, Math.floor(el.clientWidth * 0.75));
+    el.scrollBy({
+      left: direction === "left" ? -fallbackAmount : fallbackAmount,
+      behavior: "smooth",
     });
   };
 
@@ -233,25 +263,25 @@ export default function PrivateSessionsPage() {
   if (loading) return <div className="p-8 text-center text-zinc-500 animate-pulse font-medium">Loading instructor schedule...</div>;
 
   return (
-    <div className="p-4 md:p-8 space-y-10 w-full">
+    <div className="w-full max-w-5xl mx-auto px-2 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8 flex flex-col">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight font-[family-name:var(--font-heading)] mb-2 bg-gradient-to-r from-zinc-900 to-zinc-500 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-[family-name:var(--font-heading)] mb-2 bg-gradient-to-r from-zinc-900 to-zinc-500 bg-clip-text text-transparent">
           Book Private Session
         </h1>
-        <p className="text-zinc-500 text-sm">Find and book 1-on-1 private sessions with instructors from your enrolled courses.</p>
+        <p className="text-zinc-500 text-xs sm:text-sm">Find and book 1-on-1 private sessions with instructors from your enrolled courses.</p>
       </div>
 
-      <div className="flex flex-col gap-10 items-stretch">
+      <div className="flex flex-col gap-6 sm:gap-8 items-stretch">
         {/* Calendar Booking Section */}
         <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl w-full">
-          <div className="p-6 border-b border-zinc-100 bg-white/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-bold flex items-center gap-2 shrink-0">
-              <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <div className="p-3.5 sm:p-6 border-b border-zinc-100 bg-white/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+            <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2 shrink-0">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
               Instructor Schedule
             </h2>
             
             {instructors.length > 0 && (
-              <div className="relative flex-1 min-w-0 max-w-full flex items-center gap-2">
+              <div className="relative flex-1 min-w-0 max-w-full flex items-center gap-1.5 sm:gap-2">
                 {(canScrollLeft || canScrollRight) && (
                   <button
                     type="button"
@@ -259,13 +289,13 @@ export default function PrivateSessionsPage() {
                     disabled={!canScrollLeft}
                     title="Scroll left"
                     aria-label="Scroll left"
-                    className={`shrink-0 w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white text-zinc-700 border border-zinc-200 rounded-xl shadow-sm transition-all ${
+                    className={`shrink-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 flex items-center justify-center bg-white text-zinc-700 border border-zinc-200 rounded-xl shadow-sm transition-all ${
                       canScrollLeft
                         ? "hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 active:scale-95 cursor-pointer"
                         : "opacity-30 cursor-not-allowed pointer-events-none"
                     }`}
                   >
-                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
@@ -278,7 +308,7 @@ export default function PrivateSessionsPage() {
                   onMouseMove={onMouseMove}
                   onMouseUp={onMouseUp}
                   onMouseLeave={onMouseUp}
-                  className="flex-1 min-w-0 flex overflow-x-auto py-1 pr-4 gap-2 scroll-smooth hide-scrollbar cursor-grab active:cursor-grabbing select-none"
+                  className="flex-1 min-w-0 flex overflow-x-auto py-1 px-1 gap-2 scroll-smooth hide-scrollbar snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none"
                 >
                   <button
                     type="button"
@@ -286,7 +316,7 @@ export default function PrivateSessionsPage() {
                       if (hasMoved.current) return;
                       setSelectedInstructorId("");
                     }}
-                    className={`shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
+                    className={`shrink-0 snap-start px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl border transition-colors whitespace-nowrap ${
                       selectedInstructorId === ""
                         ? "bg-blue-600 border-blue-600 text-white shadow-sm"
                         : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
@@ -302,7 +332,7 @@ export default function PrivateSessionsPage() {
                         if (hasMoved.current) return;
                         setSelectedInstructorId(String(inst.instructorId));
                       }}
-                      className={`shrink-0 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${
+                      className={`shrink-0 snap-start px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl border transition-colors whitespace-nowrap ${
                         selectedInstructorId === String(inst.instructorId)
                           ? "bg-blue-600 border-blue-600 text-white shadow-sm"
                           : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
@@ -320,13 +350,13 @@ export default function PrivateSessionsPage() {
                     disabled={!canScrollRight}
                     title="Scroll right"
                     aria-label="Scroll right"
-                    className={`shrink-0 w-8 h-8 md:w-9 md:h-9 flex items-center justify-center bg-white text-zinc-700 border border-zinc-200 rounded-xl shadow-sm transition-all ${
+                    className={`shrink-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 flex items-center justify-center bg-white text-zinc-700 border border-zinc-200 rounded-xl shadow-sm transition-all ${
                       canScrollRight
                         ? "hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 active:scale-95 cursor-pointer"
                         : "opacity-30 cursor-not-allowed pointer-events-none"
                     }`}
                   >
-                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -347,16 +377,16 @@ export default function PrivateSessionsPage() {
               </div>
             </div>
           ) : (
-            <div className="p-4 md:p-8 bg-zinc-50/50">
-              <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
-                <div className="flex items-center justify-between p-5 md:p-6 border-b border-zinc-100 bg-zinc-50/80">
-                  <h3 className="font-extrabold text-zinc-800 text-xl md:text-2xl capitalize">{format(currentMonth, "MMMM yyyy", { locale: enUS })}</h3>
-                  <div className="flex gap-3">
-                    <button className="p-2 md:p-3 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-sm" onClick={prevMonth}>
-                      <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
+            <div className="p-1 sm:p-4 md:p-6 bg-zinc-50/30 sm:bg-zinc-50/50">
+              <div className="bg-white rounded-xl sm:rounded-3xl border border-zinc-200/80 overflow-hidden shadow-xs w-full">
+                <div className="flex items-center justify-between p-3.5 sm:p-5 md:p-6 border-b border-zinc-100 bg-zinc-50/80">
+                  <h3 className="font-extrabold text-zinc-800 text-base sm:text-xl md:text-2xl capitalize">{format(currentMonth, "MMMM yyyy", { locale: enUS })}</h3>
+                  <div className="flex gap-2 sm:gap-3">
+                    <button className="p-2 md:p-3 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-xs" onClick={prevMonth}>
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
                     </button>
-                    <button className="p-2 md:p-3 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-sm" onClick={nextMonth}>
-                      <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
+                    <button className="p-2 md:p-3 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-xs" onClick={nextMonth}>
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
                     </button>
                   </div>
                 </div>
@@ -378,23 +408,24 @@ export default function PrivateSessionsPage() {
                       <button 
                         key={day.toISOString()}
                         onClick={() => setSelectedCalendarDate(day)}
-                        className={`min-h-[45px] md:min-h-[60px] p-1 md:p-2 flex flex-col justify-center items-center hover:bg-blue-50 transition-colors ${!isCurrentMonth ? 'bg-zinc-50/80 opacity-60' : 'bg-white'}`}
+                        className={`min-h-[48px] sm:min-h-[55px] md:min-h-[64px] p-1 sm:p-1.5 md:p-2 flex flex-col justify-center items-center hover:bg-blue-50 transition-colors ${!isCurrentMonth ? 'bg-zinc-50/80 opacity-60' : 'bg-white'}`}
                       >
-                        <span className={`text-[10px] md:text-xs font-bold w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30' : 'text-zinc-700'} ${daySlots.length > 0 ? 'mb-0.5' : ''}`}>
+                        <span className={`text-[10px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white shadow-xs shadow-blue-500/30' : 'text-zinc-700'} ${daySlots.length > 0 ? 'mb-0.5' : ''}`}>
                           {format(day, "d")}
                         </span>
                         {daySlots.length > 0 ? (
                           <div className="w-full mt-0.5">
-                            <div className="bg-emerald-100 text-emerald-700 text-[8px] md:text-[9px] px-0.5 md:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-sm border border-emerald-200/50 leading-none md:leading-normal">
-                              <span className="md:hidden">{daySlots.length} Free</span>
-                              <span className="hidden md:inline">{daySlots.length} Slots Available</span>
+                            <div className="bg-emerald-100 text-emerald-800 text-[8px] sm:text-[9px] px-0.5 sm:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-2xs border border-emerald-200/60 leading-none sm:leading-normal">
+                              <span className="sm:hidden">{daySlots.length} Free</span>
+                              <span className="hidden sm:inline">{daySlots.length} Slots</span>
                             </div>
                           </div>
                         ) : (
                           day >= new Date(new Date().setHours(0,0,0,0)) && (
                             <div className="w-full mt-0.5">
-                              <div className="bg-zinc-100 text-zinc-500 text-[8px] md:text-[9px] px-0.5 md:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-sm border border-zinc-200/50 leading-none md:leading-normal">
-                                <span>Fully Booked</span>
+                              <div className="bg-zinc-100 text-zinc-500 text-[8px] sm:text-[9px] px-0.5 sm:px-1 py-0.5 rounded font-bold w-full text-center truncate shadow-2xs border border-zinc-200/60 leading-none sm:leading-normal">
+                                <span className="sm:hidden">Full</span>
+                                <span className="hidden sm:inline">Booked</span>
                               </div>
                             </div>
                           )

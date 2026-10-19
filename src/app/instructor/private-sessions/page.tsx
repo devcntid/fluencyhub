@@ -229,22 +229,22 @@ export default function InstructorPrivateSessionsPage() {
   if (!isMounted) return <div className="p-8 text-center text-zinc-500 animate-pulse font-medium">Loading calendar...</div>;
 
   return (
-    <div className="p-4 md:p-8 space-y-10 w-full">
+    <div className="p-1 sm:p-4 md:p-8 space-y-6 sm:space-y-10 w-full">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight font-[family-name:var(--font-heading)] mb-2 bg-gradient-to-r from-zinc-900 to-zinc-500 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-[family-name:var(--font-heading)] mb-2 bg-gradient-to-r from-zinc-900 to-zinc-500 bg-clip-text text-transparent">
           Private Sessions Management
         </h1>
-        <p className="text-zinc-500 text-sm">
+        <p className="text-zinc-500 text-xs sm:text-sm">
           Set up your availability calendar and manage 1-on-1 private mentoring requests from students.
         </p>
       </div>
 
-      <div className="flex flex-col gap-10 items-stretch">
-        <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl">
-          <div className="p-6 border-b border-zinc-100 bg-white/80">
+      <div className="flex flex-col gap-6 sm:gap-10 items-stretch">
+        <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl w-full">
+          <div className="p-4 sm:p-6 border-b border-zinc-100 bg-white/80">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-lg font-bold flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                   Availability Calendar (Slots)
                 </h2>
@@ -253,10 +253,10 @@ export default function InstructorPrivateSessionsPage() {
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between p-4 border-b border-zinc-100 bg-zinc-50/80">
-                <h3 className="font-bold text-zinc-800 text-lg capitalize">{format(currentMonth, "MMMM yyyy", { locale: enUS })}</h3>
+          <div className="p-1 sm:p-4 md:p-6 bg-zinc-50/30 sm:bg-transparent">
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-zinc-200 overflow-hidden shadow-sm w-full">
+              <div className="flex items-center justify-between p-3.5 sm:p-4 border-b border-zinc-100 bg-zinc-50/80">
+                <h3 className="font-bold text-zinc-800 text-base sm:text-lg capitalize">{format(currentMonth, "MMMM yyyy", { locale: enUS })}</h3>
                 <div className="flex gap-2">
                   <button className="p-2 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-100 hover:text-zinc-900 transition-colors shadow-sm" onClick={prevMonth}>
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
@@ -309,16 +309,16 @@ export default function InstructorPrivateSessionsPage() {
           </div>
         </div>
 
-        <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl">
-          <div className="p-6 border-b border-zinc-100 bg-white/80">
-            <h2 className="text-lg font-bold flex items-center gap-2">
+        <div className="card p-0 shadow-sm border border-zinc-200/60 rounded-2xl overflow-hidden bg-white/50 backdrop-blur-xl w-full">
+          <div className="p-4 sm:p-6 border-b border-zinc-100 bg-white/80">
+            <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
               <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
               Session Requests & Active Bookings
             </h2>
             <p className="text-xs text-zinc-500 mt-1">List of incoming bookings from enrolled students.</p>
           </div>
           
-          <div className="p-6">
+          <div className="p-2 sm:p-6">
             <div className="space-y-4">
               {sessions.filter(s => s.status === 'pending' || s.status === 'confirmed').length === 0 ? (
                 <div className="text-center py-10 px-4 border-2 border-dashed border-zinc-200 rounded-2xl">
@@ -338,43 +338,69 @@ export default function InstructorPrivateSessionsPage() {
                   const canMarkComplete = now.getTime() >= start.getTime();
 
                   return (
-                    <div key={sess.id} className="border border-zinc-200 rounded-2xl p-5 bg-white shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-3 mb-4 pb-4 border-b border-zinc-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={sess.learnerAvatar || "https://i.pravatar.cc/80?img=12"} alt="" className="w-12 h-12 rounded-full ring-2 ring-zinc-100 object-cover" />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-zinc-900 truncate">{sess.learnerName}</h3>
-                          <p className="text-[11px] font-semibold text-indigo-600 truncate uppercase tracking-wide bg-indigo-50 inline-block px-2 py-0.5 rounded mt-1">{sess.courseTitle}</p>
+                    <div key={sess.id} className="border border-zinc-200 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 bg-white shadow-2xs hover:shadow-md transition-shadow">
+                      <div className="mb-3.5 pb-3.5 border-b border-zinc-100 space-y-2">
+                        {/* Top: Avatar + Student Name + Status Badge */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={sess.learnerAvatar || "https://i.pravatar.cc/80?img=12"}
+                              alt=""
+                              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full ring-2 ring-zinc-100 object-cover shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-bold text-zinc-900 text-sm truncate">{sess.learnerName}</h3>
+                            </div>
+                          </div>
+                          <div className="shrink-0">
+                            {sess.status === 'pending' && (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-200 shadow-2xs animate-pulse">
+                                PENDING
+                              </span>
+                            )}
+                            {sess.status === 'confirmed' && (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+                                CONFIRMED
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          {sess.status === 'pending' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-200 shadow-sm animate-pulse">PENDING</span>}
-                          {sess.status === 'confirmed' && <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">CONFIRMED</span>}
+
+                        {/* Bottom: Course Pill indented under student name */}
+                        <div className="pl-[50px] sm:pl-[54px] -mt-0.5">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-md truncate max-w-full">
+                            <svg className="w-3 h-3 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            <span className="truncate">{sess.courseTitle}</span>
+                          </span>
                         </div>
                       </div>
                       
-                      <div className="bg-zinc-50 p-4 rounded-xl text-sm mb-5 border border-zinc-100 relative overflow-hidden">
+                      <div className="bg-zinc-50/80 p-3 sm:p-4 rounded-xl text-xs sm:text-sm mb-4 border border-zinc-100 relative overflow-hidden">
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-300"></div>
-                        <p className="font-bold text-zinc-800 mb-1 flex items-center gap-1.5">
-                          <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                          {format(start, "EEEE, d MMM yyyy • HH:mm", { locale: enUS })} - {format(end, "HH:mm")}
+                        <p className="font-bold text-zinc-800 mb-1 flex items-start sm:items-center gap-1.5 text-xs sm:text-sm leading-snug">
+                          <svg className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                          <span>{format(start, "EEEE, d MMM yyyy • HH:mm", { locale: enUS })} - {format(end, "HH:mm")}</span>
                         </p>
-                        <p className="text-zinc-600 mt-2">
-                          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Discussion Topic</span>
-                          &ldquo;{sess.topic}&rdquo;
-                        </p>
+                        <div className="text-zinc-600 mt-2">
+                          <span className="text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Discussion Topic</span>
+                          <span className="text-xs sm:text-sm break-words">&ldquo;{sess.topic}&rdquo;</span>
+                        </div>
                       </div>
 
-                      <div className="flex gap-3">
+                      <div className="flex gap-2 sm:gap-3">
                         {sess.status === 'pending' && (
                           <>
-                            <button className="btn flex-1 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-md py-2.5 transition-all font-bold" onClick={() => handleSessionAction(sess.id, 'confirmed')}>✅ Approve</button>
-                            <button className="btn flex-1 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-sm py-2.5 transition-all font-bold" onClick={() => handleSessionAction(sess.id, 'rejected', "Decline reason:")}>❌ Decline</button>
+                            <button className="btn flex-1 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-xs py-2 sm:py-2.5 transition-all font-bold text-xs sm:text-sm" onClick={() => handleSessionAction(sess.id, 'confirmed')}>✅ Approve</button>
+                            <button className="btn flex-1 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-xs py-2 sm:py-2.5 transition-all font-bold text-xs sm:text-sm" onClick={() => handleSessionAction(sess.id, 'rejected', "Decline reason:")}>❌ Decline</button>
                           </>
                         )}
                         {sess.status === 'confirmed' && (
-                          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full">
+                          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-stretch sm:items-center w-full">
                             {!canOpenZoom && !canMarkComplete && (
-                              <div className="flex-1 py-3 px-4 bg-blue-50/60 border border-blue-100 rounded-xl text-center text-xs font-semibold text-blue-700 flex items-center justify-center gap-2">
+                              <div className="flex-1 py-2.5 px-3 sm:py-3 sm:px-4 bg-blue-50/60 border border-blue-100 rounded-xl text-center text-[11px] sm:text-xs font-semibold text-blue-700 flex items-center justify-center gap-2">
                                 <svg className="w-4 h-4 text-blue-500 animate-pulse shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -383,7 +409,7 @@ export default function InstructorPrivateSessionsPage() {
                             )}
 
                             {canOpenZoom && (
-                              <a href={sess.zoomLink || zoomLink || "#"} target="_blank" rel="noreferrer" className="btn flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 py-2.5 flex items-center justify-center gap-2 font-bold transition-all">
+                              <a href={sess.zoomLink || zoomLink || "#"} target="_blank" rel="noreferrer" className="btn flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 py-2.5 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                 Open Zoom
                               </a>
@@ -391,7 +417,7 @@ export default function InstructorPrivateSessionsPage() {
 
                             {canMarkComplete && (
                               <button 
-                                className="btn flex-1 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-700 hover:text-emerald-800 rounded-xl shadow-sm py-2.5 transition-all font-bold flex items-center justify-center gap-1.5" 
+                                className="btn flex-1 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-700 hover:text-emerald-800 rounded-xl shadow-xs py-2.5 transition-all font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5" 
                                 onClick={() => handleSessionAction(sess.id, 'completed', "Session Notes (optional):")}
                               >
                                 <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
@@ -400,7 +426,7 @@ export default function InstructorPrivateSessionsPage() {
                             )}
 
                             <button 
-                              className="btn px-4 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-sm py-2.5 transition-all font-bold text-xs flex items-center justify-center gap-1.5" 
+                              className="btn w-full sm:w-auto px-4 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-2xs py-2.5 transition-all font-bold text-xs flex items-center justify-center gap-1.5" 
                               onClick={() => handleSessionAction(sess.id, 'cancelled', "Cancellation reason (required):")}
                             >
                               Cancel Session

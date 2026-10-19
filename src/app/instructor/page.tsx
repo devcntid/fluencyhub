@@ -57,9 +57,9 @@ export default async function InstructorHomePage() {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-[family-name:var(--font-heading)] text-[15px] font-bold">Monthly Enrollment & Growth</h3>
-            <span className="badge badge-primary">Last 6 months</span>
+            <span className="badge badge-primary shrink-0 whitespace-nowrap inline-flex items-center justify-center leading-none">Last 6 months</span>
           </div>
           <EnrollmentBars points={months} />
         </div>

@@ -167,40 +167,40 @@ export function ExamPortal({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Top Banner Card */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 pb-5">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[var(--brand)] border border-blue-100">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-8 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-zinc-100 pb-5 text-center sm:text-left">
+          <div className="min-w-0 flex-1 flex flex-col items-center sm:items-start w-full">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mb-2 w-full">
+              <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-[var(--brand)] border border-blue-100 whitespace-nowrap shrink-0 leading-none shadow-2xs">
                 <LandingIcon name="Award" size={13} color="currentColor" /> Competency Evaluation & Certification
               </span>
-              <span className="text-zinc-300">•</span>
-              <span className="text-xs text-zinc-500 font-medium">{courseTitle}</span>
+              <span className="text-zinc-300 hidden sm:inline">•</span>
+              <span className="text-xs text-zinc-500 font-semibold whitespace-nowrap">{courseTitle}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)]">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 font-[family-name:var(--font-heading)] leading-snug break-words text-center sm:text-left">
               {examTitle}
             </h2>
           </div>
 
-          <div>
+          <div className="self-center sm:self-auto shrink-0">
             {isPassed ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+              <span className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs whitespace-nowrap leading-none">
                 <LandingIcon name="Check" size={14} color="currentColor" /> Passed & Certified
               </span>
             ) : isPending ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
+              <span className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs whitespace-nowrap leading-none">
                 <LandingIcon name="Clock" size={14} color="currentColor" /> Pending Instructor Grading
               </span>
             ) : isFailed ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
+              <span className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap leading-none">
                 <LandingIcon name="X" size={14} color="currentColor" /> Not Passed (Remedial Available)
               </span>
             ) : hasInstructorSubmittedExam ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap leading-none">
                 <LandingIcon name="FileText" size={14} color="currentColor" /> Exam Paper Available
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-zinc-100 text-zinc-600 border border-zinc-200">
+              <span className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 whitespace-nowrap leading-none">
                 <LandingIcon name="Clock" size={14} color="currentColor" /> Waiting for Exam Paper
               </span>
             )}

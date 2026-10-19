@@ -47,10 +47,10 @@ export function CurriculumManager({
   return (
     <div className="w-full space-y-6 pb-6">
       {/* Top Header & Course Picker */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-5">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 pb-5">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[var(--brand)] border border-blue-100">
+            <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-[var(--brand)] border border-blue-100 whitespace-nowrap shrink-0 leading-none">
               <LandingIcon name="BookOpen" size={13} color="currentColor" /> Course Management
             </span>
             <span className="text-zinc-300">•</span>
@@ -72,7 +72,7 @@ export function CurriculumManager({
         </div>
 
         {courses.length > 0 && (
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-2 self-start md:self-auto shrink-0 w-full sm:w-auto">
             <CoursePicker
               selectedId={allowed ? selectedId : (courses[0]?.id || 0)}
               courses={courses}
@@ -101,10 +101,10 @@ export function CurriculumManager({
       {allowed && (
         <>
           {/* Main 2 Tabs Switcher */}
-          <div className="flex border-b border-zinc-200 gap-8">
+          <div className="flex border-b border-zinc-200 gap-4 sm:gap-8 overflow-x-auto scrollbar-none">
             <Link
               href={`/instructor/curriculum?courseId=${selectedId}&tab=curriculum`}
-              className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition ${
+              className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 ${
                 activeTab === "curriculum"
                   ? "border-[var(--brand,#2563eb)] text-[var(--brand,#2563eb)]"
                   : "border-transparent text-zinc-500 hover:text-zinc-900"
@@ -116,14 +116,14 @@ export function CurriculumManager({
                 color={activeTab === "curriculum" ? "var(--brand,#2563eb)" : "currentColor"}
               />
               <span>1. Learning Syllabus & Modules</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-700 font-bold">
+              <span className="shrink-0 whitespace-nowrap inline-flex items-center justify-center text-[10px] px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-700 font-bold leading-normal text-center">
                 {totalLessons} {totalLessons === 1 ? "Lesson" : "Lessons"}
               </span>
             </Link>
 
             <Link
               href={`/instructor/curriculum?courseId=${selectedId}&tab=exams`}
-              className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition ${
+              className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 ${
                 activeTab === "exams"
                   ? "border-[var(--brand,#2563eb)] text-[var(--brand,#2563eb)]"
                   : "border-transparent text-zinc-500 hover:text-zinc-900"
@@ -136,11 +136,11 @@ export function CurriculumManager({
               />
               <span>2. Final Exam & Grading</span>
               {pendingCount > 0 ? (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-extrabold animate-pulse">
+                <span className="shrink-0 whitespace-nowrap inline-flex items-center justify-center text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500 text-white font-extrabold animate-pulse leading-normal text-center">
                   {pendingCount} Needs Review
                 </span>
               ) : (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-semibold">
+                <span className="shrink-0 whitespace-nowrap inline-flex items-center justify-center text-[10px] px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-semibold leading-normal text-center">
                   {submissions.length} {submissions.length === 1 ? "Submission" : "Submissions"}
                 </span>
               )}

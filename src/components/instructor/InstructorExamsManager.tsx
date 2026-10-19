@@ -22,25 +22,25 @@ export function InstructorExamsManager({
   return (
     <div className="space-y-6">
       {/* Top Action Bar in Exam Tab */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-50 border border-zinc-200/80 rounded-2xl p-4">
-        <div>
-          <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-            <LandingIcon name="Award" size={15} color="#2563eb" />
-            Exam & Grading Panel — {courseTitle}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 bg-zinc-50 border border-zinc-200/80 rounded-2xl p-4 sm:p-5">
+        <div className="min-w-0 flex-1">
+          <span className="text-xs sm:text-sm font-bold text-zinc-800 flex items-center gap-1.5 flex-wrap">
+            <LandingIcon name="Award" size={16} color="#2563eb" />
+            <span>Exam & Grading Panel &mdash; {courseTitle}</span>
           </span>
-          <p className="text-[11px] text-zinc-500 mt-0.5">
+          <p className="text-xs text-zinc-500 mt-1">
             Manage exam question papers (PDF) and grade student submissions.
           </p>
         </div>
 
         <Link
           href={`/instructor/exams/review?courseId=${courseId}`}
-          className="btn btn-primary btn-sm bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1.5 shadow-xs shrink-0"
+          className="btn btn-primary btn-sm bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2 shadow-xs shrink-0 self-start md:self-auto w-full sm:w-auto py-2.5 px-4 rounded-xl"
         >
-          <LandingIcon name="Award" size={14} color="#fff" />
+          <LandingIcon name="Award" size={15} color="#fff" />
           <span>Grading & Review Panel &rarr;</span>
           {pendingCount > 0 && (
-            <span className="ml-1 rounded-full bg-amber-500 text-white px-1.5 py-0.2 text-[10px] font-extrabold">
+            <span className="ml-1 rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-extrabold leading-none">
               {pendingCount}
             </span>
           )}
@@ -48,150 +48,166 @@ export function InstructorExamsManager({
       </div>
 
       {/* 2 Dedicated Cards: Soal Utama vs Soal Remedial */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* Card 1: Soal Ujian Utama (Reguler) */}
-        <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-white to-blue-50/30 p-5 shadow-xs flex flex-col justify-between gap-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 font-bold border border-blue-200">
+        <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-white to-blue-50/30 p-5 sm:p-6 shadow-xs flex flex-col justify-between gap-5">
+          <div className="flex flex-col gap-3.5">
+            {/* Top Tier: Badges & Status */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-800">
+                  1. Main Exam Paper
+                </span>
+                <span className="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-2 py-0.5 rounded-md border border-blue-200 whitespace-nowrap">
+                  Regular (Required)
+                </span>
+              </div>
+
+              <span
+                className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full whitespace-nowrap inline-flex items-center gap-1 shrink-0 ${
+                  exam?.content?.questionFileUrl
+                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                    : "bg-red-100 text-red-700 border border-red-200"
+                }`}
+              >
+                {exam?.content?.questionFileUrl ? "✓ File Ready" : "No File Uploaded"}
+              </span>
+            </div>
+
+            {/* Middle Tier: Icon & Full Title/Details */}
+            <div className="flex items-start gap-3.5 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 font-bold border border-blue-200 mt-0.5">
                 <LandingIcon name="FileText" size={20} color="currentColor" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-800">
-                    1. Main Exam Paper
-                  </span>
-                  <span className="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.2 rounded-md border border-blue-200">
-                    Regular (Required)
-                  </span>
-                </div>
-                <p className="text-sm font-bold text-zinc-900 truncate mt-0.5">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm sm:text-base font-bold text-zinc-900 leading-snug break-words">
                   {exam?.title || `Final Examination — ${courseTitle}`}
-                </p>
-                <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Passing Score: <strong>{exam?.passingScore || 70}</strong> &bull; Maks. 5MB &bull; Taken first by all enrolled students
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
+                  Passing Score: <strong className="text-zinc-700">{exam?.passingScore || 70}</strong> &bull; Maks. 5MB &bull; Taken first by all enrolled students
                 </p>
               </div>
             </div>
-
-            <span
-              className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full shrink-0 ${
-                exam?.content?.questionFileUrl
-                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                  : "bg-red-100 text-red-700 border border-red-200"
-              }`}
-            >
-              {exam?.content?.questionFileUrl ? "✓ File Ready" : "No File Uploaded"}
-            </span>
           </div>
 
-          <div className="pt-2 border-t border-zinc-100 flex items-center justify-between gap-3 text-xs">
-            <div className="min-w-0">
+          {/* Bottom Tier: File Link & Action Button */}
+          <div className="pt-3.5 border-t border-zinc-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="min-w-0 flex-1">
               {exam?.content?.questionFileUrl ? (
-                <div className="flex items-center gap-1.5 text-zinc-700 text-[11px] truncate">
-                  <span className="font-semibold truncate">
+                <div className="flex flex-wrap items-center gap-2 text-zinc-700 text-xs">
+                  <span className="font-semibold break-all">
                     📄 {exam.content.questionFileName || "Exam_Paper.pdf"}
                   </span>
                   <a
                     href={exam.content.questionFileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-blue-600 hover:underline font-bold text-[10px] shrink-0"
+                    className="text-blue-600 hover:underline font-bold text-xs shrink-0 whitespace-nowrap"
                   >
                     (Open File)
                   </a>
                 </div>
               ) : (
-                <span className="text-red-600 text-[11px] font-semibold">
+                <span className="text-red-600 text-xs font-semibold">
                   Students cannot take the exam yet
                 </span>
               )}
             </div>
 
-            <ExamConfigDialog
-              courseId={courseId}
-              courseTitle={courseTitle}
-              initialExam={exam}
-              initialTab="main"
-              iconName={exam?.content?.questionFileUrl ? "FileText" : "Plus"}
-              triggerLabel={exam?.content?.questionFileUrl ? "Manage Main Paper" : "Upload Main Paper"}
-              triggerClassName="btn btn-secondary btn-sm shrink-0 font-bold border-blue-200 text-blue-900 hover:bg-blue-50"
-            />
+            <div className="shrink-0 self-start sm:self-auto">
+              <ExamConfigDialog
+                courseId={courseId}
+                courseTitle={courseTitle}
+                initialExam={exam}
+                initialTab="main"
+                iconName={exam?.content?.questionFileUrl ? "FileText" : "Plus"}
+                triggerLabel={exam?.content?.questionFileUrl ? "Manage Main Paper" : "Upload Main Paper"}
+                triggerClassName="btn btn-secondary btn-sm shrink-0 font-bold border-blue-200 text-blue-900 hover:bg-blue-50 whitespace-nowrap py-2 px-3.5 rounded-xl"
+              />
+            </div>
           </div>
         </div>
 
         {/* Card 2: Soal Khusus Remedial (Paket B) */}
-        <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-white to-amber-50/40 p-5 shadow-xs flex flex-col justify-between gap-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 font-bold border border-amber-200">
+        <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-white to-amber-50/40 p-5 sm:p-6 shadow-xs flex flex-col justify-between gap-5">
+          <div className="flex flex-col gap-3.5">
+            {/* Top Tier: Badges & Status */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900">
+                  2. Remedial Exam Paper
+                </span>
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-md border border-amber-200 whitespace-nowrap">
+                  Set B (Optional)
+                </span>
+              </div>
+
+              <span
+                className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full whitespace-nowrap inline-flex items-center gap-1 shrink-0 ${
+                  exam?.content?.remedialFileUrl
+                    ? "bg-amber-100 text-amber-900 border border-amber-300"
+                    : "bg-zinc-100 text-zinc-600 border border-zinc-200"
+                }`}
+              >
+                {exam?.content?.remedialFileUrl ? "Set B Active" : "Same as Main"}
+              </span>
+            </div>
+
+            {/* Middle Tier: Icon & Full Title/Details */}
+            <div className="flex items-start gap-3.5 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 font-bold border border-amber-200 mt-0.5">
                 <LandingIcon name="RotateCcw" size={20} color="currentColor" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-900">
-                    2. Remedial Exam Paper
-                  </span>
-                  <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.2 rounded-md border border-amber-200">
-                    Set B (Optional)
-                  </span>
-                </div>
-                <p className="text-sm font-bold text-zinc-900 truncate mt-0.5">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm sm:text-base font-bold text-zinc-900 leading-snug break-words">
                   {exam?.content?.remedialFileName || (exam?.content?.remedialFileUrl ? "Remedial Paper Attached" : "Default: Same as Main Exam Paper")}
-                </p>
-                <p className="text-[11px] text-zinc-500 mt-0.5">
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
                   For students who have not passed (&lt; {exam?.passingScore || 70}) &bull; Maks. 5MB
                 </p>
               </div>
             </div>
-
-            <span
-              className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full shrink-0 ${
-                exam?.content?.remedialFileUrl
-                  ? "bg-amber-100 text-amber-900 border border-amber-300"
-                  : "bg-zinc-100 text-zinc-600 border border-zinc-200"
-              }`}
-            >
-              {exam?.content?.remedialFileUrl ? "Set B Active" : "Same as Main"}
-            </span>
           </div>
 
-          <div className="pt-2 border-t border-amber-100 flex items-center justify-between gap-3 text-xs">
-            <div className="min-w-0">
+          {/* Bottom Tier: File Link & Action Button */}
+          <div className="pt-3.5 border-t border-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="min-w-0 flex-1">
               {exam?.content?.remedialFileUrl ? (
-                <div className="flex items-center gap-1.5 text-zinc-700 text-[11px] truncate">
-                  <span className="font-semibold text-amber-950 truncate">
+                <div className="flex flex-wrap items-center gap-2 text-zinc-700 text-xs">
+                  <span className="font-semibold text-amber-950 break-all">
                     🔄 {exam.content.remedialFileName || "Remedial_Paper.pdf"}
                   </span>
                   <a
                     href={exam.content.remedialFileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-amber-800 hover:underline font-bold text-[10px] shrink-0"
+                    className="text-amber-800 hover:underline font-bold text-xs shrink-0 whitespace-nowrap"
                   >
                     (Open File)
                   </a>
                 </div>
               ) : (
-                <span className="text-zinc-500 text-[11px]">
+                <span className="text-zinc-500 text-xs">
                   Remedial students will revise using the main exam paper
                 </span>
               )}
             </div>
 
-            <ExamConfigDialog
-              courseId={courseId}
-              courseTitle={courseTitle}
-              initialExam={exam}
-              initialTab="remedial"
-              iconName={exam?.content?.remedialFileUrl ? "RotateCcw" : "Plus"}
-              triggerLabel={exam?.content?.remedialFileUrl ? "Manage Remedial Paper" : "Upload Remedial Paper"}
-              triggerClassName={`btn btn-sm shrink-0 font-bold ${
-                exam?.content?.remedialFileUrl
-                  ? "btn-secondary border-amber-300 bg-amber-50/70 text-amber-900 hover:bg-amber-100"
-                  : "bg-amber-600 hover:bg-amber-700 text-white border border-amber-600 shadow-xs"
-              }`}
-            />
+            <div className="shrink-0 self-start sm:self-auto">
+              <ExamConfigDialog
+                courseId={courseId}
+                courseTitle={courseTitle}
+                initialExam={exam}
+                initialTab="remedial"
+                iconName={exam?.content?.remedialFileUrl ? "RotateCcw" : "Plus"}
+                triggerLabel={exam?.content?.remedialFileUrl ? "Manage Remedial Paper" : "Upload Remedial Paper"}
+                triggerClassName={`btn btn-sm shrink-0 font-bold whitespace-nowrap py-2 px-3.5 rounded-xl ${
+                  exam?.content?.remedialFileUrl
+                    ? "btn-secondary border-amber-300 bg-amber-50/70 text-amber-900 hover:bg-amber-100"
+                    : "bg-amber-600 hover:bg-amber-700 text-white border border-amber-600 shadow-xs"
+                }`}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -242,27 +258,43 @@ export function InstructorExamsManager({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-1 px-1">
-            <table className="w-full min-w-[620px] text-left text-xs">
-              <thead>
-                <tr className="border-b border-zinc-100 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                  <th className="pb-3 pl-2">Student</th>
-                  <th className="pb-3">Submitted At</th>
-                  <th className="pb-3">Answer Sheet</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Final Score</th>
-                  <th className="pb-3 text-right pr-2">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {submissions.map((s) => {
-                  return (
-                    <tr key={s.id} className="hover:bg-zinc-50/70 transition">
-                      <td className="py-3.5 pl-2">
-                        <p className="font-bold text-zinc-900">{s.studentName}</p>
-                        <p className="text-[11px] text-zinc-400">{s.studentEmail}</p>
-                      </td>
-                      <td className="py-3.5 text-zinc-500 whitespace-nowrap">
+          <>
+            {/* Mobile Card List (sm:hidden) */}
+            <div className="sm:hidden space-y-3">
+              {submissions.map((s) => (
+                <div
+                  key={s.id}
+                  className="p-3.5 rounded-xl border border-zinc-200 bg-zinc-50/50 hover:bg-zinc-50 transition space-y-3 shadow-2xs"
+                >
+                  {/* Top: Student avatar, name, email & status badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs shadow-xs">
+                        {s.studentName?.[0]?.toUpperCase() || "S"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-zinc-900 text-xs truncate">{s.studentName}</p>
+                        <p className="text-[11px] text-zinc-400 truncate">{s.studentEmail}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 ${
+                        s.status === "passed"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : s.status === "failed"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {s.status === "passed" ? "Passed" : s.status === "failed" ? "Failed" : "Pending"}
+                    </span>
+                  </div>
+
+                  {/* Submission date & Final score */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-2.5 border-t border-zinc-200/70">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Submitted</span>
+                      <span className="text-zinc-700 font-semibold text-[11px] block mt-0.5">
                         {new Date(s.submittedAt).toLocaleDateString("en-US", {
                           day: "numeric",
                           month: "short",
@@ -270,63 +302,139 @@ export function InstructorExamsManager({
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
-                      </td>
-                      <td className="py-3.5">
-                        {s.answers?.answerFileUrl ? (
-                          <a
-                            href={s.answers.answerFileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            download
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold text-[11px] border border-blue-100 hover:bg-blue-100 transition"
-                          >
-                            <LandingIcon name="Download" size={12} color="currentColor" />
-                            <span className="truncate max-w-[140px]">
-                              {s.answers.answerFileName || "Answer_Sheet.pdf"}
-                            </span>
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400 italic text-[11px]">No file attached</span>
-                        )}
-                      </td>
-                      <td className="py-3.5">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                            s.status === "passed"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : s.status === "failed"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {s.status === "passed" ? "Passed" : s.status === "failed" ? "Failed" : "Pending"}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Final Score</span>
+                      {s.finalScore !== null ? (
+                        <span className="font-black text-blue-600 text-xs block mt-0.5">{s.finalScore} / 100</span>
+                      ) : (
+                        <span className="text-zinc-400 font-medium italic text-[11px] block mt-0.5">Not Graded</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Answer Sheet download button if attached */}
+                  {s.answers?.answerFileUrl && (
+                    <div className="pt-0.5">
+                      <a
+                        href={s.answers.answerFileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        download
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 font-bold text-xs border border-blue-100 hover:bg-blue-100 transition shadow-2xs"
+                      >
+                        <LandingIcon name="Download" size={13} color="currentColor" />
+                        <span className="truncate max-w-[220px]">
+                          {s.answers.answerFileName || "Answer_Sheet.pdf"}
                         </span>
-                      </td>
-                      <td className="py-3.5 font-bold">
-                        {s.finalScore !== null ? (
-                          <span className="text-blue-600 text-sm">{s.finalScore} / 100</span>
-                        ) : (
-                          <span className="text-zinc-400 font-medium italic text-[11px]">Not Graded</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 text-right pr-2">
-                        <Link
-                          href={`/instructor/exams/review?courseId=${courseId}&submissionId=${s.id}`}
-                          className={`btn btn-sm text-xs font-bold inline-flex items-center gap-1 ${
-                            s.status === "pending"
-                              ? "btn-primary bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
-                              : "btn-secondary text-zinc-700 hover:bg-zinc-100"
-                          }`}
-                        >
-                          {s.status === "pending" ? "Grade Submission →" : "Edit Grade →"}
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Full width Grade/Review button */}
+                  <Link
+                    href={`/instructor/exams/review?courseId=${courseId}&submissionId=${s.id}`}
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition ${
+                      s.status === "pending"
+                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                        : "bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 shadow-2xs"
+                    }`}
+                  >
+                    <span>{s.status === "pending" ? "Grade Submission" : "Edit Grade"}</span>
+                    <span>&rarr;</span>
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table (hidden sm:block) */}
+            <div className="hidden sm:block overflow-x-auto -mx-1 px-1">
+              <table className="w-full min-w-[680px] text-left text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-100 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    <th className="pb-3 pl-2">Student</th>
+                    <th className="pb-3">Submitted At</th>
+                    <th className="pb-3">Answer Sheet</th>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3">Final Score</th>
+                    <th className="pb-3 text-right pr-2">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {submissions.map((s) => {
+                    return (
+                      <tr key={s.id} className="hover:bg-zinc-50/70 transition">
+                        <td className="py-3.5 pl-2">
+                          <p className="font-bold text-zinc-900">{s.studentName}</p>
+                          <p className="text-[11px] text-zinc-400">{s.studentEmail}</p>
+                        </td>
+                        <td className="py-3.5 text-zinc-500 whitespace-nowrap">
+                          {new Date(s.submittedAt).toLocaleDateString("en-US", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td className="py-3.5">
+                          {s.answers?.answerFileUrl ? (
+                            <a
+                              href={s.answers.answerFileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              download
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold text-[11px] border border-blue-100 hover:bg-blue-100 transition"
+                            >
+                              <LandingIcon name="Download" size={12} color="currentColor" />
+                              <span className="truncate max-w-[140px]">
+                                {s.answers.answerFileName || "Answer_Sheet.pdf"}
+                              </span>
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400 italic text-[11px]">No file attached</span>
+                          )}
+                        </td>
+                        <td className="py-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                              s.status === "passed"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : s.status === "failed"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {s.status === "passed" ? "Passed" : s.status === "failed" ? "Failed" : "Pending"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 font-bold">
+                          {s.finalScore !== null ? (
+                            <span className="text-blue-600 text-sm">{s.finalScore} / 100</span>
+                          ) : (
+                            <span className="text-zinc-400 font-medium italic text-[11px]">Not Graded</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 text-right pr-2">
+                          <Link
+                            href={`/instructor/exams/review?courseId=${courseId}&submissionId=${s.id}`}
+                            className={`btn btn-sm text-xs font-bold inline-flex items-center gap-1 ${
+                              s.status === "pending"
+                                ? "btn-primary bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                                : "btn-secondary text-zinc-700 hover:bg-zinc-100"
+                            }`}
+                          >
+                            {s.status === "pending" ? "Grade Submission →" : "Edit Grade →"}
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

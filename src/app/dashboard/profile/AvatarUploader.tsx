@@ -63,7 +63,7 @@ export function AvatarUploader() {
         type="button" 
         disabled={loading}
         onClick={() => fileInputRef.current?.click()}
-        className="rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 transition disabled:opacity-50"
+        className="rounded-xl border border-zinc-200 bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-zinc-700 shadow-xs hover:bg-zinc-50 active:scale-95 transition disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
       >
         {loading ? "Uploading..." : "Change Photo"}
       </button>

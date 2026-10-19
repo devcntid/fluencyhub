@@ -59,6 +59,21 @@ export function InstructorExamReviewWorkbench({
     return submissions.find((s) => s.id === selectedId) || null;
   }, [submissions, selectedId]);
 
+  const answerFileUrl = selectedSubmission?.answers?.answerFileUrl || "";
+  const answerFileName = selectedSubmission?.answers?.answerFileName || "";
+
+  const isImageFile = useMemo(() => {
+    if (!answerFileUrl && !answerFileName) return false;
+    const imgRegex = /\.(png|jpe?g|webp|gif|svg|bmp)($|\?)/i;
+    return imgRegex.test(answerFileUrl) || imgRegex.test(answerFileName) || answerFileUrl.startsWith("data:image/");
+  }, [answerFileUrl, answerFileName]);
+
+  const isDocFile = useMemo(() => {
+    if (!answerFileUrl && !answerFileName) return false;
+    const docRegex = /\.(docx?|odt|rtf|txt)($|\?)/i;
+    return docRegex.test(answerFileUrl) || docRegex.test(answerFileName);
+  }, [answerFileUrl, answerFileName]);
+
   const [readingScore, setReadingScore] = useState<number>(
     () => selectedSubmission?.readingScore ?? selectedSubmission?.manualScore ?? 85
   );
@@ -239,7 +254,7 @@ export function InstructorExamReviewWorkbench({
       {/* Top Header: Structured 2-Tier SpeedGrader Controls */}
       <div className="bg-white rounded-2xl border border-zinc-200 p-3 sm:px-4 sm:py-3 shadow-xs space-y-2.5 shrink-0">
         {/* Tier 1: Context, Back Button, Course Title, and Exam Configurations */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-zinc-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-zinc-100">
           {/* Left: Back & Course Title */}
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <Link
@@ -255,7 +270,7 @@ export function InstructorExamReviewWorkbench({
 
             {/* Course Title Badge */}
             <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/70 border border-blue-200/80 text-blue-950 text-xs font-extrabold max-w-[240px] sm:max-w-[420px] truncate shadow-2xs"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/70 border border-blue-200/80 text-blue-950 text-xs font-extrabold max-w-[200px] sm:max-w-[420px] truncate shadow-2xs"
               title={`Active Course: ${course.title}`}
             >
               <LandingIcon name="BookOpen" size={13} color="#2563eb" />
@@ -269,7 +284,7 @@ export function InstructorExamReviewWorkbench({
           </div>
 
           {/* Right: Question Config Dialog Triggers & Summary Badges */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {/* Quick Metrics Badges */}
             <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold mr-1">
               <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
@@ -310,13 +325,13 @@ export function InstructorExamReviewWorkbench({
 
         {/* Tier 2: SpeedGrader Student Stepper & Active Candidate Navigator */}
         {submissions.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
             {/* Left: Toggle Student Drawer & Active Student Stepper */}
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 min-w-0 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setShowStudentList((prev) => !prev)}
-                className={`btn btn-sm text-xs font-bold border transition flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${
+                className={`btn btn-sm text-xs font-bold border transition flex items-center gap-1.5 px-3 py-1.5 rounded-xl shrink-0 ${
                   showStudentList
                     ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                     : "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50"
@@ -330,27 +345,27 @@ export function InstructorExamReviewWorkbench({
               <span className="text-zinc-200 hidden sm:inline">|</span>
 
               {/* Student Stepper with Active Student Badge */}
-              <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50/80 p-0.5 shadow-xs">
+              <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50/80 p-0.5 shadow-xs max-w-full">
                 <button
                   type="button"
                   onClick={handlePrev}
                   disabled={!hasPrev}
-                  className="p-1.5 rounded-lg text-zinc-600 hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  className="p-1.5 rounded-lg text-zinc-600 hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
                   title="Previous Student (Keyboard: Left Arrow)"
                 >
                   <LandingIcon name="ArrowLeft" size={13} color="currentColor" />
                 </button>
 
-                <div className="flex items-center gap-2 px-2.5 py-0.5 min-w-0">
-                  <span className="text-[11px] font-black text-zinc-800 truncate max-w-[140px] sm:max-w-[200px]">
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2 py-0.5 min-w-0">
+                  <span className="text-[11px] font-black text-zinc-800 truncate max-w-[110px] sm:max-w-[180px]">
                     {selectedSubmission?.studentName || "Select Student"}
                   </span>
-                  <span className="text-[10px] font-bold text-zinc-400">
+                  <span className="text-[10px] font-bold text-zinc-400 shrink-0">
                     ({filteredSubmissions.length > 0 ? `${currentIndex + 1}/${filteredSubmissions.length}` : "0/0"})
                   </span>
                   {selectedSubmission && (
                     <span
-                      className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md shrink-0 hidden sm:inline-block ${
+                      className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md shrink-0 hidden md:inline-block ${
                         selectedSubmission.status === "passed"
                           ? "bg-emerald-100 text-emerald-800"
                           : selectedSubmission.status === "failed"
@@ -371,7 +386,7 @@ export function InstructorExamReviewWorkbench({
                   type="button"
                   onClick={handleNext}
                   disabled={!hasNext}
-                  className="p-1.5 rounded-lg text-zinc-600 hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  className="p-1.5 rounded-lg text-zinc-600 hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
                   title="Next Student (Keyboard: Right Arrow)"
                 >
                   <LandingIcon name="ArrowRight" size={13} color="currentColor" />
@@ -380,7 +395,7 @@ export function InstructorExamReviewWorkbench({
             </div>
 
             {/* Right: Mode Tampilan Badge / Hint */}
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <div className="flex items-center gap-2 text-xs text-zinc-400 self-start sm:self-auto shrink-0">
               {!showStudentList ? (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -575,29 +590,29 @@ export function InstructorExamReviewWorkbench({
           )}
 
           {/* Center Canvas: Document & Video Media Viewer */}
-          <div className="flex-1 min-w-0 bg-white rounded-2xl border border-zinc-200 shadow-xs flex flex-col h-[600px] lg:h-[calc(100vh-215px)] min-h-[540px] overflow-hidden">
+          <div className="flex-1 min-w-0 bg-white rounded-2xl border border-zinc-200 shadow-xs flex flex-col h-[480px] sm:h-[600px] lg:h-[calc(100vh-215px)] min-h-[380px] sm:min-h-[520px] overflow-hidden">
             {selectedSubmission ? (
               <>
                 {/* Media Header Toolbar */}
-                <div className="p-3 border-b border-zinc-200 bg-zinc-50/70 flex flex-wrap items-center justify-between gap-2 shrink-0">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div className="p-3 border-b border-zinc-200 bg-zinc-50/70 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
+                  <div className="flex items-center justify-center sm:justify-start w-full sm:w-auto min-w-0">
                     {/* Tab Selector if Video exists */}
                     {(ytId || selectedSubmission.youtubeUrl) ? (
-                      <div className="flex items-center bg-zinc-200/80 p-0.5 rounded-lg text-xs font-bold">
+                      <div className="inline-flex items-center bg-zinc-200/80 p-0.5 rounded-lg text-xs font-bold shadow-2xs">
                         <button
                           type="button"
                           onClick={() => setActiveMediaTab("pdf")}
-                          className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${
+                          className={`px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 cursor-pointer ${
                             activeMediaTab === "pdf" ? "bg-white text-zinc-900 shadow-xs" : "text-zinc-600 hover:text-zinc-900"
                           }`}
                         >
-                          <LandingIcon name="FileText" size={13} color="currentColor" />
-                          <span>PDF Answer Sheet</span>
+                          <LandingIcon name={isImageFile ? "Image" : isDocFile ? "FileText" : "FileText"} size={13} color="currentColor" />
+                          <span>{isImageFile ? "Image Answer Sheet" : isDocFile ? "Doc Answer Sheet" : "PDF Answer Sheet"}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setActiveMediaTab("video")}
-                          className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${
+                          className={`px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 cursor-pointer ${
                             activeMediaTab === "video" ? "bg-white text-zinc-900 shadow-xs" : "text-zinc-600 hover:text-zinc-900"
                           }`}
                         >
@@ -607,11 +622,19 @@ export function InstructorExamReviewWorkbench({
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-600 font-extrabold text-[11px] border border-red-100 shrink-0">
-                          PDF
+                        <div
+                          className={`flex h-7 px-2 items-center justify-center rounded-lg font-extrabold text-[10px] border shrink-0 ${
+                            isImageFile
+                              ? "bg-purple-50 text-purple-700 border-purple-200"
+                              : isDocFile
+                              ? "bg-sky-50 text-sky-700 border-sky-200"
+                              : "bg-red-50 text-red-600 border-red-100"
+                          }`}
+                        >
+                          {isImageFile ? "IMG" : isDocFile ? "DOC" : "PDF"}
                         </div>
                         <span className="text-xs font-bold text-zinc-800 truncate">
-                          {selectedSubmission.answers?.answerFileName || "Answer_Sheet.pdf"}
+                          {selectedSubmission.answers?.answerFileName || (isImageFile ? "Answer_Sheet.png" : "Answer_Sheet.pdf")}
                         </span>
                       </div>
                     )}
@@ -620,12 +643,12 @@ export function InstructorExamReviewWorkbench({
                   {/* Media Action Buttons (Contextual based on Active Tab) */}
                   {activeMediaTab === "video" ? (
                     videoUrl ? (
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto shrink-0">
                         <a
                           href={videoUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="btn btn-secondary btn-sm text-[11px] font-bold py-1 px-2.5 flex items-center gap-1 hover:text-red-600"
+                          className="btn btn-secondary btn-sm text-[11px] font-bold py-1.5 px-3 flex items-center justify-center gap-1.5 hover:text-red-600 rounded-lg shadow-2xs"
                         >
                           <LandingIcon name="Eye" size={12} color="currentColor" />
                           <span>Open New Tab</span>
@@ -634,7 +657,7 @@ export function InstructorExamReviewWorkbench({
                           href={videoUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="btn btn-primary btn-sm text-[11px] font-bold py-1 px-2.5 bg-red-600 hover:bg-red-700 text-white shadow-xs flex items-center gap-1"
+                          className="btn btn-primary btn-sm text-[11px] font-bold py-1.5 px-3 bg-red-600 hover:bg-red-700 text-white shadow-xs flex items-center justify-center gap-1.5 rounded-lg"
                         >
                           <LandingIcon name="Video" size={12} color="#fff" />
                           <span>{ytId ? "Watch on YouTube" : "Watch Video"}</span>
@@ -643,12 +666,12 @@ export function InstructorExamReviewWorkbench({
                     ) : null
                   ) : (
                     selectedSubmission.answers?.answerFileUrl ? (
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto shrink-0">
                         <a
                           href={selectedSubmission.answers.answerFileUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="btn btn-secondary btn-sm text-[11px] font-bold py-1 px-2.5 flex items-center gap-1"
+                          className="btn btn-secondary btn-sm text-[11px] font-bold py-1.5 px-3 flex items-center justify-center gap-1.5 rounded-lg shadow-2xs"
                         >
                           <LandingIcon name="Eye" size={12} color="currentColor" />
                           <span>Open New Tab</span>
@@ -658,7 +681,7 @@ export function InstructorExamReviewWorkbench({
                           target="_blank"
                           rel="noreferrer"
                           download
-                          className="btn btn-primary btn-sm text-[11px] font-bold py-1 px-2.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center gap-1"
+                          className="btn btn-primary btn-sm text-[11px] font-bold py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5 rounded-lg"
                         >
                           <LandingIcon name="Download" size={12} color="#fff" />
                           <span>Download</span>
@@ -669,14 +692,68 @@ export function InstructorExamReviewWorkbench({
                 </div>
 
                 {/* Media Body Viewer */}
-                <div className="flex-1 min-h-0 bg-zinc-100 relative">
+                <div className="flex-1 min-h-[340px] sm:min-h-[480px] bg-zinc-100/80 relative overflow-hidden flex flex-col">
                   {activeMediaTab === "pdf" ? (
                     selectedSubmission.answers?.answerFileUrl ? (
-                      <iframe
-                        src={selectedSubmission.answers.answerFileUrl}
-                        className="w-full h-full border-0"
-                        title="Student Answer Sheet"
-                      />
+                      isImageFile ? (
+                        <div className="w-full h-full min-h-[340px] sm:min-h-[480px] flex-1 flex flex-col items-center justify-center p-3 sm:p-5 bg-zinc-900/5 overflow-auto">
+                          <div className="relative max-w-full max-h-full flex items-center justify-center">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={selectedSubmission.answers.answerFileUrl}
+                              alt={selectedSubmission.answers.answerFileName || "Student Answer Sheet"}
+                              className="max-w-full max-h-[55vh] sm:max-h-[640px] w-auto h-auto object-contain rounded-xl shadow-md border border-zinc-200/80 bg-white"
+                            />
+                          </div>
+                          <span className="text-[10px] text-zinc-400 font-medium mt-2 text-center block">
+                            Tip: Klik &ldquo;Open New Tab&rdquo; di atas untuk zoom atau melihat file dalam resolusi asli.
+                          </span>
+                        </div>
+                      ) : isDocFile ? (
+                        <div className="w-full h-full min-h-[340px] sm:min-h-[480px] flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-zinc-50">
+                          <div className="h-16 w-16 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center shadow-xs">
+                            <LandingIcon name="FileText" size={32} color="currentColor" />
+                          </div>
+                          <div className="max-w-xs space-y-1">
+                            <h3 className="text-sm font-bold text-zinc-900">Word Document Submitted</h3>
+                            <p className="text-xs text-zinc-500 break-all font-semibold">
+                              {selectedSubmission.answers?.answerFileName || "Document.docx"}
+                            </p>
+                            <p className="text-[11px] text-zinc-400 pt-1">
+                              Dokumen Word tidak dapat di-render langsung di browser. Silakan unduh dokumen untuk memeriksa jawaban siswa.
+                            </p>
+                          </div>
+                          <a
+                            href={selectedSubmission.answers.answerFileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            download
+                            className="btn btn-primary btn-sm text-xs font-bold flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs"
+                          >
+                            <LandingIcon name="Download" size={14} color="#fff" />
+                            <span>Download Document &rarr;</span>
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex flex-col flex-1">
+                          <div className="sm:hidden bg-blue-50/90 border-b border-blue-100 px-3 py-1.5 text-[11px] text-blue-800 flex items-center justify-between">
+                            <span>Tampilan PDF ringkas di HP.</span>
+                            <a
+                              href={selectedSubmission.answers.answerFileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-bold underline shrink-0 ml-1"
+                            >
+                              Buka Layar Penuh &rarr;
+                            </a>
+                          </div>
+                          <iframe
+                            src={selectedSubmission.answers.answerFileUrl}
+                            className="w-full h-full min-h-[340px] sm:min-h-[500px] border-0 flex-1"
+                            title="Student Answer Sheet"
+                          />
+                        </div>
+                      )
                     ) : (
                       <div className="flex h-full items-center justify-center text-center p-8 text-zinc-400 text-xs">
                         Student has not attached an answer sheet file.
@@ -727,7 +804,7 @@ export function InstructorExamReviewWorkbench({
           </div>
 
           {/* Right Pane: Sticky Grading Workbench Panel */}
-          <div className="w-full lg:w-[330px] xl:w-[340px] shrink-0 bg-white rounded-2xl border border-zinc-200 p-3.5 shadow-xs flex flex-col h-auto lg:h-[calc(100vh-215px)] min-h-[540px] overflow-y-auto space-y-3.5">
+          <div className="w-full lg:w-[330px] xl:w-[340px] shrink-0 bg-white rounded-2xl border border-zinc-200 p-3.5 shadow-xs flex flex-col h-auto lg:h-[calc(100vh-215px)] min-h-0 lg:min-h-[540px] overflow-y-auto space-y-3.5">
             {selectedSubmission ? (
               <>
                 {/* Candidate Info Card */}

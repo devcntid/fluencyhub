@@ -45,13 +45,21 @@ export function AdminDataGrid({
           </tbody>
         </table>
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-3)]">
-        <span>
+      <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 pb-12 sm:pb-16">
+        <span className="font-medium self-start sm:self-auto">
           {rowCount === 0 ? "0 rows" : `${start + 1}–${end} of ${rowCount}`}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
           <select
-            className="input w-auto py-1"
+            aria-label="Rows per page"
+            className="h-8 rounded-lg border border-zinc-200 bg-white px-2.5 pr-7 text-xs font-semibold text-zinc-700 shadow-2xs hover:border-zinc-300 focus:border-[var(--brand,#2563eb)] focus:ring-1 focus:ring-[var(--brand,#2563eb)] outline-none cursor-pointer transition"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 8px center",
+              backgroundSize: "13px",
+              appearance: "none",
+            }}
             value={size}
             onChange={(e) => {
               setSize(Number(e.target.value));
@@ -59,18 +67,28 @@ export function AdminDataGrid({
             }}
           >
             {[10, 20, 50].map((n) => (
-              <option key={n} value={n}>
+              <option key={n} value={n} className="text-zinc-800 text-xs py-1">
                 {n} / page
               </option>
             ))}
           </select>
-          <button type="button" className="btn btn-secondary btn-sm" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}>
+          <button 
+            type="button" 
+            className="btn btn-secondary btn-sm h-8 px-3 rounded-lg text-xs font-semibold cursor-pointer disabled:cursor-not-allowed" 
+            disabled={safePage <= 1} 
+            onClick={() => setPage(safePage - 1)}
+          >
             Prev
           </button>
-          <span className="whitespace-nowrap">
+          <span className="whitespace-nowrap px-1 font-semibold text-zinc-700 text-xs">
             Page {safePage} / {totalPages}
           </span>
-          <button type="button" className="btn btn-secondary btn-sm" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)}>
+          <button 
+            type="button" 
+            className="btn btn-secondary btn-sm h-8 px-3 rounded-lg text-xs font-semibold cursor-pointer disabled:cursor-not-allowed" 
+            disabled={safePage >= totalPages} 
+            onClick={() => setPage(safePage + 1)}
+          >
             Next
           </button>
         </div>

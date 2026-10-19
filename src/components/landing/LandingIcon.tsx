@@ -127,6 +127,13 @@ export function LandingIcon({
           <circle cx="12" cy="12" r="3" />
         </>
       )}
+      {name === "Image" && (
+        <>
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </>
+      )}
       {name === "Pencil" && (
         <>
           <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
