@@ -257,8 +257,9 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                     )}
 
                     {/* Left Block: Time Range & Duration */}
-                    <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-start lg:w-auto lg:min-w-[175px] lg:flex-col lg:items-center lg:justify-center text-left sm:text-center border-b pb-3.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5 border-zinc-100 gap-3 sm:gap-6 lg:gap-1.5 shrink-0">
-                      <div className="flex items-center gap-2 sm:flex-col sm:gap-0.5 lg:items-center shrink-0">
+                    <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:min-w-[175px] lg:flex-col lg:items-center lg:justify-center text-left sm:text-left lg:text-center border-b pb-3.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5 border-zinc-100 gap-2.5 sm:gap-4 lg:gap-1.5 shrink-0">
+                      {/* Day Label & Full Date */}
+                      <div className="flex items-center gap-2 sm:flex-col sm:items-start lg:items-center shrink-0">
                         <span
                           className={`text-[11px] font-black uppercase tracking-wider ${
                             isLiveNow
@@ -273,28 +274,27 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                           {formatDayLabelWIB(startDate, currentTime)}
                         </span>
                         <span className="text-[11px] text-zinc-300 sm:hidden">•</span>
-                        <span className="text-[11px] text-zinc-500 sm:hidden">
+                        <span className="text-[11px] text-zinc-500 font-medium lg:hidden">
                           {formatFullDateWIB(startDate)}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1 font-extrabold font-[family-name:var(--font-heading)] text-zinc-900 shrink-0">
-                        <span className="text-xl sm:text-2xl">{formatTimeWIB(startDate)}</span>
-                        <span className="text-xs text-zinc-400 font-normal">-</span>
-                        <span className="text-xl sm:text-2xl">{formatTimeWIB(endDate)}</span>
-                      </div>
+                      {/* Time Range & Duration Group */}
+                      <div className="flex items-center gap-3 sm:gap-4 lg:flex-col lg:gap-1 shrink-0">
+                        <div className="flex items-center gap-1 font-extrabold font-[family-name:var(--font-heading)] text-zinc-900 shrink-0">
+                          <span className="text-xl sm:text-2xl">{formatTimeWIB(startDate)}</span>
+                          <span className="text-xs text-zinc-400 font-normal">-</span>
+                          <span className="text-xl sm:text-2xl">{formatTimeWIB(endDate)}</span>
+                        </div>
 
-                      <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                        <span className="text-[11px] font-bold text-zinc-400">WIB</span>
-                        <span className="text-zinc-300">•</span>
-                        <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-600">
-                          <LandingIcon name="Clock" size={11} color="currentColor" />
-                          {durationMin} Mins
-                        </span>
-                        <span className="text-zinc-300 hidden sm:inline lg:hidden">•</span>
-                        <span className="text-[11px] text-zinc-500 hidden sm:inline lg:hidden">
-                          {formatFullDateWIB(startDate)}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[11px] font-bold text-zinc-400">WIB</span>
+                          <span className="text-zinc-300">•</span>
+                          <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-600">
+                            <LandingIcon name="Clock" size={11} color="currentColor" />
+                            {durationMin} Mins
+                          </span>
+                        </div>
                       </div>
 
                       <span className="mt-0.5 text-[10px] text-zinc-400 hidden lg:block">
