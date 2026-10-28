@@ -32,7 +32,9 @@ export async function getFaspayAccessToken(): Promise<string> {
   const clientId = getFaspayClientId();
   const clientSecret = getFaspayClientSecret();
   if (!clientId || !clientSecret) {
-    throw new Error("Faspay credentials (FASPAY_CLIENT_ID / FASPAY_CLIENT_SECRET) are not configured.");
+    throw new Error(
+      "Metode pembayaran ini sedang dalam pemeliharaan sistem. Silakan pilih metode pembayaran lain.",
+    );
   }
 
   const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");

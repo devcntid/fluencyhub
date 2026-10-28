@@ -141,7 +141,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
     if (method.provider === "midtrans") {
       if (!process.env.MIDTRANS_SERVER_KEY) {
-        return NextResponse.json({ error: "Midtrans is not configured" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Metode pembayaran ini sedang dalam pemeliharaan sistem. Silakan pilih metode pembayaran lain." },
+          { status: 400 },
+        );
       }
       const callbackUrl = `${appBaseUrl()}/checkout/success?orderNumber=${order.orderNumber}`;
       const charged = await chargeMidtransCore({
@@ -474,8 +477,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       endpoint: "/api/orders/pay",
       logType: "payment_request",
       responsePayload: message,
-      httpStatus: 502,
+      httpStatus: 400,
     });
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

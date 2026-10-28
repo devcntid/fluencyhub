@@ -220,27 +220,28 @@ export function CheckoutStepper({
           couponCode: coupon || undefined,
         }),
       });
-      const createContentType = create.headers.get("content-type");
-      if (createContentType && createContentType.indexOf("application/json") === -1) {
-        const text = await create.text();
-        console.error("API /orders HTML Error:", text);
-        throw new Error("Sistem gagal membuat order (HTML response). Cek console.");
+      const createRaw = await create.text();
+      let created: any = {};
+      try {
+        created = createRaw ? JSON.parse(createRaw) : {};
+      } catch {
+        throw new Error("Gagal membuat pesanan (respons server tidak valid).");
       }
-      const created = await create.json();
-      if (!create.ok) throw new Error(created.error ?? "Failed to create order");
-      const id = created.data.id as number;
+      if (!create.ok) throw new Error(created.error ?? "Gagal membuat pesanan");
+      const id = created.data?.id as number;
+      if (!id) throw new Error("ID pesanan tidak valid.");
       setOrderId(id);
       setOrderNumber(created.data.orderNumber);
 
       const payRes = await fetch(`/api/orders/${id}/pay`, { method: "POST" });
-      const payContentType = payRes.headers.get("content-type");
-      if (payContentType && payContentType.indexOf("application/json") === -1) {
-        const text = await payRes.text();
-        console.error("API /pay HTML Error:", text);
-        throw new Error("Sistem mengembalikan format yang tidak valid (HTML). Cek console.");
+      const payRaw = await payRes.text();
+      let paid: any = {};
+      try {
+        paid = payRaw ? JSON.parse(payRaw) : {};
+      } catch {
+        throw new Error("Gagal memproses pembayaran (respons server tidak valid).");
       }
-      const paid = await payRes.json();
-      if (!payRes.ok) throw new Error(paid.error ?? "Payment failed");
+      if (!payRes.ok) throw new Error(paid.error ?? "Gagal memproses pembayaran");
 
       if (paid.data?.expiresAt || paid.data?.order?.expiresAt) {
         setExpiresAt(paid.data.expiresAt || paid.data.order.expiresAt);
@@ -314,7 +315,19 @@ export function CheckoutStepper({
       }
       router.push(`/checkout/success?orderNumber=${created.data.orderNumber}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Checkout failed");
+      const raw = e instanceof Error ? e.message : "Terjadi kendala saat memproses pesanan.";
+      let friendly = raw;
+      if (
+        raw.toLowerCase().includes("credential") ||
+        raw.toLowerCase().includes("configured") ||
+        raw.includes("FASPAY") ||
+        raw.includes("MIDTRANS") ||
+        raw.includes("XENDIT") ||
+        raw.toLowerCase().includes("unauthorized")
+      ) {
+        friendly = "Metode pembayaran ini sedang dalam pemeliharaan sistem. Silakan pilih metode pembayaran lain atau hubungi admin.";
+      }
+      setError(friendly);
     } finally {
       setBusy(false);
     }
@@ -453,7 +466,48 @@ export function CheckoutStepper({
 
       <div className="mx-auto grid w-full max-w-[860px] min-w-0 gap-4 px-3 sm:px-4 pt-[68px] sm:pt-[76px] pb-6 md:grid-cols-[1fr_280px]">
         <div className="min-w-0 w-full">
-          {error ? <p className="mb-3 rounded-md bg-[#fef2f2] p-3 text-sm font-semibold text-[var(--red)] border border-[var(--red-border)]">{error}</p> : null}
+          {error ? (
+            <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/95 p-4 shadow-sm text-rose-900 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[14px] font-bold text-rose-900">Pembayaran Belum Dapat Diproses</p>
+                  <p className="mt-0.5 text-[13px] text-rose-700 leading-relaxed">{error}</p>
+                  {step === 4 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError("");
+                        setStep(3);
+                      }}
+                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-[12px] font-semibold text-white shadow-xs hover:bg-rose-700 transition-colors"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m15 18-6-6 6-6"/>
+                      </svg>
+                      Ganti Metode Pembayaran
+                    </button>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setError("")}
+                className="shrink-0 rounded-md p-1 text-rose-400 hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                title="Tutup pemberitahuan"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
+              </button>
+            </div>
+          ) : null}
 
           {step === 1 && (
             <div className="card anim !p-4 sm:!p-6">

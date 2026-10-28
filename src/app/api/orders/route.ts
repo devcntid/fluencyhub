@@ -20,146 +20,152 @@ const Schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const userId = Number(session.user.id);
-  const { success } = await paymentRatelimit.limit(`create_order:${userId}`);
-  if (!success) return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
-
-  const parsed = Schema.safeParse(await req.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
-  }
-
-  const { courseId, paymentMethodId, couponCode } = parsed.data;
-  const [course, method, enrolled, existing] = await Promise.all([
-    getCourseById(courseId),
-    getPaymentMethodById(paymentMethodId),
-    checkEnrollment(userId, courseId),
-    getActiveOrderForUserCourse(userId, courseId),
-  ]);
-  if (!course || course.status !== "published") {
-    return NextResponse.json({ error: "Course not found" }, { status: 404 });
-  }
-  if (!method || !method.isActive) {
-    return NextResponse.json({ error: "Payment method unavailable" }, { status: 400 });
-  }
-  if (enrolled) {
-    return NextResponse.json({ error: "Already enrolled" }, { status: 409 });
-  }
-  if (existing) {
-    if (existing.status === "paid") {
-      return NextResponse.json({ error: "You already have a paid order for this course" }, { status: 409 });
+  try {
+    const session = await auth();
+    if (!session?.user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const isOrderExpired = Boolean(
-      existing.status === "expired" ||
-      (existing.expiresAt && new Date(existing.expiresAt).getTime() <= Date.now())
-    );
-    if (!isOrderExpired && existing.paymentMethodId === paymentMethodId) {
-      return NextResponse.json({ data: existing }, { status: 200 });
+    const userId = Number(session.user.id);
+    const { success } = await paymentRatelimit.limit(`create_order:${userId}`);
+    if (!success) return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+
+    const parsed = Schema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
     }
-    await cancelOrder(existing.id);
-  }
 
-  const subtotal = Number(course.price);
-  let discount = 0;
-  if (couponCode) {
-    const coupon = await getCouponByCode(couponCode);
-    if (coupon) {
-      if (coupon.applicableCourseId && coupon.applicableCourseId !== courseId) {
-        return NextResponse.json({ error: "Kupon tidak berlaku untuk kelas ini" }, { status: 400 });
-      }
-      const now = new Date();
-      if (coupon.validFrom && now < coupon.validFrom) {
-        return NextResponse.json({ error: "Kupon belum aktif" }, { status: 400 });
-      }
-      if (coupon.validUntil && now > coupon.validUntil) {
-        return NextResponse.json({ error: "Kupon kedaluwarsa" }, { status: 400 });
-      }
-      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
-        return NextResponse.json({ error: "Kupon habis" }, { status: 400 });
-      }
-      if (coupon.discountType === "percentage") {
-        discount = Math.round((subtotal * Number(coupon.discountValue)) / 100);
-      } else {
-        discount = Number(coupon.discountValue);
-      }
-      await incrementCouponUse(coupon.id);
+    const { courseId, paymentMethodId, couponCode } = parsed.data;
+    const [course, method, enrolled, existing] = await Promise.all([
+      getCourseById(courseId),
+      getPaymentMethodById(paymentMethodId),
+      checkEnrollment(userId, courseId),
+      getActiveOrderForUserCourse(userId, courseId),
+    ]);
+    if (!course || course.status !== "published") {
+      return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
-  }
-  const adminFee = method.adminFeeFlat + (subtotal * Number(method.adminFeePct)) / 100;
-  const total = Math.max(0, subtotal - discount + adminFee);
+    if (!method || !method.isActive) {
+      return NextResponse.json({ error: "Payment method unavailable" }, { status: 400 });
+    }
+    if (enrolled) {
+      return NextResponse.json({ error: "Already enrolled" }, { status: 409 });
+    }
+    if (existing) {
+      if (existing.status === "paid") {
+        return NextResponse.json({ error: "You already have a paid order for this course" }, { status: 409 });
+      }
+      const isOrderExpired = Boolean(
+        existing.status === "expired" ||
+        (existing.expiresAt && new Date(existing.expiresAt).getTime() <= Date.now())
+      );
+      if (!isOrderExpired && existing.paymentMethodId === paymentMethodId) {
+        return NextResponse.json({ data: existing }, { status: 200 });
+      }
+      await cancelOrder(existing.id);
+    }
 
-  const isQrisMethod =
-    method.type === "qr_code" ||
-    method.code.includes("QRIS") ||
-    method.code.includes("711") ||
-    method.code.includes("836");
-  const isRetailMethod =
-    method.type === "retail_outlet" ||
-    method.code.toUpperCase().includes("INDOMARET") ||
-    method.code.toUpperCase().includes("ALFAMART") ||
-    method.code.includes("706") ||
-    method.code.includes("707");
+    const subtotal = Number(course.price);
+    let discount = 0;
+    if (couponCode) {
+      const coupon = await getCouponByCode(couponCode);
+      if (coupon) {
+        if (coupon.applicableCourseId && coupon.applicableCourseId !== courseId) {
+          return NextResponse.json({ error: "Kupon tidak berlaku untuk kelas ini" }, { status: 400 });
+        }
+        const now = new Date();
+        if (coupon.validFrom && now < coupon.validFrom) {
+          return NextResponse.json({ error: "Kupon belum aktif" }, { status: 400 });
+        }
+        if (coupon.validUntil && now > coupon.validUntil) {
+          return NextResponse.json({ error: "Kupon kedaluwarsa" }, { status: 400 });
+        }
+        if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
+          return NextResponse.json({ error: "Kupon habis" }, { status: 400 });
+        }
+        if (coupon.discountType === "percentage") {
+          discount = Math.round((subtotal * Number(coupon.discountValue)) / 100);
+        } else {
+          discount = Number(coupon.discountValue);
+        }
+        await incrementCouponUse(coupon.id);
+      }
+    }
+    const adminFee = method.adminFeeFlat + (subtotal * Number(method.adminFeePct)) / 100;
+    const total = Math.max(0, subtotal - discount + adminFee);
 
-  let initialExpiresAt: Date | null = null;
-  if (method.type === "e_wallet") {
-    initialExpiresAt = null;
-  } else if (isQrisMethod) {
-    initialExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
-  } else if (isRetailMethod) {
-    initialExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  } else if (method.type === "manual_transfer" || method.provider === "manual") {
-    initialExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  } else {
-    initialExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 jam default VA
-  }
+    const isQrisMethod =
+      method.type === "qr_code" ||
+      method.code.includes("QRIS") ||
+      method.code.includes("711") ||
+      method.code.includes("836");
+    const isRetailMethod =
+      method.type === "retail_outlet" ||
+      method.code.toUpperCase().includes("INDOMARET") ||
+      method.code.toUpperCase().includes("ALFAMART") ||
+      method.code.includes("706") ||
+      method.code.includes("707");
 
-  const order = await createOrder({
-    userId,
-    courseId,
-    paymentMethodId,
-    orderNumber: generateOrderNumber(),
-    subtotal: subtotal.toFixed(2),
-    adminFee: adminFee.toFixed(2),
-    discountAmount: discount.toFixed(2),
-    totalAmount: total.toFixed(2),
-    couponCode: couponCode ?? null,
-    expiresAt: initialExpiresAt,
-  });
-  await createPaymentLog({
-    orderNumber: order.orderNumber,
-    endpoint: "/api/orders",
-    logType: "payment_request",
-    requestPayload: JSON.stringify(parsed.data),
-    httpStatus: 201,
-  });
+    let initialExpiresAt: Date | null = null;
+    if (method.type === "e_wallet") {
+      initialExpiresAt = null;
+    } else if (isQrisMethod) {
+      initialExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    } else if (isRetailMethod) {
+      initialExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    } else if (method.type === "manual_transfer" || method.provider === "manual") {
+      initialExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    } else {
+      initialExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 jam default VA
+    }
 
-  const user = await getUserById(userId);
-  if (user) {
-    const template = await getActiveTemplate("MANUAL_TRANSFER_PENDING", "WHATSAPP");
-
-    await createNotificationLog({
-      templateId: template?.id ?? null,
-      orderNumber: order.orderNumber,
-      userId: userId,
-      recipient: user.email,
-      channel: "WHATSAPP",
-      requestPayload: JSON.stringify({
-        event: "checkout",
-        orderNumber: order.orderNumber,
-        courseId: courseId,
-        totalAmount: total.toFixed(2)
-      }),
-      responsePayload: JSON.stringify({
-        message: "Notification successfully queued for delivery",
-        queuedAt: new Date().toISOString()
-      }),
-      status: "QUEUED"
+    const order = await createOrder({
+      userId,
+      courseId,
+      paymentMethodId,
+      orderNumber: generateOrderNumber(),
+      subtotal: subtotal.toFixed(2),
+      adminFee: adminFee.toFixed(2),
+      discountAmount: discount.toFixed(2),
+      totalAmount: total.toFixed(2),
+      couponCode: couponCode ?? null,
+      expiresAt: initialExpiresAt,
     });
-  }
+    await createPaymentLog({
+      orderNumber: order.orderNumber,
+      endpoint: "/api/orders",
+      logType: "payment_request",
+      requestPayload: JSON.stringify(parsed.data),
+      httpStatus: 201,
+    });
 
-  return NextResponse.json({ data: order }, { status: 201 });
+    const user = await getUserById(userId);
+    if (user) {
+      const template = await getActiveTemplate("MANUAL_TRANSFER_PENDING", "WHATSAPP");
+
+      await createNotificationLog({
+        templateId: template?.id ?? null,
+        orderNumber: order.orderNumber,
+        userId: userId,
+        recipient: user.email,
+        channel: "WHATSAPP",
+        requestPayload: JSON.stringify({
+          event: "checkout",
+          orderNumber: order.orderNumber,
+          courseId: courseId,
+          totalAmount: total.toFixed(2),
+        }),
+        responsePayload: JSON.stringify({
+          message: "Notification successfully queued for delivery",
+          queuedAt: new Date().toISOString(),
+        }),
+        status: "QUEUED",
+      });
+    }
+
+    return NextResponse.json({ data: order }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Gagal membuat pesanan";
+    console.error("Error creating order:", error);
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }
