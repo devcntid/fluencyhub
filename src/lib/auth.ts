@@ -40,23 +40,30 @@ export function getAuthOptions(): NextAuthOptions {
         const needDb = Boolean(user?.email) || !token.id || !token.role || stale;
         if (!needDb) return token;
 
-        let dbUser = await getUserByEmail(email);
-        if (!dbUser) {
-          if (!user?.email) return token;
-          dbUser = await createUser({
-            name: user.name ?? email,
-            email,
-            googleId: account?.providerAccountId ?? null,
-            avatarUrl: user.image ?? null,
-            role: "user",
-          });
+        try {
+          let dbUser = await getUserByEmail(email);
+          if (!dbUser) {
+            if (!user?.email) return token;
+            dbUser = await createUser({
+              name: user.name ?? email,
+              email,
+              googleId: account?.providerAccountId ?? null,
+              avatarUrl: user.image ?? null,
+              role: "user",
+            });
+          }
+          if (user?.email) await updateUserLastLogin(dbUser.id);
+          token.id = String(dbUser.id);
+          token.role = dbUser.role;
+          token.email = dbUser.email;
+          token.revenueSharePct = dbUser.revenueSharePct;
+          token.roleCheckedAt = now;
+        } catch (dbErr) {
+          console.warn("[next-auth] Transient DB error during JWT callback, retaining token:", dbErr);
+          if (!token.id && user) {
+            throw dbErr;
+          }
         }
-        if (user?.email) await updateUserLastLogin(dbUser.id);
-        token.id = String(dbUser.id);
-        token.role = dbUser.role;
-        token.email = dbUser.email;
-        token.revenueSharePct = dbUser.revenueSharePct;
-        token.roleCheckedAt = now;
         return token;
       },
       async session({ session, token }) {

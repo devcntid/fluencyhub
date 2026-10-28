@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { CheckoutStepper } from "@/components/checkout/CheckoutStepper";
 import { checkEnrollment } from "@/lib/db/enrollments.queries";
 import { getCourseById } from "@/lib/db/courses.queries";
-import { getActiveOrderForUserCourse } from "@/lib/db/orders.queries";
+import { getActiveOrderForUserCourse, getOrderByNumber } from "@/lib/db/orders.queries";
 import { getActivePaymentMethods } from "@/lib/db/payment-methods.queries";
 import { midtransClientKey, midtransSnapScriptUrl } from "@/lib/payment/midtrans-public";
 import { auth } from "@/lib/session";
@@ -11,21 +11,30 @@ import { getUserById } from "@/lib/db/users.queries";
 export default async function CheckoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ courseId?: string; editMethod?: string }>;
+  searchParams: Promise<{ courseId?: string; editMethod?: string; orderNumber?: string }>;
 }) {
+  const session = await auth();
   const params = await searchParams;
-  const courseId = Number(params.courseId);
+
+  let existingOrder = null;
+  if (params.orderNumber && session?.user?.id) {
+    const found = await getOrderByNumber(params.orderNumber);
+    if (found && found.userId === Number(session.user.id)) {
+      existingOrder = found;
+    }
+  }
+
+  const courseId = Number(params.courseId) || (existingOrder ? existingOrder.courseId : 0);
   if (!courseId) notFound();
 
-  const [course, methods, session] = await Promise.all([
+  const [course, methods] = await Promise.all([
     getCourseById(courseId),
     getActivePaymentMethods(),
-    auth(),
   ]);
   if (!course || course.status !== "published") notFound();
 
   if (!session?.user.id) {
-    redirect(`/auth/signin?callbackUrl=${encodeURIComponent(`/checkout?courseId=${courseId}`)}`);
+    redirect(`/auth/signin?callbackUrl=${encodeURIComponent(`/checkout?courseId=${courseId}${params.orderNumber ? `&orderNumber=${params.orderNumber}` : ""}`)}`);
   }
 
   if (session?.user.id) {
@@ -34,10 +43,11 @@ export default async function CheckoutPage({
   }
 
   let dbUser = null;
-  let existingOrder = null;
   if (session?.user?.id) {
     dbUser = await getUserById(Number(session.user.id));
-    existingOrder = await getActiveOrderForUserCourse(Number(session.user.id), courseId);
+    if (!existingOrder) {
+      existingOrder = await getActiveOrderForUserCourse(Number(session.user.id), courseId);
+    }
   }
 
   return (

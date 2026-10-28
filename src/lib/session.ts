@@ -16,6 +16,7 @@ export const auth = cache(async () => {
       console.error("NextAuth secret error:", message);
       return null;
     }
-    throw error;
+    console.warn("[session] NextAuth session error caught gracefully:", message);
+    return null;
   }
 });

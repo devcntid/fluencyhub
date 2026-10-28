@@ -166,7 +166,7 @@ export const paymentMethods = pgTable(
       "payment_methods_type_check",
       sql`${t.type} IN ('e_wallet', 'va', 'qr_code', 'credit_card', 'retail_outlet', 'manual_transfer')`,
     ),
-    check("payment_methods_provider_check", sql`${t.provider} IN ('midtrans', 'xendit', 'manual')`),
+    check("payment_methods_provider_check", sql`${t.provider} IN ('midtrans', 'xendit', 'manual', 'faspay')`),
   ],
 );
 

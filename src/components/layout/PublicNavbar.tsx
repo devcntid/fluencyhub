@@ -12,14 +12,18 @@ export async function PublicNavbar() {
   
   let user = session?.user;
   if (session?.user?.id) {
-    const dbUser = await getUserById(Number(session.user.id));
-    if (dbUser) {
-      user = {
-        ...session.user,
-        name: dbUser.name,
-        email: dbUser.email,
-        image: dbUser.avatarUrl,
-      };
+    try {
+      const dbUser = await getUserById(Number(session.user.id));
+      if (dbUser) {
+        user = {
+          ...session.user,
+          name: dbUser.name,
+          email: dbUser.email,
+          image: dbUser.avatarUrl,
+        };
+      }
+    } catch (err) {
+      console.warn("[PublicNavbar] Failed to load dbUser, fallback to session:", err);
     }
   }
 
@@ -28,8 +32,12 @@ export async function PublicNavbar() {
     if (user.role === "admin" || user.role === "instructor") {
       hasDashboardAccess = true;
     } else {
-      const enrollments = await listEnrollmentsForUser(Number(user.id));
-      hasDashboardAccess = enrollments.length > 0;
+      try {
+        const enrollments = await listEnrollmentsForUser(Number(user.id));
+        hasDashboardAccess = enrollments.length > 0;
+      } catch (err) {
+        console.warn("[PublicNavbar] Failed to load enrollments, fallback to false:", err);
+      }
     }
   }
 

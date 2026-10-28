@@ -4,12 +4,32 @@ import { mapOrder } from "./mappers";
 
 export async function getOrderById(id: number): Promise<Order | null> {
   const rows = await sql`SELECT * FROM orders WHERE id = ${id}`;
-  return rows[0] ? mapOrder(rows[0] as Record<string, unknown>) : null;
+  if (!rows[0]) return null;
+  const order = mapOrder(rows[0] as Record<string, unknown>);
+  if (
+    (order.status === "pending" || order.status === "awaiting_payment") &&
+    order.expiresAt &&
+    new Date(order.expiresAt).getTime() <= Date.now()
+  ) {
+    order.status = "expired";
+    sql`UPDATE orders SET status = 'expired', updated_at = NOW() WHERE id = ${id} AND status IN ('pending', 'awaiting_payment')`.catch(() => {});
+  }
+  return order;
 }
 
 export async function getOrderByNumber(orderNumber: string): Promise<Order | null> {
   const rows = await sql`SELECT * FROM orders WHERE order_number = ${orderNumber}`;
-  return rows[0] ? mapOrder(rows[0] as Record<string, unknown>) : null;
+  if (!rows[0]) return null;
+  const order = mapOrder(rows[0] as Record<string, unknown>);
+  if (
+    (order.status === "pending" || order.status === "awaiting_payment") &&
+    order.expiresAt &&
+    new Date(order.expiresAt).getTime() <= Date.now()
+  ) {
+    order.status = "expired";
+    sql`UPDATE orders SET status = 'expired', updated_at = NOW() WHERE order_number = ${orderNumber} AND status IN ('pending', 'awaiting_payment')`.catch(() => {});
+  }
+  return order;
 }
 
 export async function getActiveOrderForUserCourse(
@@ -20,7 +40,10 @@ export async function getActiveOrderForUserCourse(
     SELECT * FROM orders
     WHERE user_id = ${userId}
       AND course_id = ${courseId}
-      AND status IN ('pending', 'awaiting_payment', 'pending_verification', 'paid')
+      AND (
+        status IN ('pending_verification', 'paid')
+        OR (status IN ('pending', 'awaiting_payment') AND (expires_at IS NULL OR expires_at > NOW()))
+      )
     ORDER BY created_at DESC
     LIMIT 1
   `;
@@ -46,15 +69,17 @@ export async function createOrder(data: {
   discountAmount: string;
   totalAmount: string;
   couponCode?: string | null;
+  expiresAt?: Date | null;
 }): Promise<Order> {
+  const expiresAt = data.expiresAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
   const rows = await sql`
     INSERT INTO orders (
       user_id, course_id, payment_method_id, order_number,
-      status, subtotal, admin_fee, discount_amount, total_amount, coupon_code
+      status, subtotal, admin_fee, discount_amount, total_amount, coupon_code, expires_at
     ) VALUES (
       ${data.userId}, ${data.courseId}, ${data.paymentMethodId}, ${data.orderNumber},
       'pending', ${data.subtotal}, ${data.adminFee}, ${data.discountAmount},
-      ${data.totalAmount}, ${data.couponCode ?? null}
+      ${data.totalAmount}, ${data.couponCode ?? null}, ${expiresAt}
     )
     RETURNING *
   `;
@@ -166,12 +191,27 @@ export async function listOrdersForAdmin(limit = 50): Promise<AdminOrderRow[]> {
   });
 }
 
-export async function listOrdersWithDetailsForUser(userId: number): Promise<(Order & { courseTitle: string; methodName: string | null; methodType: string | null; proofStatus: string | null })[]> {
+export async function listOrdersWithDetailsForUser(userId: number): Promise<(Order & { courseTitle: string; methodName: string | null; methodCode: string | null; methodType: string | null; logoUrl: string | null; proofStatus: string | null })[]> {
+  try {
+    await sql`
+      UPDATE orders
+      SET status = 'expired', updated_at = NOW()
+      WHERE user_id = ${userId}
+        AND status IN ('pending', 'awaiting_payment')
+        AND expires_at IS NOT NULL
+        AND expires_at <= NOW()
+    `;
+  } catch (err) {
+    console.error("Auto-expire orders error:", err);
+  }
+
   const rows = await sql`
     SELECT o.*, 
            c.title AS course_title, 
            pm.name AS method_name, 
+           pm.code AS method_code,
            pm.type AS method_type,
+           pm.logo_url AS logo_url,
            (SELECT status FROM payment_proofs WHERE order_id = o.id ORDER BY payment_proofs.uploaded_at DESC LIMIT 1) AS proof_status
     FROM orders o
     JOIN courses c ON c.id = o.course_id
@@ -181,11 +221,21 @@ export async function listOrdersWithDetailsForUser(userId: number): Promise<(Ord
   `;
   return rows.map((r) => {
     const row = r as Record<string, unknown>;
+    const mapped = mapOrder(row);
+    if (
+      (mapped.status === "pending" || mapped.status === "awaiting_payment") &&
+      mapped.expiresAt &&
+      new Date(mapped.expiresAt).getTime() <= Date.now()
+    ) {
+      mapped.status = "expired";
+    }
     return {
-      ...mapOrder(row),
+      ...mapped,
       courseTitle: String(row.course_title ?? ""),
       methodName: row.method_name == null ? null : String(row.method_name),
+      methodCode: row.method_code == null ? null : String(row.method_code),
       methodType: row.method_type == null ? null : String(row.method_type),
+      logoUrl: row.logo_url == null ? null : String(row.logo_url),
       proofStatus: row.proof_status == null ? null : String(row.proof_status),
     };
   });

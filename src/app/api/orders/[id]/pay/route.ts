@@ -11,6 +11,8 @@ import {
   createXenditRetail,
   createXenditVA,
 } from "@/lib/payment/xendit";
+import { createFaspayTransaction } from "@/lib/payment/faspay";
+import { generateQrisString } from "@/lib/payment/qris";
 import { auth } from "@/lib/session";
 
 function appBaseUrl() {
@@ -18,10 +20,28 @@ function appBaseUrl() {
 }
 
 async function makeQrImage(value: string) {
-  if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:")) {
+  if (value.startsWith("data:image/") || /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(value)) {
     return value;
   }
   return QRCode.toDataURL(value, { width: 280, margin: 2, errorCorrectionLevel: "M" });
+}
+
+function computeMethodExpiry(methodType: string, methodCode: string): Date | null {
+  if (methodType === "e_wallet") return null;
+  const isQris = methodType === "qr_code" || methodCode.includes("QRIS") || methodCode.includes("711") || methodCode.includes("836");
+  if (isQris) {
+    return new Date(Date.now() + 15 * 60 * 1000); // 15 menit
+  }
+  const isRetail =
+    methodType === "retail_outlet" ||
+    methodCode.toUpperCase().includes("INDOMARET") ||
+    methodCode.toUpperCase().includes("ALFAMART") ||
+    methodCode.includes("706") ||
+    methodCode.includes("707");
+  if (isRetail) {
+    return new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 jam / seharian
+  }
+  return new Date(Date.now() + 60 * 60 * 1000); // 1 jam
 }
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -50,6 +70,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   };
 
   if (order.status === "awaiting_payment") {
+    const expiresAt = order.expiresAt ?? computeMethodExpiry(method.type, method.code);
     const storedQr = order.gatewayPaymentUrl;
     if (storedQr && (method.type === "qr_code" || method.code.includes("QRIS") || storedQr.startsWith("000201"))) {
       return NextResponse.json({
@@ -58,19 +79,50 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           path: "qris",
           qrString: storedQr,
           qrImage: await makeQrImage(storedQr),
+          vaNumber: order.vaNumber,
+          expiresAt,
+        },
+      });
+    }
+    if (storedQr?.startsWith("http") && (method.type === "e_wallet" || method.type === "retail_outlet")) {
+      return NextResponse.json({
+        data: {
+          order,
+          path: "redirect",
+          checkoutUrl: storedQr,
+          paymentUrl: storedQr,
+          vaNumber: order.vaNumber,
+          expiresAt,
         },
       });
     }
     if (order.vaNumber) {
-      return NextResponse.json({ data: { order, path: "va", vaNumber: order.vaNumber } });
+      return NextResponse.json({
+        data: {
+          order,
+          path: "va",
+          vaNumber: order.vaNumber,
+          paymentUrl: storedQr?.startsWith("http") ? storedQr : null,
+          expiresAt,
+        },
+      });
     }
     if (method.provider === "midtrans" && order.gatewayTransactionId) {
       return NextResponse.json({
-        data: { order, path: "snap", snapToken: order.gatewayTransactionId },
+        data: { order, path: "snap", snapToken: order.gatewayTransactionId, expiresAt },
       });
     }
     if (storedQr?.startsWith("http")) {
-      return NextResponse.json({ data: { order, path: "redirect", checkoutUrl: storedQr } });
+      return NextResponse.json({
+        data: {
+          order,
+          path: "redirect",
+          checkoutUrl: storedQr,
+          paymentUrl: storedQr,
+          vaNumber: order.vaNumber,
+          expiresAt,
+        },
+      });
     }
   }
 
@@ -106,10 +158,12 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           : qrString
             ? await makeQrImage(qrString)
             : null;
+        const expiresAt = order.expiresAt ?? computeMethodExpiry(method.type, method.code);
         const updated = await updateOrderStatus(order.id, "awaiting_payment", {
           vaNumber: charged.vaNumber ?? null,
           gatewayTransactionId: charged.transactionId || null,
           gatewayPaymentUrl: qrString ?? charged.redirectUrl ?? charged.qrImageUrl ?? null,
+          expiresAt,
         });
         await createPaymentLog({
           orderNumber: order.orderNumber,
@@ -124,17 +178,17 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         });
         if (qrImage) {
           return NextResponse.json({
-            data: { order: updated, path: "qris", qrString, qrImage },
+            data: { order: updated, path: "qris", qrString, qrImage, expiresAt: updated.expiresAt ?? expiresAt },
           });
         }
         if (charged.vaNumber) {
           return NextResponse.json({
-            data: { order: updated, path: "va", vaNumber: charged.vaNumber },
+            data: { order: updated, path: "va", vaNumber: charged.vaNumber, expiresAt: updated.expiresAt ?? expiresAt },
           });
         }
         if (charged.redirectUrl) {
           return NextResponse.json({
-            data: { order: updated, path: "redirect", checkoutUrl: charged.redirectUrl },
+            data: { order: updated, path: "redirect", checkoutUrl: charged.redirectUrl, expiresAt: updated.expiresAt ?? expiresAt },
           });
         }
       }
@@ -144,9 +198,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         customerDetails: customer,
         methodCode: method.code,
       });
+      const expiresAt = order.expiresAt ?? computeMethodExpiry(method.type, method.code);
       const updated = await updateOrderStatus(order.id, "awaiting_payment", {
         gatewayPaymentUrl: snap.redirect_url,
         gatewayTransactionId: snap.token,
+        expiresAt,
       });
       await createPaymentLog({
         orderNumber: order.orderNumber,
@@ -156,7 +212,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         httpStatus: 200,
       });
       return NextResponse.json({
-        data: { order: updated, path: "snap", snapToken: snap.token },
+        data: { order: updated, path: "snap", snapToken: snap.token, expiresAt: updated.expiresAt ?? expiresAt },
       });
     }
 
@@ -165,7 +221,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         return NextResponse.json({ error: "Xendit is not configured" }, { status: 400 });
       }
 
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const expiresAt = order.expiresAt ?? computeMethodExpiry(method.type, method.code);
       const successUrl = `${appBaseUrl()}/checkout/success?orderNumber=${order.orderNumber}`;
       const failUrl = `${appBaseUrl()}/checkout?courseId=${order.courseId}`;
 
@@ -175,7 +231,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           methodCode: method.code,
           name: user.name,
           amount,
-          expiresAt,
+          expiresAt: expiresAt ?? new Date(Date.now() + 60 * 60 * 1000),
         });
         const updated = await updateOrderStatus(order.id, "awaiting_payment", {
           vaNumber: va.account_number,
@@ -190,7 +246,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           httpStatus: 200,
         });
         return NextResponse.json({
-          data: { order: updated, path: "va", vaNumber: va.account_number, expiresAt },
+          data: { order: updated, path: "va", vaNumber: va.account_number, expiresAt: updated.expiresAt ?? expiresAt },
         });
       }
 
@@ -204,6 +260,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         const updated = await updateOrderStatus(order.id, "awaiting_payment", {
           gatewayTransactionId: qr.id,
           gatewayPaymentUrl: qr.qr_string,
+          expiresAt,
         });
         await createPaymentLog({
           orderNumber: order.orderNumber,
@@ -213,7 +270,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           httpStatus: 200,
         });
         return NextResponse.json({
-          data: { order: updated, path: "qris", qrString: qr.qr_string, qrImage },
+          data: { order: updated, path: "qris", qrString: qr.qr_string, qrImage, expiresAt: updated.expiresAt ?? expiresAt },
         });
       }
 
@@ -255,6 +312,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         const updated = await updateOrderStatus(order.id, "awaiting_payment", {
           vaNumber: retail.payment_code,
           gatewayTransactionId: retail.id,
+          expiresAt,
         });
         await createPaymentLog({
           orderNumber: order.orderNumber,
@@ -264,9 +322,148 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           httpStatus: 200,
         });
         return NextResponse.json({
-          data: { order: updated, path: "va", vaNumber: retail.payment_code },
+          data: { order: updated, path: "va", vaNumber: retail.payment_code, expiresAt: updated.expiresAt ?? expiresAt },
         });
       }
+    }
+
+    if (method.provider === "faspay") {
+      const charge = await createFaspayTransaction({
+        orderNumber: order.orderNumber,
+        grossAmount: amount,
+        methodCode: method.code,
+        methodType: method.type,
+        customerDetails: customer,
+      });
+
+      if (!charge.success) {
+        throw new Error(charge.error || "Faspay transaction creation failed");
+      }
+
+      const isQrisMethod =
+        method.type === "qr_code" ||
+        method.code.includes("QRIS") ||
+        method.code.includes("711") ||
+        method.code.includes("836");
+
+      let qrString = charge.qrString ?? null;
+      let qrUrl = charge.qrUrl ?? null;
+
+      // Gateway mentor / mock tidak mengembalikan URL/string untuk QRIS, generate payload EMVCo QRIS resmi
+      if (isQrisMethod && !qrString && !qrUrl) {
+        qrString = generateQrisString({
+          orderNumber: order.orderNumber,
+          amount,
+          merchantName: "FluencyHub",
+        });
+      }
+
+      const qrImage = qrString
+        ? await makeQrImage(qrString)
+        : qrUrl
+          ? await makeQrImage(qrUrl)
+          : null;
+      const expiresAt = order.expiresAt ?? computeMethodExpiry(method.type, method.code);
+      const updated = await updateOrderStatus(order.id, "awaiting_payment", {
+        vaNumber: charge.vaNumber ?? null,
+        gatewayTransactionId: charge.transactionId ?? null,
+        gatewayPaymentUrl: qrString ?? qrUrl ?? charge.redirectUrl ?? null,
+        expiresAt,
+      });
+
+      await createPaymentLog({
+        orderNumber: order.orderNumber,
+        endpoint: "faspay.transactions.create",
+        logType: "payment_request",
+        responsePayload: JSON.stringify({
+          ...charge,
+          generatedQr: Boolean(isQrisMethod && !charge.qrString && !charge.qrUrl),
+        }),
+        httpStatus: 200,
+      });
+
+      if (isQrisMethod && qrImage) {
+        return NextResponse.json({
+          data: {
+            order: updated,
+            path: "qris",
+            qrString: qrString || qrUrl,
+            qrImage,
+            vaNumber: null,
+            expiresAt: updated.expiresAt ?? expiresAt,
+          },
+        });
+      }
+
+      // Retail outlet (Indomaret, Alfamart) - langsung tampilkan kode bayar di halaman tanpa redirect
+      if (method.type === "retail_outlet" || method.code?.includes("706") || method.code?.includes("707")) {
+        return NextResponse.json({
+          data: {
+            order: updated,
+            path: "retail",
+            vaNumber: charge.vaNumber ?? updated.vaNumber ?? null,
+            paymentCode: charge.vaNumber ?? updated.vaNumber ?? null,
+            expiresAt: updated.expiresAt ?? expiresAt,
+          },
+        });
+      }
+
+      // Virtual Account - langsung tampilkan nomor VA di halaman
+      if (charge.vaNumber && method.type === "va") {
+        return NextResponse.json({
+          data: {
+            order: updated,
+            path: "va",
+            vaNumber: charge.vaNumber,
+            expiresAt: updated.expiresAt ?? expiresAt,
+          },
+        });
+      }
+
+      // E-Wallet dengan redirectUrl resmi
+      if (charge.redirectUrl && method.type === "e_wallet") {
+        return NextResponse.json({
+          data: {
+            order: updated,
+            path: "redirect",
+            checkoutUrl: charge.redirectUrl,
+            paymentUrl: charge.redirectUrl,
+            vaNumber: charge.vaNumber ?? updated.vaNumber ?? null,
+            expiresAt: updated.expiresAt ?? expiresAt,
+          },
+        });
+      }
+
+      if (charge.vaNumber) {
+        return NextResponse.json({
+          data: {
+            order: updated,
+            path: "va",
+            vaNumber: charge.vaNumber,
+          },
+        });
+      }
+
+      if (charge.redirectUrl) {
+        return NextResponse.json({
+          data: {
+            order: updated,
+            path: "redirect",
+            checkoutUrl: charge.redirectUrl,
+            paymentUrl: charge.redirectUrl,
+            vaNumber: charge.vaNumber ?? updated.vaNumber ?? null,
+          },
+        });
+      }
+
+      return NextResponse.json({
+        data: {
+          order: updated,
+          path: "va",
+          vaNumber: charge.vaNumber || order.orderNumber,
+          paymentUrl: charge.redirectUrl ?? null,
+        },
+      });
     }
 
     return NextResponse.json({ error: "Unsupported payment method" }, { status: 400 });

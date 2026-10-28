@@ -31,7 +31,7 @@ export function CancelButton({ orderId }: { orderId: number }) {
       <button 
         onClick={() => setShowModal(true)} 
         disabled={busy} 
-        className="btn btn-secondary w-full sm:w-auto text-sm py-2 px-6 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 disabled:opacity-50"
+        className="btn btn-secondary w-full sm:w-auto text-xs sm:text-sm font-semibold py-2.5 px-4 border-zinc-200 text-zinc-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors disabled:opacity-50"
       >
         Batalkan Transaksi
       </button>

@@ -8,7 +8,7 @@ export type PaymentMethodType =
   | "credit_card"
   | "retail_outlet"
   | "manual_transfer";
-export type PaymentProvider = "midtrans" | "xendit" | "manual";
+export type PaymentProvider = "midtrans" | "xendit" | "manual" | "faspay";
 export type OrderStatus =
   | "pending"
   | "awaiting_payment"
@@ -278,7 +278,7 @@ export interface Faq {
 export interface WebhookLog {
   id: number;
   orderNumber: string | null;
-  provider: "midtrans" | "xendit";
+  provider: "midtrans" | "xendit" | "faspay";
   eventType: string | null;
   gatewayTxnId: string | null;
   payloadJson: unknown;

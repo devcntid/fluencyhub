@@ -9,7 +9,7 @@ const Schema = z.object({
   name: z.string().optional(),
   code: z.string().optional(),
   type: z.enum(["e_wallet", "va", "qr_code", "credit_card", "retail_outlet", "manual_transfer"]).optional(),
-  provider: z.enum(["midtrans", "xendit", "manual"]).optional(),
+  provider: z.enum(["midtrans", "xendit", "manual", "faspay"]).optional(),
   adminFeeFlat: z.number().optional(),
   adminFeePct: z.string().optional(),
   accountNumber: z.string().nullable().optional(),

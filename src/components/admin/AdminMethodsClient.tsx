@@ -179,6 +179,7 @@ export function AdminMethodsClient({ initialMethods }: { initialMethods: Payment
                     <option value="">-- Pilih --</option>
                     <option value="midtrans">Midtrans</option>
                     <option value="xendit">Xendit</option>
+                    <option value="faspay">Faspay</option>
                     <option value="manual">Manual</option>
                   </select>
                 </div>

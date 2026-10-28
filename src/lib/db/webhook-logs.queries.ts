@@ -26,7 +26,7 @@ export async function listWebhookLogsRecent(limit = 20): Promise<WebhookLog[]> {
 
 export async function createWebhookLog(data: {
   orderNumber?: string | null;
-  provider: "midtrans" | "xendit";
+  provider: "midtrans" | "xendit" | "faspay";
   eventType?: string | null;
   gatewayTxnId?: string | null;
   payloadJson: unknown;

@@ -53,7 +53,11 @@ export async function POST(req: Request) {
     if (existing.status === "paid") {
       return NextResponse.json({ error: "You already have a paid order for this course" }, { status: 409 });
     }
-    if (existing.paymentMethodId === paymentMethodId) {
+    const isOrderExpired = Boolean(
+      existing.status === "expired" ||
+      (existing.expiresAt && new Date(existing.expiresAt).getTime() <= Date.now())
+    );
+    if (!isOrderExpired && existing.paymentMethodId === paymentMethodId) {
       return NextResponse.json({ data: existing }, { status: 200 });
     }
     await cancelOrder(existing.id);
@@ -88,6 +92,31 @@ export async function POST(req: Request) {
   const adminFee = method.adminFeeFlat + (subtotal * Number(method.adminFeePct)) / 100;
   const total = Math.max(0, subtotal - discount + adminFee);
 
+  const isQrisMethod =
+    method.type === "qr_code" ||
+    method.code.includes("QRIS") ||
+    method.code.includes("711") ||
+    method.code.includes("836");
+  const isRetailMethod =
+    method.type === "retail_outlet" ||
+    method.code.toUpperCase().includes("INDOMARET") ||
+    method.code.toUpperCase().includes("ALFAMART") ||
+    method.code.includes("706") ||
+    method.code.includes("707");
+
+  let initialExpiresAt: Date | null = null;
+  if (method.type === "e_wallet") {
+    initialExpiresAt = null;
+  } else if (isQrisMethod) {
+    initialExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  } else if (isRetailMethod) {
+    initialExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  } else if (method.type === "manual_transfer" || method.provider === "manual") {
+    initialExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  } else {
+    initialExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 jam default VA
+  }
+
   const order = await createOrder({
     userId,
     courseId,
@@ -98,6 +127,7 @@ export async function POST(req: Request) {
     discountAmount: discount.toFixed(2),
     totalAmount: total.toFixed(2),
     couponCode: couponCode ?? null,
+    expiresAt: initialExpiresAt,
   });
   await createPaymentLog({
     orderNumber: order.orderNumber,
