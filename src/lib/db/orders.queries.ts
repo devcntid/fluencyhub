@@ -36,14 +36,22 @@ export async function getActiveOrderForUserCourse(
   userId: number,
   courseId: number,
 ): Promise<Order | null> {
+  // Pastikan order yang sudah lewat batas waktu otomatis diubah ke 'expired'
+  await sql`
+    UPDATE orders
+    SET status = 'expired', updated_at = NOW()
+    WHERE user_id = ${userId}
+      AND course_id = ${courseId}
+      AND status IN ('pending', 'awaiting_payment')
+      AND expires_at IS NOT NULL
+      AND expires_at <= NOW()
+  `.catch(() => {});
+
   const rows = await sql`
     SELECT * FROM orders
     WHERE user_id = ${userId}
       AND course_id = ${courseId}
-      AND (
-        status IN ('pending_verification', 'paid')
-        OR (status IN ('pending', 'awaiting_payment') AND (expires_at IS NULL OR expires_at > NOW()))
-      )
+      AND status IN ('pending', 'awaiting_payment', 'pending_verification', 'paid')
     ORDER BY created_at DESC
     LIMIT 1
   `;
@@ -71,6 +79,16 @@ export async function createOrder(data: {
   couponCode?: string | null;
   expiresAt?: Date | null;
 }): Promise<Order> {
+  // Cegah bentrok idx_orders_user_course_active: update order pending sebelumnya untuk kursus ini
+  await sql`
+    UPDATE orders
+    SET status = CASE WHEN (expires_at IS NOT NULL AND expires_at <= NOW()) THEN 'expired' ELSE 'cancelled' END,
+        updated_at = NOW()
+    WHERE user_id = ${data.userId}
+      AND course_id = ${data.courseId}
+      AND status IN ('pending', 'awaiting_payment')
+  `.catch(() => {});
+
   const expiresAt = data.expiresAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
   const rows = await sql`
     INSERT INTO orders (
