@@ -77,6 +77,8 @@ export function VAInstructions({
   const isEWallet = methodType === "e_wallet" && !isQris;
   const isVA = !isRetail && !isQris && !isEWallet;
 
+  const [mounted, setMounted] = useState(false);
+
   // Aturan countdown batas waktu:
   // - QRIS: 15 menit (15 * 60 detik)
   // - Gerai Retail (Indomaret / Alfamart): 24 jam / seharian (24 * 60 * 60 detik)
@@ -85,57 +87,48 @@ export function VAInstructions({
   const hasCountdown = !isEWallet;
   const defaultDurationSeconds = isQris ? 15 * 60 : isRetail ? 24 * 60 * 60 : 60 * 60;
 
-  // Target epoch ms absolut kapan waktu pembayaran berakhir
-  const targetExpiryMs = useMemo(() => {
-    if (!hasCountdown) return null;
+  // Nilai awal dibuat deterministik agar HTML yang dihasilkan Server (SSR) dan Client awal sama persis
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(defaultDurationSeconds);
+
+  // Interval real-time countdown agar timer tetap jalan akurat meski tab ditutup/ditinggal
+  useEffect(() => {
+    setMounted(true);
+    if (!hasCountdown) return;
+
+    let targetMs: number | null = null;
 
     // 1. Prioritas utama: expiresAt dari database
     if (expiresAt) {
       const ms = new Date(expiresAt).getTime();
-      if (!isNaN(ms)) return ms;
+      if (!isNaN(ms)) targetMs = ms;
     }
 
     // 2. Prioritas kedua: hitung dari createdAt order + durasi metode
-    if (createdAt) {
+    if (!targetMs && createdAt) {
       const ms = new Date(createdAt).getTime();
-      if (!isNaN(ms)) return ms + defaultDurationSeconds * 1000;
+      if (!isNaN(ms)) targetMs = ms + defaultDurationSeconds * 1000;
     }
 
     // 3. Prioritas ketiga: localStorage per orderNumber
-    if (typeof window !== "undefined" && orderNumber) {
+    if (!targetMs && typeof window !== "undefined" && orderNumber) {
       const storageKey = `fluencyhub_expiry_${orderNumber}`;
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const ms = parseInt(stored, 10);
-        if (!isNaN(ms)) return ms;
+        if (!isNaN(ms)) targetMs = ms;
       }
-      const newTarget = Date.now() + defaultDurationSeconds * 1000;
-      localStorage.setItem(storageKey, String(newTarget));
-      return newTarget;
+      if (!targetMs) {
+        targetMs = Date.now() + defaultDurationSeconds * 1000;
+        localStorage.setItem(storageKey, String(targetMs));
+      }
     }
 
-    return null;
-  }, [hasCountdown, expiresAt, createdAt, defaultDurationSeconds, orderNumber]);
-
-  // Sisa waktu dalam detik secara real-time
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(() => {
-    if (!hasCountdown) return 0;
-    if (targetExpiryMs) {
-      return Math.max(0, Math.floor((targetExpiryMs - Date.now()) / 1000));
-    }
-    return defaultDurationSeconds;
-  });
-
-  // Interval real-time countdown agar timer tetap jalan akurat meski tab ditutup/ditinggal
-  useEffect(() => {
-    if (!hasCountdown || !targetExpiryMs) return;
-
-    if (typeof window !== "undefined" && orderNumber) {
-      localStorage.setItem(`fluencyhub_expiry_${orderNumber}`, String(targetExpiryMs));
+    if (!targetMs) {
+      targetMs = Date.now() + defaultDurationSeconds * 1000;
     }
 
     const updateRemaining = () => {
-      const diff = Math.max(0, Math.floor((targetExpiryMs - Date.now()) / 1000));
+      const diff = Math.max(0, Math.floor((targetMs! - Date.now()) / 1000));
       setSecondsRemaining(diff);
       return diff;
     };
@@ -150,17 +143,19 @@ export function VAInstructions({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [hasCountdown, targetExpiryMs, orderNumber]);
+  }, [hasCountdown, expiresAt, createdAt, defaultDurationSeconds, orderNumber]);
 
   const hours = Math.floor(secondsRemaining / 3600);
   const minutes = Math.floor((secondsRemaining % 3600) / 60);
   const seconds = secondsRemaining % 60;
-  const isExpired = secondsRemaining <= 0 || orderStatus === "expired";
+  const isExpired = mounted ? (secondsRemaining <= 0 || orderStatus === "expired") : (orderStatus === "expired");
   const pad = (n: number) => String(n).padStart(2, "0");
 
   useEffect(() => {
-    onExpireChange?.(isExpired);
-  }, [isExpired, onExpireChange]);
+    if (mounted) {
+      onExpireChange?.(isExpired);
+    }
+  }, [isExpired, mounted, onExpireChange]);
 
   useEffect(() => {
     if (isExpired && showFullQrModal) {
@@ -468,10 +463,10 @@ export function VAInstructions({
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm font-extrabold text-zinc-900 leading-tight">
+                <p className="text-xs sm:text-sm font-extrabold text-zinc-900 leading-tight" suppressHydrationWarning>
                   {isExpired ? "Batas Waktu Pembayaran Habis" : "Selesaikan Pembayaran Dalam"}
                 </p>
-                <p className="text-[11px] sm:text-xs font-medium text-zinc-500 mt-0.5 leading-snug">
+                <p className="text-[11px] sm:text-xs font-medium text-zinc-500 mt-0.5 leading-snug" suppressHydrationWarning>
                   {isExpired
                     ? "Transaksi ini telah kedaluwarsa. Silakan lakukan pemesanan ulang."
                     : `Batas waktu pembayaran ${isQris ? "15 menit" : isRetail ? "24 jam" : "1 jam"}`}
@@ -481,20 +476,20 @@ export function VAInstructions({
 
             <div className="flex items-center justify-start sm:justify-end self-stretch sm:self-auto shrink-0">
               {isExpired ? (
-                <span className="inline-flex items-center gap-1 rounded-xl bg-rose-100 text-rose-700 px-3 py-1.5 text-xs font-bold font-mono">
+                <span suppressHydrationWarning className="inline-flex items-center gap-1 rounded-xl bg-rose-100 text-rose-700 px-3 py-1.5 text-xs font-bold font-mono">
                   Kedaluwarsa
                 </span>
               ) : (
-                <div className="flex items-center justify-center gap-1 font-mono font-extrabold text-sm sm:text-base text-zinc-900 bg-zinc-100/80 border border-zinc-200/90 px-3 py-1.5 rounded-xl shadow-2xs w-full sm:w-auto">
+                <div suppressHydrationWarning className="flex items-center justify-center gap-1 font-mono font-extrabold text-sm sm:text-base text-zinc-900 bg-zinc-100/80 border border-zinc-200/90 px-3 py-1.5 rounded-xl shadow-2xs w-full sm:w-auto">
                   {hours > 0 && (
                     <>
-                      <span className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(hours)}</span>
+                      <span suppressHydrationWarning className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(hours)}</span>
                       <span className="text-zinc-400 font-bold">:</span>
                     </>
                   )}
-                  <span className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(minutes)}</span>
+                  <span suppressHydrationWarning className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(minutes)}</span>
                   <span className="text-zinc-400 font-bold">:</span>
-                  <span className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(seconds)}</span>
+                  <span suppressHydrationWarning className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(seconds)}</span>
                 </div>
               )}
             </div>
@@ -789,12 +784,12 @@ export function VAInstructions({
             Detail Transaksi
           </h3>
           {isExpired ? (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-rose-700 dark:text-rose-400">
+            <span suppressHydrationWarning className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-rose-700 dark:text-rose-400">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
               <span className="whitespace-nowrap">Kedaluwarsa</span>
             </span>
           ) : (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-700 dark:text-amber-400">
+            <span suppressHydrationWarning className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-700 dark:text-amber-400">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
               <span className="whitespace-nowrap">Menunggu Pembayaran</span>
             </span>
