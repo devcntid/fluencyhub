@@ -158,7 +158,10 @@ export function CheckoutStepper({
         if (contentType && contentType.indexOf("application/json") !== -1) {
           const json = await res.json();
           if (json.data?.status === "paid") {
-            router.push(`/checkout/success?orderNumber=${orderNumber}`);
+            const num = orderNumber || json.data?.order?.orderNumber;
+            window.location.href = num
+              ? `/checkout/success?orderNumber=${encodeURIComponent(num)}`
+              : `/dashboard`;
           }
         }
       } catch {

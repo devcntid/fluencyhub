@@ -37,17 +37,26 @@ export default async function CheckoutPage({
     redirect(`/auth/signin?callbackUrl=${encodeURIComponent(`/checkout?courseId=${courseId}${params.orderNumber ? `&orderNumber=${params.orderNumber}` : ""}`)}`);
   }
 
-  if (session?.user.id) {
-    const enrolled = await checkEnrollment(Number(session.user.id), courseId);
-    if (enrolled) redirect(`/dashboard/classroom?tab=videos&c=${courseId}`);
-  }
-
   let dbUser = null;
   if (session?.user?.id) {
     dbUser = await getUserById(Number(session.user.id));
     if (!existingOrder) {
       existingOrder = await getActiveOrderForUserCourse(Number(session.user.id), courseId);
     }
+
+    // Jika order baru saja lunas, arahkan ke halaman status sukses dulu agar user melihat bukti bayar!
+    if (existingOrder && existingOrder.status === "paid") {
+      const paidTime = existingOrder.paidAt
+        ? new Date(existingOrder.paidAt).getTime()
+        : new Date(existingOrder.updatedAt).getTime();
+      const isRecent = Date.now() - paidTime < 60 * 60 * 1000; // 1 jam terakhir
+      if (isRecent) {
+        redirect(`/checkout/success?orderNumber=${existingOrder.orderNumber}`);
+      }
+    }
+
+    const enrolled = await checkEnrollment(Number(session.user.id), courseId);
+    if (enrolled) redirect(`/dashboard/classroom?tab=videos&c=${courseId}`);
   }
 
   return (
