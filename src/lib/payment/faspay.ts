@@ -274,6 +274,10 @@ export function verifyGatewaySignature(
   return false;
 }
 
+export function getGatewayAdminToken(): string {
+  return process.env.PAYMENT_GATEWAY_ADMIN_TOKEN ?? "20d3c3ff5a133a82c4eb29019178f2e7b6765d8f780eda37";
+}
+
 /**
  * Validates Faspay Legacy Notification signature
  */
@@ -287,7 +291,38 @@ export function verifyFaspayLegacySignature(
 }
 
 /**
+ * Triggers inline reconciliation on the gateway to fetch latest payment state from Faspay
+ */
+export async function reconcileGatewayTransaction(
+  transactionId: string,
+): Promise<{ outcome: string; status: string } | null> {
+  try {
+    const baseUrl = getGatewayBaseUrl();
+    const adminToken = getGatewayAdminToken();
+    const res = await fetch(`${baseUrl}/internal/reconciliation/${transactionId}?inline=true`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        "X-Operator": "fluencyhub_auto_reconcile",
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const data = (await res.json()) as { outcome?: string; status?: string };
+    return {
+      outcome: String(data.outcome || ""),
+      status: String(data.status || ""),
+    };
+  } catch (err) {
+    console.warn("Failed to auto-reconcile with gateway:", err);
+    return null;
+  }
+}
+
+/**
  * Query current transaction status directly from the Payment Gateway Orchestrator
+ * Automatically triggers inline reconciliation with Faspay if status is still PENDING.
  */
 export async function getFaspayTransactionStatus(
   orderNumber: string,
@@ -307,12 +342,27 @@ export async function getFaspayTransactionStatus(
 
     if (!res.ok) return null;
     const data = (await res.json()) as {
+      transaction_id?: string;
+      id?: string;
       status?: string;
       paid_at?: string | null;
     };
+
+    let currentStatus = String(data.status || "");
+    const paidAt = data.paid_at || null;
+    const resolvedTxnId = transactionId || data.transaction_id || data.id;
+
+    // AUTO-RECONCILE: If status is still PENDING and we have transactionId, trigger inline reconciliation with Faspay!
+    if ((currentStatus === "PENDING" || currentStatus === "pending") && resolvedTxnId) {
+      const rec = await reconcileGatewayTransaction(resolvedTxnId);
+      if (rec && rec.status) {
+        currentStatus = rec.status;
+      }
+    }
+
     return {
-      status: String(data.status || ""),
-      paidAt: data.paid_at || null,
+      status: currentStatus,
+      paidAt,
     };
   } catch (err) {
     console.warn("Failed to fetch Faspay transaction status:", err);
