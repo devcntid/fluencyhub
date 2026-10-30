@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { sql } from "@/lib/db/client";
 import { getCourseById } from "@/lib/db/courses.queries";
+import { mapOrder } from "@/lib/db/mappers";
 import { getOrderByNumber, updateOrderStatus } from "@/lib/db/orders.queries";
 import { createWebhookLog } from "@/lib/db/webhook-logs.queries";
 import { markOrderPaid } from "@/lib/orders";
@@ -12,6 +14,26 @@ import { isWebhookDuplicate } from "@/lib/redis";
 function formatFaspayDate(d = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+async function findFaspayOrder(
+  orderNumber?: string | null,
+  gatewayTxnId?: string | null,
+  providerRef?: string | null,
+) {
+  if (orderNumber) {
+    const o = await getOrderByNumber(orderNumber);
+    if (o) return o;
+  }
+  if (gatewayTxnId) {
+    const rows = await sql`SELECT * FROM orders WHERE gateway_transaction_id = ${gatewayTxnId} ORDER BY id DESC LIMIT 1`;
+    if (rows[0]) return mapOrder(rows[0] as Record<string, unknown>);
+  }
+  if (providerRef) {
+    const rows = await sql`SELECT * FROM orders WHERE va_number = ${providerRef} ORDER BY id DESC LIMIT 1`;
+    if (rows[0]) return mapOrder(rows[0] as Record<string, unknown>);
+  }
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -37,20 +59,47 @@ export async function POST(req: Request) {
 
   const sigHeader = req.headers.get("x-gateway-signature");
   const timeHeader = req.headers.get("x-gateway-timestamp");
-  const isGatewayEvent = Boolean(sigHeader || body.event_type || (body.data as Record<string, unknown> | undefined)?.transaction_id);
+  const isGatewayEvent = Boolean(
+    sigHeader ||
+    body.event_type ||
+    (body.data as Record<string, unknown> | undefined)?.transaction_id ||
+    (body.transaction as Record<string, unknown> | undefined)?.transaction_id
+  );
 
   // 1. Handling Payment Service Gateway Webhook
   if (isGatewayEvent && body.event_type) {
     const valid = verifyGatewaySignature(sigHeader, timeHeader, rawBody);
-    const data = (body.data as Record<string, unknown> | undefined) ?? {};
-    const orderNumber = String(data.merchant_reference ?? body.merchant_reference ?? "");
+    const txn =
+      (body.transaction as Record<string, unknown> | undefined) ??
+      (body.data as Record<string, unknown> | undefined) ??
+      {};
+    const orderNumber = String(
+      txn.merchant_reference ??
+      body.merchant_reference ??
+      txn.order_number ??
+      body.order_number ??
+      ""
+    );
+    const gatewayTxnId = String(
+      txn.transaction_id ??
+      txn.id ??
+      (body.data as Record<string, unknown> | undefined)?.transaction_id ??
+      body.transaction_id ??
+      ""
+    );
+    const providerRef = String(
+      txn.provider_reference ??
+      txn.virtual_account_no ??
+      txn.va_number ??
+      ""
+    );
     const eventType = String(body.event_type ?? "");
 
     await createWebhookLog({
-      orderNumber,
+      orderNumber: orderNumber || providerRef || gatewayTxnId,
       provider: "faspay",
       eventType,
-      gatewayTxnId: String(data.transaction_id ?? ""),
+      gatewayTxnId,
       payloadJson: body,
       signatureValid: valid,
       processingStatus: valid ? "received" : "failed",
@@ -61,19 +110,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
+    const order = await findFaspayOrder(orderNumber, gatewayTxnId, providerRef);
+
     if (eventType === "transaction.succeeded") {
-      const order = await getOrderByNumber(orderNumber);
       if (order && order.status !== "paid") {
         const course = await getCourseById(order.courseId);
         if (course) await markOrderPaid(order, course);
       }
     } else if (eventType === "transaction.failed") {
-      const order = await getOrderByNumber(orderNumber);
       if (order && order.status !== "paid") {
         await updateOrderStatus(order.id, "failed");
       }
     } else if (eventType === "transaction.expired") {
-      const order = await getOrderByNumber(orderNumber);
       if (order && order.status !== "paid") {
         await updateOrderStatus(order.id, "expired");
       }
@@ -93,7 +141,7 @@ export async function POST(req: Request) {
   const validSig = verifyFaspayLegacySignature(billNo, statusCode, signature);
 
   await createWebhookLog({
-    orderNumber: billNo,
+    orderNumber: billNo || trxId,
     provider: "faspay",
     eventType: `status_${statusCode}`,
     gatewayTxnId: trxId,
@@ -128,8 +176,8 @@ export async function POST(req: Request) {
     });
   }
 
-  // Find order and mark paid
-  const order = await getOrderByNumber(billNo);
+  // Find order and mark paid (support lookup by billNo, or by trxId / va_number)
+  const order = await findFaspayOrder(billNo, null, trxId);
   if (order) {
     if (statusCode === "2" && order.status !== "paid") {
       // 2 = Payment Sukses

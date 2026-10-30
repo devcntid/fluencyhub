@@ -690,6 +690,35 @@ export function VAInstructions({
       )}
 
       {/* 3. VIRTUAL ACCOUNT: Highlight Nomor VA */}
+      {isVA && !vaNumber && (
+        <div className="mb-4 sm:mb-5 rounded-2xl border-2 border-amber-200 bg-amber-50/70 p-4 sm:p-6 text-center shadow-xs">
+          <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-2.5">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <h4 className="text-base font-bold text-amber-900 mb-1">Nomor Virtual Account Belum Terbit</h4>
+          <p className="text-xs sm:text-sm text-amber-700 max-w-md mx-auto mb-4 leading-relaxed">
+            Nomor Virtual Account belum berhasil digenerate oleh server gateway. Silakan buat tagihan baru atau pilih metode lain.
+          </p>
+          <button
+            type="button"
+            onClick={onReorder}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-black hover:bg-zinc-800 text-white px-5 py-2.5 font-bold text-xs sm:text-sm shadow-xs transition active:scale-95 cursor-pointer"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+              <path d="M3 21v-5h5"/>
+            </svg>
+            <span>Pesan Ulang / Buat Tagihan Baru</span>
+          </button>
+        </div>
+      )}
+
       {isVA && vaNumber && (
         <div className={`mb-4 sm:mb-5 rounded-2xl border-2 p-4 sm:p-6 text-center shadow-xs min-w-0 overflow-hidden ${
           isExpired ? "border-rose-200 bg-rose-50/25" : "border-zinc-200 bg-white"
@@ -1004,7 +1033,7 @@ export function VAInstructions({
                   <ol className="list-decimal list-inside space-y-1.5 text-xs text-[var(--text-2)] leading-relaxed">
                     <li>Buka aplikasi m-Banking di ponsel Anda dan lakukan login.</li>
                     <li>Pilih menu <strong>Transfer</strong> &gt; <strong>Virtual Account</strong>.</li>
-                    <li>Masukkan nomor Virtual Account: <strong className="font-mono">{vaNumber}</strong>.</li>
+                    <li>Masukkan nomor Virtual Account: <strong className="font-mono">{vaNumber || "(Belum terbit)"}</strong>.</li>
                     <li>Periksa detail tagihan <strong>FluencyHub</strong> dan nominal {totalAmount ? formatIdr(totalAmount) : ""}.</li>
                     <li>Masukkan PIN m-Banking untuk menyelesaikan transaksi.</li>
                   </ol>
@@ -1014,7 +1043,7 @@ export function VAInstructions({
                   <ol className="list-decimal list-inside space-y-1.5 text-xs text-[var(--text-2)] leading-relaxed">
                     <li>Masukkan kartu ATM dan PIN Anda di mesin ATM.</li>
                     <li>Pilih menu <strong>Transaksi Lainnya</strong> &gt; <strong>Transfer</strong> &gt; <strong>ke Rekening Virtual Account</strong>.</li>
-                    <li>Masukkan nomor Virtual Account: <strong className="font-mono">{vaNumber}</strong>.</li>
+                    <li>Masukkan nomor Virtual Account: <strong className="font-mono">{vaNumber || "(Belum terbit)"}</strong>.</li>
                     <li>Pastikan data tagihan sudah sesuai, lalu pilih <strong>Benar / Ya</strong>.</li>
                     <li>Ambil struk ATM sebagai bukti transaksi pembayaran Anda.</li>
                   </ol>

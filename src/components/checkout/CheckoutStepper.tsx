@@ -47,13 +47,16 @@ export function CheckoutStepper({
   initialStep,
 }: Props) {
   const router = useRouter();
+  const hasPaymentDetails = Boolean(
+    initialOrder?.vaNumber ||
+    initialOrder?.gatewayPaymentUrl ||
+    initialOrder?.status === "pending_verification"
+  );
+
   const [step, setStep] = useState(
     initialStep ??
       (initialOrder
-        ? initialOrder.status === "awaiting_payment" ||
-          initialOrder.status === "pending_verification" ||
-          Boolean(initialOrder.vaNumber || initialOrder.gatewayPaymentUrl) ||
-          (initialOrder.status === "pending" && initialOrder.paymentMethodId != null)
+        ? hasPaymentDetails
           ? 6
           : 4
         : 1)

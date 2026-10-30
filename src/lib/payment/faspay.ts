@@ -231,27 +231,47 @@ export async function createFaspayTransaction(params: FaspayChargeParams): Promi
 
 /**
  * Validates Gateway Webhook Signature (X-Gateway-Signature)
- * v1=HMAC_SHA256(secret, timestamp + '.' + body)
+ * v1=HMAC_SHA256(secret, timestamp + '.' + body) or HMAC_SHA256(secret, body)
  */
 export function verifyGatewaySignature(
   signatureHeader: string | null,
   timestampHeader: string | null,
   rawBody: string,
 ): boolean {
-  if (!signatureHeader || !timestampHeader) return false;
   const secret = getFaspayWebhookSecret();
-  if (!secret) return true; // development fallback if secret not set
+  // In dev / staging without secret configured, treat as valid
+  if (!secret) return true;
+  if (!signatureHeader) return false;
 
-  const expectedSig = crypto
+  const receivedSig = signatureHeader.replace(/^v1=/, "").trim();
+
+  // 1. Try with timestampHeader if provided: HMAC_SHA256(secret, timestamp + '.' + rawBody)
+  if (timestampHeader) {
+    const expectedSigWithTime = crypto
+      .createHmac("sha256", secret)
+      .update(`${timestampHeader}.${rawBody}`)
+      .digest("hex");
+    if (
+      expectedSigWithTime.length === receivedSig.length &&
+      crypto.timingSafeEqual(Buffer.from(expectedSigWithTime), Buffer.from(receivedSig))
+    ) {
+      return true;
+    }
+  }
+
+  // 2. Try rawBody directly: HMAC_SHA256(secret, rawBody)
+  const expectedSigRaw = crypto
     .createHmac("sha256", secret)
-    .update(`${timestampHeader}.${rawBody}`)
+    .update(rawBody)
     .digest("hex");
+  if (
+    expectedSigRaw.length === receivedSig.length &&
+    crypto.timingSafeEqual(Buffer.from(expectedSigRaw), Buffer.from(receivedSig))
+  ) {
+    return true;
+  }
 
-  const receivedSig = signatureHeader.replace(/^v1=/, "");
-  const bufExpected = Buffer.from(expectedSig);
-  const bufReceived = Buffer.from(receivedSig);
-  if (bufExpected.length !== bufReceived.length) return false;
-  return crypto.timingSafeEqual(bufExpected, bufReceived);
+  return false;
 }
 
 /**
@@ -263,7 +283,39 @@ export function verifyFaspayLegacySignature(
   providedSignature: string | null,
 ): boolean {
   if (!providedSignature) return false;
-  // If provided signature is valid hex format (sha1), we can verify
-  // In staging/sandbox or when secret is set, we ensure it's not empty
   return providedSignature.length >= 32;
+}
+
+/**
+ * Query current transaction status directly from the Payment Gateway Orchestrator
+ */
+export async function getFaspayTransactionStatus(
+  orderNumber: string,
+  transactionId?: string | null,
+): Promise<{ status: string; paidAt?: string | null } | null> {
+  try {
+    const token = await getFaspayAccessToken();
+    const baseUrl = getGatewayBaseUrl();
+    const endpoint = transactionId
+      ? `${baseUrl}/v1/transactions/${transactionId}`
+      : `${baseUrl}/v1/transactions/by-reference/${encodeURIComponent(orderNumber)}`;
+
+    const res = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      status?: string;
+      paid_at?: string | null;
+    };
+    return {
+      status: String(data.status || ""),
+      paidAt: data.paid_at || null,
+    };
+  } catch (err) {
+    console.warn("Failed to fetch Faspay transaction status:", err);
+    return null;
+  }
 }
