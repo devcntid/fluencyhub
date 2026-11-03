@@ -20,7 +20,11 @@ function appBaseUrl() {
 }
 
 async function makeQrImage(value: string) {
-  if (value.startsWith("data:image/") || /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(value)) {
+  if (
+    value.startsWith("data:image/") ||
+    /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(value) ||
+    value.includes("/__assets/qr/")
+  ) {
     return value;
   }
   return QRCode.toDataURL(value, { width: 280, margin: 2, errorCorrectionLevel: "M" });
@@ -352,8 +356,16 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       let qrString = charge.qrString ?? null;
       let qrUrl = charge.qrUrl ?? null;
 
-      // Gateway mentor / mock tidak mengembalikan URL/string untuk QRIS, generate payload EMVCo QRIS resmi
-      if (isQrisMethod && !qrString && !qrUrl) {
+      // Faspay QRIS: pastikan memakai URL aset PNG resmi dari Faspay
+      if (isQrisMethod && method.provider === "faspay") {
+        const trxId = charge.vaNumber || charge.transactionId;
+        if ((!qrUrl || !qrUrl.includes("/__assets/qr/")) && trxId) {
+          qrUrl = `https://debit-sandbox.faspay.co.id/__assets/qr/35357-${trxId}.png`;
+        }
+      }
+
+      // Gateway mentor / mock tidak mengembalikan URL/string untuk QRIS (hanya non-Faspay fallback)
+      if (isQrisMethod && !qrString && !qrUrl && method.provider !== "faspay") {
         qrString = generateQrisString({
           orderNumber: order.orderNumber,
           amount,
@@ -361,16 +373,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         });
       }
 
-      const qrImage = qrString
-        ? await makeQrImage(qrString)
-        : qrUrl
-          ? await makeQrImage(qrUrl)
-          : null;
+      const qrImage =
+        qrUrl && (qrUrl.startsWith("data:image/") || /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(qrUrl) || qrUrl.includes("/__assets/qr/"))
+          ? qrUrl
+          : qrString
+            ? await makeQrImage(qrString)
+            : qrUrl
+              ? await makeQrImage(qrUrl)
+              : null;
       const expiresAt = order.expiresAt ?? computeMethodExpiry(method.type, method.code);
       const updated = await updateOrderStatus(order.id, "awaiting_payment", {
         vaNumber: charge.vaNumber ?? null,
         gatewayTransactionId: charge.transactionId ?? null,
-        gatewayPaymentUrl: qrString ?? qrUrl ?? charge.redirectUrl ?? null,
+        gatewayPaymentUrl: qrUrl ?? qrString ?? charge.redirectUrl ?? null,
         expiresAt,
       });
 

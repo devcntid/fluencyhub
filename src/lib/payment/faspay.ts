@@ -194,10 +194,12 @@ export async function createFaspayTransaction(params: FaspayChargeParams): Promi
 
   const instruction = data.payment_instruction || {};
   let extractedTrxId: string | undefined;
+  let extractedMerchantId: string | undefined;
   if (instruction.qr_url) {
     try {
       const u = new URL(instruction.qr_url);
       extractedTrxId = u.searchParams.get("trx_id") || undefined;
+      extractedMerchantId = u.searchParams.get("merchant_id") || undefined;
     } catch {}
   }
 
@@ -212,7 +214,18 @@ export async function createFaspayTransaction(params: FaspayChargeParams): Promi
     instruction.qr_string ||
     instruction.qr_content ||
     instruction.qr_code;
-  const qrUrl = instruction.qr_url;
+  let qrUrl = instruction.qr_url;
+
+  // Faspay QRIS: Faspay hosts the official QRIS image at https://debit-sandbox.faspay.co.id/__assets/qr/${merchantId}-${trxId}.png
+  // Do not use the PWS web redirect page or synthetic QR string, use the authentic PNG image URL directly
+  if (paymentMethod === "QRIS" || channelCode === "711" || channelCode === "836") {
+    const trxId = data.provider_reference || extractedTrxId || vaNumber;
+    const merchantId = extractedMerchantId || process.env.FASPAY_MERCHANT_ID || "35357";
+    if (trxId) {
+      qrUrl = `https://debit-sandbox.faspay.co.id/__assets/qr/${merchantId}-${trxId}.png`;
+    }
+  }
+
   const redirectUrl =
     instruction.redirect_url ||
     instruction.checkout_url ||

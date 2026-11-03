@@ -76,8 +76,18 @@ export function CheckoutStepper({
   const [vaNumber, setVaNumber] = useState<string | null>(initialOrder?.vaNumber ?? null);
   const [qrString, setQrString] = useState<string | null>(initialOrder?.gatewayPaymentUrl ?? null);
   const [qrImage, setQrImage] = useState<string | null>(() => {
-    if (initialOrder?.gatewayPaymentUrl?.startsWith("data:image/")) {
-      return initialOrder.gatewayPaymentUrl;
+    const url = initialOrder?.gatewayPaymentUrl;
+    if (url) {
+      if (
+        url.startsWith("data:image/") ||
+        /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(url) ||
+        url.includes("/__assets/qr/")
+      ) {
+        return url;
+      }
+    }
+    if (initialOrder?.vaNumber && (initialOrder.vaNumber.startsWith("35357") || initialOrder.vaNumber.length >= 14)) {
+      return `https://debit-sandbox.faspay.co.id/__assets/qr/35357-${initialOrder.vaNumber}.png`;
     }
     return null;
   });

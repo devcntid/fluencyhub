@@ -169,16 +169,20 @@ export function VAInstructions({
     if (qrImage) {
       setInternalQr(qrImage);
     } else if (isQris && orderNumber) {
-      const qrisString = generateQrisString({
-        orderNumber,
-        amount: Number(totalAmount) || 0,
-        merchantName: merchantName || "FluencyHub",
-      });
-      QRCode.toDataURL(qrisString, { width: 280, margin: 2, errorCorrectionLevel: "M" })
-        .then((url) => setInternalQr(url))
-        .catch(() => {});
+      if (vaNumber && (vaNumber.startsWith("35357") || methodCode?.includes("711") || methodCode?.includes("836"))) {
+        setInternalQr(`https://debit-sandbox.faspay.co.id/__assets/qr/35357-${vaNumber}.png`);
+      } else {
+        const qrisString = generateQrisString({
+          orderNumber,
+          amount: Number(totalAmount) || 0,
+          merchantName: merchantName || "FluencyHub",
+        });
+        QRCode.toDataURL(qrisString, { width: 280, margin: 2, errorCorrectionLevel: "M" })
+          .then((url) => setInternalQr(url))
+          .catch(() => {});
+      }
     }
-  }, [qrImage, isQris, orderNumber, totalAmount, merchantName]);
+  }, [qrImage, isQris, orderNumber, totalAmount, merchantName, vaNumber, methodCode]);
 
   const activeQr = qrImage || internalQr;
 
@@ -475,21 +479,27 @@ export function VAInstructions({
             </div>
 
             <div className="flex items-center justify-start sm:justify-end self-stretch sm:self-auto shrink-0">
-              {isExpired ? (
-                <span suppressHydrationWarning className="inline-flex items-center gap-1 rounded-xl bg-rose-100 text-rose-700 px-3 py-1.5 text-xs font-bold font-mono">
+              {!mounted ? (
+                <div className="flex items-center justify-center gap-1 font-mono font-extrabold text-sm sm:text-base text-zinc-900 bg-zinc-100/80 border border-zinc-200/90 px-3 py-1.5 rounded-xl shadow-2xs w-full sm:w-auto">
+                  <span className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">--</span>
+                  <span className="text-zinc-400 font-bold">:</span>
+                  <span className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">--</span>
+                </div>
+              ) : isExpired ? (
+                <span className="inline-flex items-center gap-1 rounded-xl bg-rose-100 text-rose-700 px-3 py-1.5 text-xs font-bold font-mono">
                   Kedaluwarsa
                 </span>
               ) : (
-                <div suppressHydrationWarning className="flex items-center justify-center gap-1 font-mono font-extrabold text-sm sm:text-base text-zinc-900 bg-zinc-100/80 border border-zinc-200/90 px-3 py-1.5 rounded-xl shadow-2xs w-full sm:w-auto">
+                <div className="flex items-center justify-center gap-1 font-mono font-extrabold text-sm sm:text-base text-zinc-900 bg-zinc-100/80 border border-zinc-200/90 px-3 py-1.5 rounded-xl shadow-2xs w-full sm:w-auto">
                   {hours > 0 && (
                     <>
-                      <span suppressHydrationWarning className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(hours)}</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(hours)}</span>
                       <span className="text-zinc-400 font-bold">:</span>
                     </>
                   )}
-                  <span suppressHydrationWarning className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(minutes)}</span>
+                  <span className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(minutes)}</span>
                   <span className="text-zinc-400 font-bold">:</span>
-                  <span suppressHydrationWarning className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(seconds)}</span>
+                  <span className="px-2 py-0.5 rounded-lg bg-white text-zinc-900 font-bold border border-zinc-200/70 shadow-2xs">{pad(seconds)}</span>
                 </div>
               )}
             </div>
