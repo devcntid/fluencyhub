@@ -62,6 +62,14 @@ export function CheckoutStepper({
         : 1)
   );
   const [methodId, setMethodId] = useState<number | null>(initialOrder?.paymentMethodId ?? null);
+  const method = methods.find((m) => m.id === methodId) ?? null;
+  const isQrisMethod = Boolean(
+    method?.type === "qr_code" ||
+    method?.code?.includes("711") ||
+    method?.code?.includes("836") ||
+    method?.code?.toUpperCase().includes("QRIS")
+  );
+
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [wa, setWa] = useState(user?.whatsappNumber ?? "");
@@ -74,8 +82,11 @@ export function CheckoutStepper({
   const [file, setFile] = useState<File | null>(null);
   const [snapToken, setSnapToken] = useState<string | null>(null);
   const [vaNumber, setVaNumber] = useState<string | null>(initialOrder?.vaNumber ?? null);
-  const [qrString, setQrString] = useState<string | null>(initialOrder?.gatewayPaymentUrl ?? null);
+  const [qrString, setQrString] = useState<string | null>(
+    isQrisMethod ? (initialOrder?.gatewayPaymentUrl ?? null) : null
+  );
   const [qrImage, setQrImage] = useState<string | null>(() => {
+    if (!isQrisMethod) return null;
     const url = initialOrder?.gatewayPaymentUrl;
     if (url) {
       if (
@@ -86,23 +97,30 @@ export function CheckoutStepper({
         return url;
       }
     }
-    if (initialOrder?.vaNumber && (initialOrder.vaNumber.startsWith("35357") || initialOrder.vaNumber.length >= 14)) {
+    if (initialOrder?.vaNumber && (method?.code?.includes("711") || method?.code?.includes("836"))) {
       return `https://debit-sandbox.faspay.co.id/__assets/qr/35357-${initialOrder.vaNumber}.png`;
     }
     return null;
   });
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(initialOrder?.gatewayPaymentUrl ?? null);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(
+    method?.type === "e_wallet" ? (initialOrder?.gatewayPaymentUrl ?? null) : null
+  );
   const [expiresAt, setExpiresAt] = useState<Date | string | null>(initialOrder?.expiresAt ?? null);
   const [createdAt] = useState<Date | string | null>(initialOrder?.createdAt ?? null);
   const [instructions, setInstructions] = useState<PaymentInstruction[]>([]);
-  const [isOrderExpired, setIsOrderExpired] = useState(() => {
-    if (initialOrder?.expiresAt) {
-      return new Date(initialOrder.expiresAt).getTime() <= Date.now();
-    }
-    return false;
-  });
+  const [isOrderExpired, setIsOrderExpired] = useState(
+    initialOrder?.status === "expired"
+  );
 
-  const method = methods.find((m) => m.id === methodId) ?? null;
+  useEffect(() => {
+    if (initialOrder?.expiresAt) {
+      const isPast = new Date(initialOrder.expiresAt).getTime() <= Date.now();
+      if (isPast) {
+        setIsOrderExpired(true);
+      }
+    }
+  }, [initialOrder?.expiresAt]);
+
   const base = Number(course.price);
   const total = Math.max(0, base - discount);
 
@@ -301,12 +319,16 @@ export function CheckoutStepper({
       }
       if (path === "va") {
         setVaNumber((paid.data?.vaNumber as string) ?? null);
+        setQrImage(null);
+        setQrString(null);
         setPaymentUrl(null);
         setStep(6);
         return;
       }
       if (path === "retail") {
         setVaNumber((paid.data?.vaNumber as string) ?? (paid.data?.paymentCode as string) ?? null);
+        setQrImage(null);
+        setQrString(null);
         setPaymentUrl(null);
         setStep(6);
         return;
@@ -901,7 +923,7 @@ export function CheckoutStepper({
               onReorder={handleReorder}
               onExpireChange={setIsOrderExpired}
               title={
-                qrImage || qrString || method?.type === "qr_code"
+                isQrisMethod
                   ? "Pembayaran QRIS"
                   : method?.type === "retail_outlet"
                     ? `Pembayaran ${method.name}`
@@ -913,7 +935,10 @@ export function CheckoutStepper({
           )}
 
           {step === 6 && orderNumber && (
-            <div className={`card anim text-center py-5 px-4 sm:px-5 mt-4 ${isOrderExpired ? "border-rose-200 bg-rose-50/50" : ""}`}>
+            <div
+              suppressHydrationWarning
+              className={`card anim text-center py-5 px-4 sm:px-5 mt-4 ${isOrderExpired ? "border-rose-200 bg-rose-50/50" : ""}`}
+            >
               {isOrderExpired ? (
                 <>
                   <div className="h-10 w-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-2.5">

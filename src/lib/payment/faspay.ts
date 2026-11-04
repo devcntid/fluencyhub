@@ -103,7 +103,7 @@ export function parseFaspayChannel(methodCode: string, methodType: string): {
     paymentMethod = "QRIS";
   } else if (
     methodType === "e_wallet" ||
-    ["812", "713", "716", "302"].includes(channelCode)
+    ["812", "713", "716", "302", "844"].includes(channelCode)
   ) {
     paymentMethod = "EWALLET";
   } else if (
@@ -137,15 +137,29 @@ export async function createFaspayTransaction(params: FaspayChargeParams): Promi
     phone = "0" + phone;
   }
 
+  // Sanitize customer name (Bank APIs like BNI/Mandiri strictly require letters, numbers, and spaces only; no dots or symbols)
+  const cleanName = (params.customerDetails.firstName || "Customer")
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 30) || "Customer";
+
+  // Sanitize description
+  const cleanDesc = `FluencyHub Course Order ${params.orderNumber}`
+    .replace(/[^a-zA-Z0-9\s\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 50);
+
   const payload = {
     merchant_reference: params.orderNumber,
     amount: Math.round(params.grossAmount),
     currency: "IDR",
     payment_method: paymentMethod,
     channel_code: channelCode,
-    description: `FluencyHub Course Order #${params.orderNumber}`,
+    description: cleanDesc,
     customer: {
-      name: params.customerDetails.firstName,
+      name: cleanName,
       email: params.customerDetails.email,
       phone,
     },

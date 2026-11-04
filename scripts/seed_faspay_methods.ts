@@ -46,7 +46,7 @@ const FASPAY_CHANNELS: FaspayChannelItem[] = [
   { code: "FASPAY_408", name: "Maybank VA (Faspay)", type: "va", logo: LOGOS.maybank, sortOrder: 59 },
   { code: "FASPAY_818", name: "Sinarmas VA (Faspay)", type: "va", logo: LOGOS.sinarmas, sortOrder: 60 },
   { code: "FASPAY_718", name: "BNC VA (Faspay)", type: "va", logo: LOGOS.bca, sortOrder: 61 },
-  { code: "FASPAY_844", name: "Blu by BCA (Faspay)", type: "va", logo: LOGOS.bca, sortOrder: 62 },
+  { code: "FASPAY_844", name: "Blu by BCA (Faspay)", type: "e_wallet", logo: LOGOS.bca, sortOrder: 62 },
   { code: "FASPAY_711", name: "ShopeePay QRIS (Faspay)", type: "qr_code", logo: LOGOS.qris, sortOrder: 63 },
   { code: "FASPAY_836", name: "Paydia QRIS (Faspay)", type: "qr_code", logo: LOGOS.qris, sortOrder: 64 },
   { code: "FASPAY_713", name: "ShopeePay App (Faspay)", type: "e_wallet", logo: LOGOS.shopee, sortOrder: 65 },

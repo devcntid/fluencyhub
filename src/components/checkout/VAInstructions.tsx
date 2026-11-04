@@ -67,7 +67,6 @@ export function VAInstructions({
     methodCode?.includes("707");
 
   const isQris = Boolean(
-    qrImage ||
     methodType === "qr_code" ||
     methodCode?.toUpperCase().includes("QRIS") ||
     methodCode?.includes("711") ||
@@ -169,7 +168,7 @@ export function VAInstructions({
     if (qrImage) {
       setInternalQr(qrImage);
     } else if (isQris && orderNumber) {
-      if (vaNumber && (vaNumber.startsWith("35357") || methodCode?.includes("711") || methodCode?.includes("836"))) {
+      if (vaNumber && (methodCode?.includes("711") || methodCode?.includes("836"))) {
         setInternalQr(`https://debit-sandbox.faspay.co.id/__assets/qr/35357-${vaNumber}.png`);
       } else {
         const qrisString = generateQrisString({

@@ -385,7 +385,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       const updated = await updateOrderStatus(order.id, "awaiting_payment", {
         vaNumber: charge.vaNumber ?? null,
         gatewayTransactionId: charge.transactionId ?? null,
-        gatewayPaymentUrl: qrUrl ?? qrString ?? charge.redirectUrl ?? null,
+        gatewayPaymentUrl: isQrisMethod
+          ? (qrUrl ?? qrString ?? null)
+          : (method.type === "e_wallet" ? (charge.redirectUrl ?? null) : null),
         expiresAt,
       });
 
