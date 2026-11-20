@@ -340,7 +340,7 @@ export function CourseAdminTable({
           </button>
           <button
             type="button"
-            className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm font-bold text-white shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-[#F26A12] hover:bg-[#D65507] text-sm font-bold text-white shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
             disabled={busy}
             onClick={save}
           >

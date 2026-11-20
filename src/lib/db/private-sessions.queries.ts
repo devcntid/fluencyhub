@@ -156,11 +156,17 @@ export async function getLearnerPrivateSessions(learnerId: number): Promise<any[
       ps.instructor_notes as "instructorNotes",
       ps.reject_reason as "rejectReason",
       ps.zoom_link as "zoomLink",
+      ps.session_type as "sessionType",
+      ps.location_name as "locationName",
+      ps.location_address as "locationAddress",
+      ps.location_maps_url as "locationMapsUrl",
+      ps.location_notes as "locationNotes",
       ps.status,
       ps.confirmed_at as "confirmedAt",
       s.start_at as "startAt",
       s.end_at as "endAt",
       c.title as "courseTitle",
+      c.tier as "courseTier",
       u.name as "instructorName",
       u.avatar_url as "instructorAvatar",
       ui.zoom_link as "instructorZoomLink"
@@ -198,11 +204,17 @@ export async function getInstructorPrivateSessions(instructorId: number): Promis
       ps.instructor_notes as "instructorNotes",
       ps.reject_reason as "rejectReason",
       ps.zoom_link as "zoomLink",
+      ps.session_type as "sessionType",
+      ps.location_name as "locationName",
+      ps.location_address as "locationAddress",
+      ps.location_maps_url as "locationMapsUrl",
+      ps.location_notes as "locationNotes",
       ps.status,
       ps.confirmed_at as "confirmedAt",
       s.start_at as "startAt",
       s.end_at as "endAt",
       c.title as "courseTitle",
+      c.tier as "courseTier",
       u.name as "learnerName",
       u.avatar_url as "learnerAvatar",
       ui.zoom_link as "instructorZoomLink"
@@ -239,8 +251,60 @@ export async function createPrivateSession(
   learnerId: number, 
   instructorId: number, 
   courseId: number, 
-  topic: string
+  topic: string,
+  options?: {
+    sessionType?: "online" | "offline";
+    locationName?: string | null;
+    locationAddress?: string | null;
+    locationMapsUrl?: string | null;
+    locationNotes?: string | null;
+  }
 ) {
+  const sessionType = options?.sessionType === "offline" ? "offline" : "online";
+  const locationName = options?.locationName || null;
+  const locationAddress = options?.locationAddress || null;
+  const locationMapsUrl = options?.locationMapsUrl || null;
+  const locationNotes = options?.locationNotes || null;
+
+  const courseRows = await sql`
+    SELECT c.id, c.tier, c.speaking_partner_type, c.offline_sessions_count
+    FROM enrollments e
+    JOIN courses c ON e.course_id = c.id
+    WHERE e.user_id = ${learnerId}
+      AND e.course_id = ${courseId}
+      AND e.status = 'active'
+    LIMIT 1
+  `;
+
+  if (courseRows.length === 0) {
+    throw new Error("Anda tidak terdaftar pada kursus yang dipilih.");
+  }
+
+  const course = courseRows[0];
+  if (course.tier !== "tier_tinggi" && course.speaking_partner_type !== "trainer_offline") {
+    throw new Error(
+      "Sesi privat 1-on-1 (Zoom / Offline Tatap Muka) hanya tersedia untuk Paket Tinggi (Ready Path)."
+    );
+  }
+
+  const maxQuota =
+    Number(course.offline_sessions_count) > 0 ? Number(course.offline_sessions_count) : 4;
+
+  const usedRows = await sql`
+    SELECT COUNT(*)::int AS used_count
+    FROM private_sessions
+    WHERE learner_id = ${learnerId}
+      AND course_id = ${courseId}
+      AND status IN ('pending', 'confirmed', 'completed')
+  `;
+  const usedCount = Number(usedRows[0]?.used_count ?? 0);
+
+  if (usedCount >= maxQuota) {
+    throw new Error(
+      `Kuota tiket sesi privat 1-on-1 untuk program ini sudah habis (${usedCount}/${maxQuota} tiket terpakai).`
+    );
+  }
+
   const existingActive = await sql`
     SELECT id FROM private_sessions 
     WHERE learner_id = ${learnerId} 
@@ -256,11 +320,27 @@ export async function createPrivateSession(
     WITH updated_slot AS (
       UPDATE instructor_slots
       SET status = 'pending', updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${slotId} AND instructor_id = ${instructorId} AND status = 'available'
+      WHERE id = ${slotId}
+        AND instructor_id = ${instructorId}
+        AND status = 'available'
+        AND (
+          SELECT COUNT(*)::int
+          FROM private_sessions
+          WHERE learner_id = ${learnerId}
+            AND course_id = ${courseId}
+            AND status IN ('pending', 'confirmed', 'completed')
+        ) < ${maxQuota}
       RETURNING id
     )
-    INSERT INTO private_sessions (slot_id, learner_id, instructor_id, course_id, topic, status)
-    SELECT id, ${learnerId}, ${instructorId}, ${courseId}, ${topic}, 'pending'
+    INSERT INTO private_sessions (
+      slot_id, learner_id, instructor_id, course_id, topic,
+      session_type, location_name, location_address, location_maps_url, location_notes,
+      status
+    )
+    SELECT 
+      id, ${learnerId}, ${instructorId}, ${courseId}, ${topic},
+      ${sessionType}, ${locationName}, ${locationAddress}, ${locationMapsUrl}, ${locationNotes},
+      'pending'
     FROM updated_slot
     RETURNING *;
   `;
@@ -385,7 +465,9 @@ export async function getEligibleInstructorsForLearner(learnerId: number): Promi
     FROM enrollments e
     JOIN courses c ON e.course_id = c.id
     JOIN users u ON c.instructor_id = u.id
-    WHERE e.user_id = ${learnerId} AND e.status = 'active'
+    WHERE e.user_id = ${learnerId}
+      AND e.status = 'active'
+      AND (c.tier = 'tier_tinggi' OR c.speaking_partner_type = 'trainer_offline')
   `;
   return rows;
 }
@@ -408,7 +490,9 @@ export async function getStudentAvailableSlotsAll(learnerId: number): Promise<an
         SELECT c.instructor_id
         FROM enrollments e
         JOIN courses c ON e.course_id = c.id
-        WHERE e.user_id = ${learnerId} AND e.status = 'active'
+        WHERE e.user_id = ${learnerId}
+          AND e.status = 'active'
+          AND (c.tier = 'tier_tinggi' OR c.speaking_partner_type = 'trainer_offline')
       )
     ORDER BY s.start_at ASC
   `;

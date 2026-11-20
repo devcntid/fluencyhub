@@ -1,5 +1,7 @@
 "use client";
 
+import { EnglishReadyLogo } from "@/components/brand/EnglishReadyLogo";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -12,7 +14,7 @@ const NAV = [
   { href: "/instructor/curriculum", label: "Curriculum", icon: "BookOpen" },
   { href: "/instructor/students", label: "Students", icon: "Users" },
   { href: "/instructor/private-sessions", label: "Private Sessions", icon: "Calendar" },
-  { href: "/instructor/profile", label: "Profile & Settings", icon: "User" },
+  { href: "/instructor/profile", label: "Profil", icon: "User" },
 ];
 
 export function InstructorSidebar({
@@ -32,12 +34,7 @@ export function InstructorSidebar({
     <aside className="sidebar">
       <div className="sidebar-top">
         <Link href="/instructor" className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-[var(--r)] bg-[var(--sidebar-active-inst)] text-xs font-extrabold text-white">
-            F
-          </span>
-          <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-white">
-            Fluency<span className="text-[var(--sidebar-active-inst)]">Hub</span>
-          </span>
+          <EnglishReadyLogo height={28} mode="dark" />
         </Link>
       </div>
       <Link href="/instructor/profile" className="sidebar-profile hover:bg-white/5 transition-colors cursor-pointer block">
@@ -119,9 +116,7 @@ export function InstructorMobileNav({
         </button>
 
         <Link href="/instructor" className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-[var(--r)] bg-[var(--sidebar-active-inst)] text-xs font-extrabold text-white">
-            F
-          </span>
+          <EnglishReadyLogo height={24} mode="light" />
         </Link>
       </div>
 
@@ -131,12 +126,7 @@ export function InstructorMobileNav({
           <div className="relative flex w-[280px] max-w-[80vw] flex-col bg-[var(--sidebar)] h-full overflow-y-auto shadow-2xl animate-in slide-in-from-left-full duration-200">
             <div className="flex items-center justify-between p-4 border-b border-white/10">
               <Link href="/instructor" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-                <span className="flex h-7 w-7 items-center justify-center rounded-[var(--r)] bg-[var(--sidebar-active-inst)] text-xs font-extrabold text-white">
-                  F
-                </span>
-                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-white">
-                  Fluency<span className="text-[var(--sidebar-active-inst)]">Hub</span>
-                </span>
+                <EnglishReadyLogo height={26} mode="dark" />
               </Link>
               <button onClick={() => setOpen(false)} className="text-white/60 hover:text-white p-1 rounded-md cursor-pointer" aria-label="Close">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

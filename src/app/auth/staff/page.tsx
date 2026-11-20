@@ -1,3 +1,4 @@
+import { EnglishReadyLogo } from "@/components/brand/EnglishReadyLogo";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
@@ -21,12 +22,12 @@ export default async function StaffSignInPage({
         <section className="relative hidden overflow-hidden border-r border-white/5 lg:flex lg:flex-col lg:justify-between lg:p-12">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(26,86,219,0.28),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(5,150,105,0.18),transparent_40%)]" />
           <div className="relative">
-            <p className="font-[family-name:var(--font-heading)] text-lg font-extrabold tracking-tight">
-              Fluency<span className="text-blue-400">Hub</span>
-              <span className="ml-2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            <div className="flex items-center gap-2">
+              <EnglishReadyLogo height={30} mode="dark" />
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                 Staff
               </span>
-            </p>
+            </div>
           </div>
           <div className="relative max-w-md">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-emerald-400">Restricted console</p>

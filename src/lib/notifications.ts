@@ -95,7 +95,7 @@ export async function notifyPaymentSuccess(orderId: number) {
     }
 
     // Default Templates (Fallbacks)
-    const defaultWaMessage = `*FluencyHub - Pembayaran Berhasil!* 🎉\n\nHalo *{USER_NAME}*, pembayaran kamu untuk kelas *{COURSE_TITLE}* sebesar *{AMOUNT}* telah berhasil diverifikasi.\n\nSilakan login ke *Dashboard* kamu dan mulai belajar sekarang:\n👉 https://fluencyhub.id/dashboard\n\nSemoga lancar belajarnya brok! 🔥`;
+    const defaultWaMessage = `*English Ready - Pembayaran Berhasil!* 🎉\n\nHalo *{USER_NAME}*, pembayaran kamu untuk kelas *{COURSE_TITLE}* sebesar *{AMOUNT}* telah berhasil diverifikasi.\n\nSilakan login ke *Dashboard* kamu dan mulai belajar sekarang:\n👉 https://englishready.co.id/dashboard\n\nSemoga lancar belajarnya brok! 🔥`;
     const defaultEmailSubject = `✅ Payment Confirmed — Access to {COURSE_TITLE} is Now Active!`;
     const defaultEmailBody = `Great news! Your payment has been successfully confirmed. You can now log in to the dashboard and start learning right away.\n\nKeep up the enthusiasm and happy learning!`;
 
@@ -118,8 +118,8 @@ export async function notifyPaymentSuccess(orderId: number) {
           <tr><td style="padding-right: 10px;">📅 <strong>Date</strong></td><td>: {DATE}</td></tr>
           <tr><td style="padding-right: 10px;">🔖 <strong>Order ID</strong></td><td>: {ORDER_ID}</td></tr>
         </table>
-        <p>Access your course now:<br>👉 <a href="https://fluencyhub.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://fluencyhub.id/dashboard</a></p>
-        <p style="margin-top: 30px;">The FluencyHub Team</p>
+        <p>Access your course now:<br>👉 <a href="https://englishready.co.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://englishready.co.id/dashboard</a></p>
+        <p style="margin-top: 30px;">The English Ready Team</p>
       </div>`);
 
     // 3. Kirim secara paralel tanpa saling menunggu (non-blocking)
@@ -178,7 +178,7 @@ export async function notifyPaymentRejected(orderId: number, note: string) {
     }
 
     // Default Templates (Fallbacks)
-    const defaultWaMessage = `*FluencyHub - Pembayaran Ditolak* ❌\n\nHalo *{USER_NAME}*, mohon maaf bukti transfer kamu untuk kelas *{COURSE_TITLE}* telah ditolak oleh Admin.\n\n*Alasan penolakan:*\n"{NOTE}"\n\nSilakan upload ulang bukti pembayaran yang benar melalui halaman:\n👉 https://fluencyhub.id/dashboard\n\nJika ada pertanyaan, silakan balas pesan ini.`;
+    const defaultWaMessage = `*English Ready - Pembayaran Ditolak* ❌\n\nHalo *{USER_NAME}*, mohon maaf bukti transfer kamu untuk kelas *{COURSE_TITLE}* telah ditolak oleh Admin.\n\n*Alasan penolakan:*\n"{NOTE}"\n\nSilakan upload ulang bukti pembayaran yang benar melalui halaman:\n👉 https://englishready.co.id/dashboard\n\nJika ada pertanyaan, silakan balas pesan ini.`;
     const defaultEmailSubject = `❌ Payment Rejected — Please re-upload your payment proof`;
     const defaultEmailBody = `We are sorry to inform you that your manual payment proof has been rejected by the admin. Please check the rejection reason and upload a clearer proof of payment via your dashboard to activate your access.`;
 
@@ -201,8 +201,8 @@ export async function notifyPaymentRejected(orderId: number, note: string) {
           <strong>Reason for rejection:</strong><br>
           {NOTE}
         </div>
-        <p>Please re-upload a clear and valid payment proof to continue accessing your course:<br>👉 <a href="https://fluencyhub.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://fluencyhub.id/dashboard</a></p>
-        <p style="margin-top: 30px;">Thank you,<br>The FluencyHub Team</p>
+        <p>Please re-upload a clear and valid payment proof to continue accessing your course:<br>👉 <a href="https://englishready.co.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://englishready.co.id/dashboard</a></p>
+        <p style="margin-top: 30px;">Thank you,<br>The English Ready Team</p>
       </div>`);
 
     // 3. Kirim secara paralel
@@ -241,13 +241,13 @@ export async function notifyZoomSessionRequested(instructor: any, learner: any, 
     const dStr = sessionDate.toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full", timeStyle: "short" });
     
     if (instructor.whatsappNumber) {
-      const wa = `Halo ${instructor.name},\n\nAda permintaan *Sesi Privat* baru dari *${learner.name}*!\n\n📅 Waktu: ${dStr} WIB\n📝 Topik: ${topic}\n\nSilakan cek dashboard instructor Anda untuk menyetujui atau menolak sesi ini.\n\nFluencyHub Team`;
+      const wa = `Halo ${instructor.name},\n\nAda permintaan *Sesi Privat* baru dari *${learner.name}*!\n\n📅 Waktu: ${dStr} WIB\n📝 Topik: ${topic}\n\nSilakan cek dashboard instructor Anda untuk menyetujui atau menolak sesi ini.\n\nEnglish Ready Team`;
       await sendFonnteWhatsApp(formatPhone(instructor.whatsappNumber), wa);
     }
     
     if (instructor.email) {
       const html = `<p>Halo ${instructor.name},</p><p>Ada permintaan <strong>Sesi Privat</strong> baru dari <strong>${learner.name}</strong>!</p><ul><li>Waktu: ${dStr} WIB</li><li>Topik: ${topic}</li></ul><p>Silakan login ke dashboard Anda untuk merespons.</p>`;
-      await sendEmail({ to: instructor.email, subject: "Permintaan Sesi Privat Baru - FluencyHub", html });
+      await sendEmail({ to: instructor.email, subject: "Permintaan Sesi Privat Baru - English Ready", html });
     }
   } catch (err) {
     console.error("Notif Error:", err);
@@ -277,7 +277,7 @@ export async function notifyZoomSessionStatus(learner: any, instructor: any, ses
       } else if (!isConfirmed && notesOrLink) {
         html += `<p><strong>Alasan:</strong> ${notesOrLink}</p>`;
       }
-      await sendEmail({ to: learner.email, subject: `Sesi Privat ${statusTxt} - FluencyHub`, html });
+      await sendEmail({ to: learner.email, subject: `Sesi Privat ${statusTxt} - English Ready`, html });
     }
   } catch (err) {
     console.error("Notif Error:", err);
@@ -294,7 +294,7 @@ export async function notifyZoomSessionCancelled(user: any, otherUser: any, sess
       if (reason) {
         wa += `\n\n📝 *Alasan Pembatalan:* ${reason}`;
       }
-      wa += `\n\nMohon maklum,\nFluencyHub Team`;
+      wa += `\n\nMohon maklum,\nEnglish Ready Team`;
       await sendFonnteWhatsApp(formatPhone(user.whatsappNumber), wa);
     }
     
@@ -303,8 +303,8 @@ export async function notifyZoomSessionCancelled(user: any, otherUser: any, sess
       if (reason) {
         html += `<p><strong>Alasan Pembatalan:</strong> ${reason}</p>`;
       }
-      html += `<p>Mohon maklum,<br>FluencyHub Team</p>`;
-      await sendEmail({ to: user.email, subject: "Sesi Privat Dibatalkan - FluencyHub", html });
+      html += `<p>Mohon maklum,<br>English Ready Team</p>`;
+      await sendEmail({ to: user.email, subject: "Sesi Privat Dibatalkan - English Ready", html });
     }
   } catch (err) {
     console.error("Notif Error:", err);

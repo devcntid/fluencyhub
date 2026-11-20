@@ -10,6 +10,10 @@ export const auth = cache(async () => {
   try {
     return await getServerSession(getAuthOptions());
   } catch (error) {
+    const digest = (error as { digest?: string } | null)?.digest;
+    if (digest === "DYNAMIC_SERVER_USAGE" || digest?.startsWith("NEXT_")) {
+      throw error;
+    }
     const message = error instanceof Error ? error.message : String(error);
     const code = (error as { code?: string } | null)?.code;
     if (code === "NO_SECRET" || message.toLowerCase().includes("secret")) {

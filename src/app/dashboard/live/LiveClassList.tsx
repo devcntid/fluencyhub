@@ -4,9 +4,38 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import type { UpcomingLiveClass } from "@/lib/db/lessons.queries";
 import { formatTimeWIB, formatFullDateWIB, formatDayLabelWIB } from "@/lib/utils/date";
+
+function CoachAvatar({ src, name }: { src?: string | null; name?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  const initials = (name || "TR")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() || "")
+    .join("");
+
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={name || "Trainer"}
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className="h-6 w-6 rounded-full object-cover ring-1 ring-[#E6DED4] shrink-0"
+      />
+    );
+  }
+
+  return (
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0B2559] text-[10px] font-extrabold text-white">
+      {initials || "TR"}
+    </span>
+  );
+}
 
 export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[] }) {
   const router = useRouter();
@@ -24,7 +53,6 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
   async function handleToggleAttendance(session: UpcomingLiveClass, desiredState?: boolean) {
     if (submittingIds[session.id]) return;
 
-    // Hitung apakah sesi sudah selesai
     const durationMin = session.durationMinutes > 0 ? session.durationMinutes : 60;
     const startTime = session.liveClassDatetime ? new Date(session.liveClassDatetime).getTime() : 0;
     const endTime = startTime > 0 ? startTime + durationMin * 60 * 1000 : 0;
@@ -33,9 +61,10 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
     const currentCompleted = completedMap[session.id] ?? Boolean(session.isCompleted);
     const nextState = desiredState !== undefined ? desiredState : !currentCompleted;
 
-    // Status Attended hanya dapat diberikan setelah sesi Live Mentoring selesai
     if (nextState && !isEnded) {
-      alert("Sesi Live Mentoring belum selesai. Status Attended hanya dapat diberikan setelah sesi Live Mentoring selesai.");
+      alert(
+        "Sesi Live Mentoring belum selesai. Status Hadir hanya dapat ditandai setelah sesi berakhir."
+      );
       return;
     }
 
@@ -63,7 +92,6 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
   }
 
   useEffect(() => {
-    // Tick every 10 seconds so status transitions seamlessly if a session ends while on page
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 10000);
@@ -72,19 +100,20 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
 
   if (liveClasses.length === 0) {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-10 text-center shadow-xs">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400">
-          <LandingIcon name="Video" size={32} color="currentColor" />
+      <div className="rounded-2xl sm:rounded-3xl border border-[#E6DED4] bg-white p-8 sm:p-12 text-center shadow-xs space-y-3">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FBF6F1] border border-[#E6DED4] text-[#0B2559]">
+          <LandingIcon name="Video" size={28} color="currentColor" />
         </div>
-        <h3 className="text-lg font-bold text-zinc-900">No Live Mentoring scheduled yet</h3>
-        <p className="mt-1 text-sm text-zinc-500">
-          Zoom interactive class schedules for this course will appear here once scheduled by the instructor.
+        <h3 className="text-base sm:text-lg font-extrabold text-[#0B2559]">
+          Belum Ada Jadwal Live Mentoring
+        </h3>
+        <p className="text-xs sm:text-sm text-zinc-500 max-w-md mx-auto leading-relaxed">
+          Jadwal kelas interaktif Zoom akan muncul di sini setelah dijadwalkan oleh trainer.
         </p>
       </div>
     );
   }
 
-  // Pre-calculate status for all sessions
   const sessionsWithStatus = liveClasses.map((session) => {
     const durationMin = session.durationMinutes > 0 ? session.durationMinutes : 60;
     const startTime = session.liveClassDatetime ? new Date(session.liveClassDatetime).getTime() : 0;
@@ -97,7 +126,6 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
     const isLiveNow = startTime > 0 && nowMs >= startTime && nowMs < endTime;
     const isWaitingRoom = startTime > 0 && nowMs >= startTime - 15 * 60 * 1000 && nowMs < startTime;
     const isUpcoming = startTime > 0 && nowMs < startTime - 15 * 60 * 1000;
-    const canJoin = isLiveNow || isWaitingRoom;
 
     return {
       session,
@@ -108,15 +136,9 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
       isLiveNow,
       isWaitingRoom,
       isUpcoming,
-      canJoin,
     };
   });
 
-  // Sort sessions:
-  // 1. Live Now (priority 0) -> top
-  // 2. Waiting Room Open (priority 1)
-  // 3. Upcoming (priority 2) -> ordered by startTime ASC
-  // 4. Completed (priority 3) -> bottom
   const sortedSessions = [...sessionsWithStatus].sort((a, b) => {
     const getPriority = (item: (typeof sessionsWithStatus)[number]) => {
       if (item.isLiveNow) return 0;
@@ -127,10 +149,7 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
 
     const prioA = getPriority(a);
     const prioB = getPriority(b);
-
-    if (prioA !== prioB) {
-      return prioA - prioB;
-    }
+    if (prioA !== prioB) return prioA - prioB;
 
     if (prioA < 3) {
       const timeA = a.startDate ? a.startDate.getTime() : Infinity;
@@ -152,54 +171,96 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
     return true;
   });
 
+  const attendedCount = Object.values(completedMap).filter(Boolean).length;
+
   return (
-    <div className="space-y-4">
-      {/* Top Filter and Info Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-4 sm:space-y-5">
+      {/* Cohort Online Mentoring Banner */}
+      <div className="rounded-2xl border border-[#E6DED4] bg-gradient-to-r from-[#0B2559] via-[#10306F] to-[#163D8A] p-4 sm:p-5 text-white shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#F26A12] text-white">
+              Cohort Online Mentoring
+            </span>
+            <span className="text-[11px] font-semibold text-blue-200">
+              Kelompok Kecil • Live Feedback Trainer
+            </span>
+          </div>
+          <h3 className="text-base sm:text-lg font-extrabold tracking-tight">
+            Ruang Kelas Live Interaktif via Zoom
+          </h3>
+          <p className="text-xs text-blue-100/85 leading-relaxed">
+            Latihan percakapan kelompok, koreksi pelafalan/grammar langsung, dan sesi tanya jawab.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+          <div className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-center sm:text-left">
+            <div className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">
+              Kehadiran Kamu
+            </div>
+            <div className="text-sm font-extrabold text-white">
+              {attendedCount} / {liveClasses.length} Sesi
+            </div>
+          </div>
+          <Link
+            href="/dashboard/private-sessions"
+            className="px-4 py-2.5 rounded-xl bg-white text-[#0B2559] hover:bg-[#FBF6F1] font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 whitespace-nowrap"
+          >
+            <span>Booking 1-on-1 Coaching &rarr;</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <p className="text-xs font-semibold text-zinc-500">
-          Showing {filteredSessions.length} of {liveClasses.length} live mentoring sessions
+          Menampilkan <strong className="text-[#0B2559]">{filteredSessions.length}</strong> dari{" "}
+          {liveClasses.length} sesi Live Zoom
         </p>
 
-        {/* Tab Filters */}
-        <div className="flex items-center gap-1.5 rounded-xl bg-zinc-100 p-1 text-xs font-semibold">
+        <div className="grid grid-cols-3 sm:flex items-center gap-1 rounded-xl bg-white border border-[#E6DED4] p-1 text-[11px] sm:text-xs font-bold">
           <button
+            type="button"
             onClick={() => setFilter("all")}
-            className={`rounded-lg px-3 py-1.5 transition ${
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition cursor-pointer whitespace-nowrap ${
               filter === "all"
-                ? "bg-white text-zinc-900 shadow-xs"
-                : "text-zinc-500 hover:text-zinc-800"
+                ? "bg-[#0B2559] text-white shadow-2xs"
+                : "text-zinc-600 hover:text-[#0B2559]"
             }`}
           >
-            All ({liveClasses.length})
+            Semua ({liveClasses.length})
           </button>
           <button
+            type="button"
             onClick={() => setFilter("active")}
-            className={`rounded-lg px-3 py-1.5 transition ${
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition cursor-pointer whitespace-nowrap ${
               filter === "active"
-                ? "bg-white text-zinc-900 shadow-xs"
-                : "text-zinc-500 hover:text-zinc-800"
+                ? "bg-[#F26A12] text-white shadow-2xs"
+                : "text-zinc-600 hover:text-[#0B2559]"
             }`}
           >
-            Active & Upcoming ({activeCount})
+            Aktif ({activeCount})
           </button>
           <button
+            type="button"
             onClick={() => setFilter("ended")}
-            className={`rounded-lg px-3 py-1.5 transition ${
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition cursor-pointer whitespace-nowrap ${
               filter === "ended"
-                ? "bg-white text-zinc-900 shadow-xs"
-                : "text-zinc-500 hover:text-zinc-800"
+                ? "bg-emerald-600 text-white shadow-2xs"
+                : "text-zinc-600 hover:text-[#0B2559]"
             }`}
           >
-            Completed ({endedCount})
+            Selesai ({endedCount})
           </button>
         </div>
       </div>
 
       {/* Session Cards */}
-      <div className="flex flex-col gap-4">
+      <div className="space-y-3.5">
         {filteredSessions.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-200 py-12 text-center text-zinc-500">
-            No sessions found in this category.
+          <div className="rounded-2xl border border-dashed border-[#DFD5C8] bg-white py-12 text-center text-xs sm:text-sm font-medium text-zinc-500">
+            Tidak ada sesi pada kategori ini.
           </div>
         ) : (
           filteredSessions.map(
@@ -213,7 +274,6 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                 isLiveNow,
                 isWaitingRoom,
                 isUpcoming,
-                canJoin,
               },
               index
             ) => {
@@ -222,225 +282,195 @@ export function LiveClassList({ liveClasses }: { liveClasses: UpcomingLiveClass[
                 isEnded &&
                 index > 0 &&
                 !filteredSessions[index - 1].isEnded;
+              const isAttended = Boolean(completedMap[session.id] ?? session.isCompleted);
 
               return (
-                <div key={session.id} className="space-y-4">
+                <div key={session.id} className="space-y-3.5">
                   {showDivider && (
                     <div className="flex items-center gap-3 pt-2">
-                      <div className="h-px flex-1 bg-zinc-200" />
-                      <span className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      <div className="h-px flex-1 bg-[#E6DED4]" />
+                      <span className="flex items-center gap-1.5 text-[11px] font-extrabold text-zinc-400 uppercase tracking-wider">
                         <LandingIcon name="CheckCircle" size={13} color="currentColor" />
-                        Completed Sessions
+                        Sesi Selesai
                       </span>
-                      <div className="h-px flex-1 bg-zinc-200" />
+                      <div className="h-px flex-1 bg-[#E6DED4]" />
                     </div>
                   )}
 
                   <div
                     id={`live-${session.id}`}
-                    className={`relative flex flex-col items-stretch gap-4 sm:gap-5 overflow-hidden rounded-2xl border p-4 sm:p-5 transition-all lg:flex-row lg:items-center ${
+                    className={`relative flex flex-col xl:flex-row xl:items-center gap-4 overflow-hidden rounded-2xl border p-4 sm:p-5 transition-all ${
                       isLiveNow
-                        ? "border-red-300 bg-white shadow-md shadow-red-100/50 ring-2 ring-red-200"
+                        ? "border-rose-300 bg-white shadow-md ring-2 ring-rose-200/70"
                         : isWaitingRoom
-                        ? "border-blue-300 bg-blue-50/20 shadow-sm"
+                        ? "border-blue-300 bg-blue-50/20 shadow-xs"
                         : isEnded
-                        ? "border-zinc-200 bg-zinc-50/60 opacity-80 hover:opacity-100"
-                        : "border-zinc-200 bg-white shadow-xs"
+                        ? "border-[#E6DED4] bg-white/80 hover:bg-white"
+                        : "border-[#E6DED4] bg-white shadow-xs hover:border-[#0073F5]/35"
                     }`}
                   >
-                    {/* Left Accent Bar */}
-                    {isLiveNow && (
-                      <div className="absolute bottom-0 left-0 top-0 w-1.5 bg-red-500 animate-pulse" />
-                    )}
-                    {isWaitingRoom && (
-                      <div className="absolute bottom-0 left-0 top-0 w-1.5 bg-blue-500" />
-                    )}
+                    {/* Left Status Accent */}
+                    <div
+                      className={`absolute bottom-0 left-0 top-0 w-1.5 ${
+                        isLiveNow
+                          ? "bg-rose-500"
+                          : isWaitingRoom
+                          ? "bg-[#F26A12]"
+                          : isEnded
+                          ? "bg-zinc-300"
+                          : "bg-[#0073F5]"
+                      }`}
+                    />
 
-                    {/* Left Block: Time Range & Duration */}
-                    <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:min-w-[175px] lg:flex-col lg:items-center lg:justify-center text-left sm:text-left lg:text-center border-b pb-3.5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5 border-zinc-100 gap-2.5 sm:gap-4 lg:gap-1.5 shrink-0">
-                      {/* Day Label & Full Date */}
-                      <div className="flex items-center gap-2 sm:flex-col sm:items-start lg:items-center shrink-0">
+                    {/* Time Block */}
+                    <div className="pl-2 flex flex-col sm:flex-row sm:items-center sm:justify-between xl:w-[190px] xl:flex-col xl:items-center xl:justify-center xl:text-center border-b xl:border-b-0 xl:border-r border-[#F0EAE2] pb-3.5 xl:pb-0 xl:pr-5 gap-2 shrink-0">
+                      <div className="flex items-center gap-2 xl:flex-col xl:gap-0.5">
                         <span
-                          className={`text-[11px] font-black uppercase tracking-wider ${
+                          className={`text-[11px] font-extrabold uppercase tracking-wider ${
                             isLiveNow
-                              ? "text-red-600"
+                              ? "text-rose-600"
                               : isWaitingRoom
-                              ? "text-blue-600"
+                              ? "text-[#C2530A]"
                               : isEnded
                               ? "text-zinc-400"
-                              : "text-zinc-500"
+                              : "text-[#0062D1]"
                           }`}
                         >
                           {formatDayLabelWIB(startDate, currentTime)}
                         </span>
-                        <span className="text-[11px] text-zinc-300 sm:hidden">•</span>
-                        <span className="text-[11px] text-zinc-500 font-medium lg:hidden">
+                        <span className="text-zinc-300 xl:hidden">•</span>
+                        <span className="text-[11px] font-medium text-zinc-500 xl:hidden">
                           {formatFullDateWIB(startDate)}
                         </span>
                       </div>
 
-                      {/* Time Range & Duration Group */}
-                      <div className="flex items-center gap-3 sm:gap-4 lg:flex-col lg:gap-1 shrink-0">
-                        <div className="flex items-center gap-1 font-extrabold font-[family-name:var(--font-heading)] text-zinc-900 shrink-0">
-                          <span className="text-xl sm:text-2xl">{formatTimeWIB(startDate)}</span>
-                          <span className="text-xs text-zinc-400 font-normal">-</span>
-                          <span className="text-xl sm:text-2xl">{formatTimeWIB(endDate)}</span>
+                      <div className="flex items-center gap-2.5 xl:flex-col xl:gap-1">
+                        <div className="flex items-center gap-1 font-extrabold font-[family-name:var(--font-heading)] text-[#0B2559]">
+                          <span className="text-lg sm:text-xl">{formatTimeWIB(startDate)}</span>
+                          <span className="text-xs text-zinc-400 font-normal">–</span>
+                          <span className="text-lg sm:text-xl">{formatTimeWIB(endDate)}</span>
                         </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[11px] font-bold text-zinc-400">WIB</span>
-                          <span className="text-zinc-300">•</span>
-                          <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-600">
-                            <LandingIcon name="Clock" size={11} color="currentColor" />
-                            {durationMin} Mins
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-zinc-400">WIB</span>
+                          <span className="inline-flex items-center gap-1 rounded-md bg-[#FBF6F1] border border-[#E6DED4] px-2 py-0.5 text-[10px] font-bold text-zinc-600">
+                            {durationMin} mnt
                           </span>
                         </div>
                       </div>
 
-                      <span className="mt-0.5 text-[10px] text-zinc-400 hidden lg:block">
+                      <span className="text-[10px] text-zinc-400 hidden xl:block">
                         {formatFullDateWIB(startDate)}
                       </span>
                     </div>
 
-                    {/* Center Block: Status & Details */}
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        {/* Live Status Badge */}
+                    {/* Details Block */}
+                    <div className="pl-2 xl:pl-0 flex-1 min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {isLiveNow && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-700 border border-red-200 animate-pulse">
-                            <span className="h-2 w-2 rounded-full bg-red-600 animate-ping inline-block" />
-                            HAPPENING NOW
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-700 border border-rose-200">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
+                            Sedang Berlangsung
                           </span>
                         )}
                         {isWaitingRoom && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 border border-blue-200">
-                            <span className="h-2 w-2 rounded-full bg-blue-600 inline-block" />
-                            WAITING ROOM OPEN
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF4EC] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#C2530A] border border-[#F26A12]/30">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#F26A12]" />
+                            Ruang Tunggu Dibuka
                           </span>
                         )}
                         {isUpcoming && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 border border-amber-200">
-                            <LandingIcon name="Clock" size={11} color="currentColor" />
-                            Upcoming
+                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-[#0062D1] border border-blue-200/80">
+                            <LandingIcon name="Clock" size={10} color="currentColor" />
+                            Akan Datang
                           </span>
                         )}
                         {isEnded && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500 border border-zinc-200">
-                            <LandingIcon name="CheckCircle" size={11} color="currentColor" />
-                            Completed
+                          <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-bold text-zinc-500 border border-zinc-200">
+                            Selesai
                           </span>
                         )}
 
-                        {/* Module Badge */}
-                        <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 border border-blue-100 max-w-full truncate">
+                        <span className="inline-flex rounded-full bg-[#FBF6F1] px-2.5 py-0.5 text-[10px] font-bold text-[#0B2559] border border-[#E6DED4] max-w-full truncate">
                           {session.moduleName}
                         </span>
 
-                        {/* Attended Badge - Hanya tampil jika sesi sudah selesai dan dihadiri */}
-                        {isEnded && Boolean(completedMap[session.id] ?? session.isCompleted) && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 border border-emerald-200">
-                            <LandingIcon name="Check" size={11} color="currentColor" />
-                            Attended ✓
+                        {isEnded && isAttended && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-700 border border-emerald-200">
+                            <LandingIcon name="Check" size={10} color="currentColor" />
+                            Hadir
                           </span>
                         )}
                       </div>
 
-                      <h3 className="mb-1.5 text-base sm:text-lg font-bold text-zinc-900 leading-snug break-words">
+                      <h3 className="text-sm sm:text-base font-extrabold text-[#0B2559] leading-snug break-words">
                         {session.title}
                       </h3>
 
                       <div className="flex items-center gap-2 text-xs text-zinc-500">
-                        <img
-                          src={session.coachAvatar}
-                          alt={session.coachName}
-                          className="h-5 w-5 rounded-full object-cover ring-1 ring-zinc-200 shrink-0"
-                        />
+                        <CoachAvatar src={session.coachAvatar} name={session.coachName} />
                         <span className="truncate">
-                          Instructor: <strong className="text-zinc-700 font-semibold">{session.coachName}</strong>
+                          Trainer:{" "}
+                          <strong className="text-[#0B2559] font-semibold">
+                            {session.coachName}
+                          </strong>
                         </span>
                       </div>
                     </div>
 
-                    {/* Right Block: Action Button & Attendance Toggle */}
-                    <div className="w-full lg:w-auto lg:min-w-[190px] flex flex-col items-stretch lg:items-end gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-zinc-100">
+                    {/* Action Block */}
+                    <div className="pl-2 xl:pl-0 w-full xl:w-[195px] flex flex-col sm:flex-row xl:flex-col items-stretch gap-2 shrink-0 pt-3 xl:pt-0 border-t xl:border-t-0 border-[#F0EAE2]">
                       {isEnded ? (
-                        <>
-                          <div
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed lg:w-auto select-none"
-                            title="This session has ended based on the scheduled duration"
-                          >
-                            <LandingIcon name="CheckCircle" size={15} color="currentColor" />
-                            <span>Session Ended</span>
-                          </div>
-                        </>
-                      ) : isLiveNow ? (
-                        <>
-                          <a
-                            href={session.liveClassUrl || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-red-200 transition hover:bg-red-700 active:scale-95 lg:w-auto"
-                          >
-                            <LandingIcon name="Video" size={16} color="currentColor" />
-                            <span>Join Live Room</span>
-                          </a>
-                          <span className="text-[10px] font-bold text-red-600 text-center lg:text-right animate-pulse">
-                            Happening right now
-                          </span>
-                        </>
-                      ) : isWaitingRoom ? (
-                        <>
-                          <a
-                            href={session.liveClassUrl || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700 active:scale-95 lg:w-auto"
-                          >
-                            <LandingIcon name="Video" size={16} color="currentColor" />
-                            <span>Enter Waiting Room</span>
-                          </a>
-                          <span className="text-[10px] text-blue-600 font-semibold text-center lg:text-right">
-                            Zoom room is open
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <div
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-400 border border-zinc-200 cursor-not-allowed lg:w-auto select-none"
-                            title="Zoom room will open 15 minutes before class starts"
-                          >
-                            <LandingIcon name="Clock" size={15} color="currentColor" />
-                            <span>Opens 15m before start</span>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Attendance Toggle - Hanya dapat ditandai setelah sesi selesai */}
-                      {isEnded && (
                         <button
                           type="button"
                           disabled={submittingIds[session.id]}
                           onClick={() => handleToggleAttendance(session)}
-                          className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition lg:w-auto cursor-pointer ${
-                            (completedMap[session.id] ?? session.isCompleted)
+                          className={`flex-1 xl:flex-none flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-extrabold transition cursor-pointer ${
+                            isAttended
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/80"
-                              : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 shadow-2xs"
+                              : "bg-[#0B2559] text-white hover:bg-[#133882] shadow-xs"
                           }`}
-                          title="Tandai kehadiran sesi ini setelah selesai"
                         >
                           <LandingIcon
-                            name={(completedMap[session.id] ?? session.isCompleted) ? "CheckCircle" : "Check"}
-                            size={13}
+                            name={isAttended ? "CheckCircle" : "Check"}
+                            size={14}
                             color="currentColor"
                           />
                           <span>
                             {submittingIds[session.id]
-                              ? "Updating..."
-                              : (completedMap[session.id] ?? session.isCompleted)
-                              ? "Attended ✓"
-                              : "Mark as Attended"}
+                              ? "Menyimpan..."
+                              : isAttended
+                              ? "Tercatat Hadir ✓"
+                              : "Tandai Hadir"}
                           </span>
                         </button>
+                      ) : isLiveNow ? (
+                        <a
+                          href={session.liveClassUrl || "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 xl:flex-none flex items-center justify-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition"
+                        >
+                          <LandingIcon name="Video" size={15} color="#fff" />
+                          <span>Gabung Zoom Sekarang</span>
+                        </a>
+                      ) : isWaitingRoom ? (
+                        <a
+                          href={session.liveClassUrl || "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 xl:flex-none flex items-center justify-center gap-2 rounded-xl bg-[#F26A12] hover:bg-[#D65507] px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition"
+                        >
+                          <LandingIcon name="Video" size={15} color="#fff" />
+                          <span>Masuk Ruang Tunggu</span>
+                        </a>
+                      ) : (
+                        <div
+                          className="flex-1 xl:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-[#FBF6F1] px-4 py-2.5 text-xs font-bold text-zinc-500 border border-[#E6DED4] select-none"
+                          title="Ruang Zoom dibuka 15 menit sebelum jadwal dimulai"
+                        >
+                          <LandingIcon name="Clock" size={14} color="currentColor" />
+                          <span>Buka 15 mnt sebelum</span>
+                        </div>
                       )}
                     </div>
                   </div>

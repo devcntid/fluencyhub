@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { LandingIcon } from "@/components/landing/LandingIcon";
 import { ProfileDropdown } from "@/components/auth/ProfileDropdown";
+import { EnglishReadyLogo } from "@/components/brand/EnglishReadyLogo";
+import { ReadyCheckTrigger } from "@/components/landing/ReadyCheckTrigger";
+import { PublicNavbarMobileMenu } from "@/components/layout/PublicNavbarActions";
 import { auth } from "@/lib/session";
 import { listEnrollmentsForUser } from "@/lib/db/enrollments.queries";
 import { getUserById } from "@/lib/db/users.queries";
@@ -9,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function PublicNavbar() {
   const session = await auth();
-  
+
   let user = session?.user;
   if (session?.user?.id) {
     try {
@@ -42,44 +44,89 @@ export async function PublicNavbar() {
   }
 
   return (
-    <nav className="glass-nav sticky top-0 z-50 print:hidden">
-      <div className="mx-auto flex h-[62px] max-w-[1200px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-5">
-        <Link href="/" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-[var(--r-md)] bg-[var(--brand)]">
-            <LandingIcon name="MessageCircle" color="#fff" size={16} />
-          </span>
-          <span className="font-[family-name:var(--font-heading)] text-base sm:text-lg font-extrabold tracking-tight">
-            Fluency<span className="text-[var(--brand)]">Hub</span>
-          </span>
+    <header className="sticky top-0 z-50 border-b border-[#E6DED4] bg-white print:hidden">
+      <div className="relative mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2.5"
+          aria-label="English Ready, beranda"
+        >
+          <EnglishReadyLogo height={34} />
         </Link>
-        <div className="hidden items-center gap-6 md:flex">
-          <Link href="/#masalah" className="nav-link">Masalah</Link>
-          <Link href="/#metode" className="nav-link">Metode</Link>
-          <Link href="/#harga" className="nav-link">Harga</Link>
-          <Link href="/#testimoni" className="nav-link">Testimoni</Link>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+
+        <nav
+          aria-label="Navigasi utama"
+          className="hidden items-center gap-6 text-[15px] font-semibold md:flex"
+        >
+          <Link
+            href="/#program"
+            className="text-[#0B2559] transition-colors hover:text-[#C2530A]"
+          >
+            Program
+          </Link>
+          <Link
+            href="/#ready-score"
+            className="text-[#0B2559] transition-colors hover:text-[#C2530A]"
+          >
+            Ready Score
+          </Link>
+          <Link
+            href="/#podcast"
+            className="text-[#0B2559] transition-colors hover:text-[#C2530A]"
+          >
+            Podcast
+          </Link>
+          <Link
+            href="/#untuk-tim"
+            className="text-[#0B2559] transition-colors hover:text-[#C2530A]"
+          >
+            Untuk Tim
+          </Link>
+          <Link
+            href="/#faq"
+            className="text-[#0B2559] transition-colors hover:text-[#C2530A]"
+          >
+            FAQ
+          </Link>
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-2.5 sm:gap-4">
           {user ? (
-            <ProfileDropdown user={user} profileUrl="/profile" hasDashboardAccess={hasDashboardAccess} />
+            <>
+              {!hasDashboardAccess && (
+                <ReadyCheckTrigger
+                  label="Cek Ready Score"
+                  isLoggedIn={true}
+                  className="hidden sm:inline-flex cursor-pointer whitespace-nowrap rounded-[12px] bg-[#C2530A] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#a84507]"
+                />
+              )}
+              <ProfileDropdown
+                user={user}
+                profileUrl="/profile"
+                hasDashboardAccess={hasDashboardAccess}
+              />
+            </>
           ) : (
             <>
               <Link
                 href="/auth/signin"
-                className="btn btn-secondary !px-2.5 !py-1.5 sm:!px-4 sm:!py-2 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-xl gap-1 sm:gap-1.5 shadow-xs"
+                className="hidden text-[15px] font-semibold text-[#0B2559] transition-colors hover:text-[#C2530A] sm:inline-flex"
               >
-                <LandingIcon name="LogIn" color="var(--text-2)" size={14} />
-                <span>Log in</span>
+                Masuk
               </Link>
-              <Link
-                href="/#harga"
-                className="btn btn-primary !px-3 !py-1.5 sm:!px-4 sm:!py-2 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl shadow-xs whitespace-nowrap"
-              >
-                Mulai Gratis
-              </Link>
+              <ReadyCheckTrigger
+                label="Cek Ready Score"
+                isLoggedIn={false}
+                className="cursor-pointer whitespace-nowrap rounded-[12px] bg-[#C2530A] px-3.5 py-2.5 text-xs font-bold text-white transition hover:bg-[#a84507] sm:px-5 sm:py-3 sm:text-[15px]"
+              />
             </>
           )}
+          <PublicNavbarMobileMenu
+            isLoggedIn={Boolean(user)}
+            hasDashboardAccess={hasDashboardAccess}
+          />
         </div>
       </div>
-    </nav>
+    </header>
   );
 }

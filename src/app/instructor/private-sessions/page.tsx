@@ -331,8 +331,10 @@ export default function InstructorPrivateSessionsPage() {
                   const start = sess.startAt ? new Date(sess.startAt) : new Date();
                   const end = sess.endAt ? new Date(sess.endAt) : new Date(start.getTime() + 60 * 60 * 1000);
                   
-                  // Zoom button appears 15 minutes before session start until session end
-                  const canOpenZoom = now.getTime() >= (start.getTime() - 15 * 60 * 1000) && now.getTime() <= end.getTime();
+                  const isOffline = sess.sessionType === 'offline';
+
+                  // Zoom button appears 15 minutes before session start until session end (for online only)
+                  const canOpenZoom = !isOffline && now.getTime() >= (start.getTime() - 15 * 60 * 1000) && now.getTime() <= end.getTime();
 
                   // Mark Completed button appears once the start time has been reached
                   const canMarkComplete = now.getTime() >= start.getTime();
@@ -353,7 +355,16 @@ export default function InstructorPrivateSessionsPage() {
                               <h3 className="font-bold text-zinc-900 text-sm truncate">{sess.learnerName}</h3>
                             </div>
                           </div>
-                          <div className="shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isOffline ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                                📍 OFFLINE
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                                💻 ONLINE
+                              </span>
+                            )}
                             {sess.status === 'pending' && (
                               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-200 shadow-2xs animate-pulse">
                                 PENDING
@@ -379,7 +390,7 @@ export default function InstructorPrivateSessionsPage() {
                       </div>
                       
                       <div className="bg-zinc-50/80 p-3 sm:p-4 rounded-xl text-xs sm:text-sm mb-4 border border-zinc-100 relative overflow-hidden">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-300"></div>
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${isOffline ? "bg-amber-400" : "bg-zinc-300"}`}></div>
                         <p className="font-bold text-zinc-800 mb-1 flex items-start sm:items-center gap-1.5 text-xs sm:text-sm leading-snug">
                           <svg className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                           <span>{format(start, "EEEE, d MMM yyyy • HH:mm", { locale: enUS })} - {format(end, "HH:mm")}</span>
@@ -388,36 +399,76 @@ export default function InstructorPrivateSessionsPage() {
                           <span className="text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Discussion Topic</span>
                           <span className="text-xs sm:text-sm break-words">&ldquo;{sess.topic}&rdquo;</span>
                         </div>
+
+                        {/* Offline Meeting Location Detail Card (ER-103) */}
+                        {isOffline && sess.locationName && (
+                          <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div>
+                                <div className="font-extrabold text-amber-950 flex items-center gap-1.5">
+                                  <span>📍 Titik Lokasi Tatap Muka:</span>
+                                  <span>{sess.locationName}</span>
+                                </div>
+                                {sess.locationAddress && (
+                                  <p className="text-amber-900/80 mt-0.5">{sess.locationAddress}</p>
+                                )}
+                                {sess.locationNotes && (
+                                  <p className="text-amber-800 italic mt-1 text-[11px]">
+                                    Catatan murid: &ldquo;{sess.locationNotes}&rdquo;
+                                  </p>
+                                )}
+                              </div>
+                              {sess.locationMapsUrl && (
+                                <a
+                                  href={sess.locationMapsUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="shrink-0 inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-[#0B2559] hover:bg-[#133882] text-white font-bold text-[11px] transition shadow-2xs"
+                                >
+                                  <span>🗺️ Cek Google Maps</span>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex gap-2 sm:gap-3">
                         {sess.status === 'pending' && (
                           <>
-                            <button className="btn flex-1 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-xs py-2 sm:py-2.5 transition-all font-bold text-xs sm:text-sm" onClick={() => handleSessionAction(sess.id, 'confirmed')}>✅ Approve</button>
-                            <button className="btn flex-1 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-xs py-2 sm:py-2.5 transition-all font-bold text-xs sm:text-sm" onClick={() => handleSessionAction(sess.id, 'rejected', "Decline reason:")}>❌ Decline</button>
+                            <button className="btn flex-1 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-xs py-2 sm:py-2.5 transition-all font-bold text-xs sm:text-sm cursor-pointer" onClick={() => handleSessionAction(sess.id, 'confirmed')}>✅ Approve {isOffline ? "& Confirm Lokasi" : ""}</button>
+                            <button className="btn flex-1 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-xs py-2 sm:py-2.5 transition-all font-bold text-xs sm:text-sm cursor-pointer" onClick={() => handleSessionAction(sess.id, 'rejected', "Decline reason:")}>❌ Decline</button>
                           </>
                         )}
                         {sess.status === 'confirmed' && (
                           <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-stretch sm:items-center w-full">
-                            {!canOpenZoom && !canMarkComplete && (
-                              <div className="flex-1 py-2.5 px-3 sm:py-3 sm:px-4 bg-blue-50/60 border border-blue-100 rounded-xl text-center text-[11px] sm:text-xs font-semibold text-blue-700 flex items-center justify-center gap-2">
-                                <svg className="w-4 h-4 text-blue-500 animate-pulse shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span>Zoom room opens 15 minutes before the session starts</span>
+                            {isOffline ? (
+                              <div className="flex-1 py-2.5 px-3 sm:py-3 sm:px-4 bg-amber-50/70 border border-amber-200 rounded-xl text-center text-[11px] sm:text-xs font-semibold text-amber-900 flex items-center justify-center gap-2">
+                                <span>📍 Sesi Tatap Muka Terjadwal — Siapkan materi dan hadir di lokasi pertemuan</span>
                               </div>
-                            )}
+                            ) : (
+                              <>
+                                {!canOpenZoom && !canMarkComplete && (
+                                  <div className="flex-1 py-2.5 px-3 sm:py-3 sm:px-4 bg-blue-50/60 border border-blue-100 rounded-xl text-center text-[11px] sm:text-xs font-semibold text-blue-700 flex items-center justify-center gap-2">
+                                    <svg className="w-4 h-4 text-blue-500 animate-pulse shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Zoom room opens 15 minutes before the session starts</span>
+                                  </div>
+                                )}
 
-                            {canOpenZoom && (
-                              <a href={sess.zoomLink || zoomLink || "#"} target="_blank" rel="noreferrer" className="btn flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 py-2.5 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                                Open Zoom
-                              </a>
+                                {canOpenZoom && (
+                                  <a href={sess.zoomLink || zoomLink || "#"} target="_blank" rel="noreferrer" className="btn flex-1 bg-[#F26A12] hover:bg-[#D65507] text-white rounded-xl shadow-md shadow-[#F26A12]/20 py-2.5 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    Open Zoom
+                                  </a>
+                                )}
+                              </>
                             )}
 
                             {canMarkComplete && (
                               <button 
-                                className="btn flex-1 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-700 hover:text-emerald-800 rounded-xl shadow-xs py-2.5 transition-all font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5" 
+                                className="btn flex-1 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-700 hover:text-emerald-800 rounded-xl shadow-xs py-2.5 transition-all font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer" 
                                 onClick={() => handleSessionAction(sess.id, 'completed', "Session Notes (optional):")}
                               >
                                 <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
@@ -426,7 +477,7 @@ export default function InstructorPrivateSessionsPage() {
                             )}
 
                             <button 
-                              className="btn w-full sm:w-auto px-4 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-2xs py-2.5 transition-all font-bold text-xs flex items-center justify-center gap-1.5" 
+                              className="btn w-full sm:w-auto px-4 bg-white hover:bg-red-50 border border-zinc-200 text-red-600 rounded-xl shadow-2xs py-2.5 transition-all font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer" 
                               onClick={() => handleSessionAction(sess.id, 'cancelled', "Cancellation reason (required):")}
                             >
                               Cancel Session
@@ -479,7 +530,7 @@ export default function InstructorPrivateSessionsPage() {
                 Back
               </button>
               <button 
-                className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-md transition-transform active:scale-95 ${modalConfig.status === 'rejected' || modalConfig.status === 'cancelled' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'}`}
+                className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-md transition-transform active:scale-95 ${modalConfig.status === 'rejected' || modalConfig.status === 'cancelled' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-[#F26A12] hover:bg-[#D65507] shadow-[#F26A12]/20'}`}
                 onClick={() => {
                   if ((modalConfig.status === 'rejected' || modalConfig.status === 'cancelled') && !modalConfig.value.trim()) {
                     return showToast("Reason cannot be empty.", "error");

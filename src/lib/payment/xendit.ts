@@ -195,7 +195,7 @@ export async function createXenditRetail(params: {
     market: "ID",
     currency: "IDR",
     amount: Math.round(params.amount),
-    customer_name: "FluencyHub",
+    customer_name: "English Ready",
   });
 }
 

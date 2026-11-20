@@ -5,6 +5,8 @@ import { getUserById } from "@/lib/db/users.queries";
 import { listEnrollmentsForUser } from "@/lib/db/enrollments.queries";
 import { listCoursePlayerCurriculum } from "@/lib/db/lessons.queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   
@@ -22,6 +24,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   const unlockedExamCourseIds: number[] = [];
+  const liveZoomCourseIds: number[] = [];
+  let hasPrivateSessionAccess = false;
   let defaultCourseId: number | undefined;
 
   if (session?.user?.id) {
@@ -32,12 +36,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
 
     for (const e of enrollments) {
-      if (Number(e.progressPct) >= 100) {
+      if (e.course.tier !== "tier_bawah") {
+        liveZoomCourseIds.push(e.courseId);
+      }
+      if (e.course.tier === "tier_tinggi" || e.course.speakingPartnerType === "trainer_offline") {
+        hasPrivateSessionAccess = true;
+      }
+
+      if (session.user.role === "admin" || Number(e.progressPct) >= 100) {
         unlockedExamCourseIds.push(e.courseId);
       } else {
         const curriculum = await listCoursePlayerCurriculum(e.courseId, userId);
         const allLessons = curriculum.flatMap((s) => s.lessons);
-        if (allLessons.length > 0 && allLessons.every((l) => l.isCompleted)) {
+        if (allLessons.length === 0 || allLessons.every((l) => l.isCompleted)) {
           unlockedExamCourseIds.push(e.courseId);
         }
       }
@@ -45,10 +56,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#fafafa]">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#FBF6F1]">Loading...</div>}>
       <DashboardChrome
         user={user}
         unlockedExamCourseIds={unlockedExamCourseIds}
+        liveZoomCourseIds={liveZoomCourseIds}
+        hasPrivateSessionAccess={hasPrivateSessionAccess}
         defaultCourseId={defaultCourseId}
       >
         {children}

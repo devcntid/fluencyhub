@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
 import { useToast } from "@/components/ui/NotificationProvider";
+import { TIER_CONFIG } from "./InstructorCourseCreateButton";
 
 function slugify(value: string) {
   return value
@@ -25,6 +26,7 @@ export function InstructorCourseEditDialog({
     thumbnailUrl: string | null;
     status?: "draft" | "published";
     level?: "beginner" | "intermediate" | "advanced" | "all_levels";
+    tier?: "tier_bawah" | "tier_menengah" | "tier_tinggi" | null;
   };
 }) {
   const router = useRouter();
@@ -43,6 +45,16 @@ export function InstructorCourseEditDialog({
   const [level, setLevel] = useState<"beginner" | "intermediate" | "advanced" | "all_levels">(
     course.level || "beginner"
   );
+  const [tier, setTier] = useState<"tier_bawah" | "tier_menengah" | "tier_tinggi">(
+    (course.tier as any) || "tier_menengah"
+  );
+
+  function handleTierChange(newTier: "tier_bawah" | "tier_menengah" | "tier_tinggi") {
+    setTier(newTier);
+    if (!price || price === "0" || price === "99000" || price === "1490000" || price === "2690000") {
+      setPrice(TIER_CONFIG[newTier].suggestedPrice);
+    }
+  }
 
   function startEdit() {
     setTitle(course.title);
@@ -52,6 +64,7 @@ export function InstructorCourseEditDialog({
     setThumbnailUrl(course.thumbnailUrl || "");
     setStatus(course.status || "draft");
     setLevel(course.level || "beginner");
+    setTier((course.tier as any) || "tier_menengah");
     setError("");
     setUploading(false);
     setOpen(true);
@@ -95,6 +108,9 @@ export function InstructorCourseEditDialog({
       thumbnailUrl: thumbnailUrl || null,
       status,
       level,
+      tier,
+      speakingPartnerType: TIER_CONFIG[tier].partner,
+      tierBadge: TIER_CONFIG[tier].badge,
     };
     try {
       const res = await fetch(`/api/instructor/courses/${course.id}`, {
@@ -151,7 +167,7 @@ export function InstructorCourseEditDialog({
             <input className="input" value={slug} onChange={(e) => setSlug(e.target.value)} />
           </label>
           <label>
-            <span className="label">Level</span>
+            <span className="label">Level Kemampuan</span>
             <select
               className="input"
               value={level}
@@ -159,11 +175,31 @@ export function InstructorCourseEditDialog({
                 setLevel(e.target.value as "beginner" | "intermediate" | "advanced" | "all_levels")
               }
             >
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-              <option value="all_levels">All Levels</option>
+              <option value="beginner">Beginner (Dasar)</option>
+              <option value="intermediate">Intermediate (Menengah)</option>
+              <option value="advanced">Advanced (Mahir)</option>
+              <option value="all_levels">All Levels (Semua Level)</option>
             </select>
+          </label>
+          <label>
+            <div className="flex items-center justify-between mb-1">
+              <span className="label !mb-0 font-bold">Tingkatan Paket Program (Tier)</span>
+              <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                {TIER_CONFIG[tier]?.partnerLabel || "Partner"}
+              </span>
+            </div>
+            <select
+              className="input bg-white font-medium"
+              value={tier}
+              onChange={(e) => handleTierChange(e.target.value as any)}
+            >
+              <option value="tier_bawah">🥉 Paket Bawah (Self-Paced AI Partner)</option>
+              <option value="tier_menengah">🥈 Paket Menengah (Live Online Zoom Cohort)</option>
+              <option value="tier_tinggi">🥇 Paket Tinggi (Executive Offline 1-on-1)</option>
+            </select>
+            <p className="mt-1 text-xs text-zinc-500 leading-snug">
+              {TIER_CONFIG[tier]?.desc}
+            </p>
           </label>
           <label>
             <span className="label">Short description</span>
@@ -174,15 +210,27 @@ export function InstructorCourseEditDialog({
             />
           </label>
           <label>
-            <span className="label">Price</span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="label !mb-0 font-bold">Harga Kursus (IDR)</span>
+              <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Saran: {TIER_CONFIG[tier]?.rangeText}
+              </span>
+            </div>
             <input
               type="number"
               min="0"
               step="any"
-              className="input"
+              className="input font-semibold"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+              placeholder={`Contoh: ${TIER_CONFIG[tier]?.suggestedPrice}`}
             />
+            {Number(price) > 0 && (Number(price) < TIER_CONFIG[tier]?.minPrice || Number(price) > TIER_CONFIG[tier]?.maxPrice) && (
+              <p className="mt-1 text-xs text-amber-600 font-medium flex items-center gap-1">
+                <span>⚠️</span>
+                <span>Harga di luar rentang rekomendasi ({TIER_CONFIG[tier]?.rangeText}).</span>
+              </p>
+            )}
           </label>
           <label>
             <span className="label">Course Status</span>

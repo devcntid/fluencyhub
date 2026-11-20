@@ -3,6 +3,8 @@ import { TopbarSignOut } from "@/components/layout/TopbarSignOut";
 import { auth } from "@/lib/session";
 import { getUserById } from "@/lib/db/users.queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function InstructorLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   

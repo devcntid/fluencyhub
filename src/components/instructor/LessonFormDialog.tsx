@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
 import { useToast } from "@/components/ui/NotificationProvider";
+import { PAKET_JAGO_LESSON_TEMPLATES } from "@/lib/curriculum/paket-jago-templates";
 
 const TYPES = [
   { v: "youtube_video", l: "YouTube" },
@@ -553,23 +554,52 @@ export function LessonFormDialog({
           ) : null}
 
           {type === "text" ? (
-            <label>
-              <span className="label flex items-center justify-between">
-                <span>Text content <span className="text-red-500">*</span></span>
-                {fieldErrors.text && (
-                  <span className="text-xs font-semibold text-red-500">{fieldErrors.text}</span>
-                )}
-              </span>
-              <textarea
-                className={`input min-h-24 ${fieldErrors.text ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
-                value={text}
-                placeholder="Write lesson notes, guidelines, or study materials here..."
-                onChange={(e) => {
-                  setText(e.target.value);
-                  clearFieldError("text");
-                }}
-              />
-            </label>
+            <div className="space-y-2.5">
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 space-y-1.5">
+                <label className="text-[11px] font-extrabold text-indigo-900 block">
+                  ✨ Muat Template Materi Resmi (Paket Jago Bahasa Inggris A1–A3)
+                </label>
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    const tpl = PAKET_JAGO_LESSON_TEMPLATES.find((t) => t.id === e.target.value);
+                    if (!tpl) return;
+                    if (!title.trim()) setTitle(tpl.title);
+                    setText(tpl.content);
+                    setDur(tpl.durationMinutes);
+                    clearFieldError("text");
+                    clearFieldError("title");
+                    e.target.value = "";
+                  }}
+                  className="input text-xs font-semibold bg-white"
+                >
+                  <option value="">— Pilih Template Pertemuan (Vocab + Dialogue + Grammar + Role Play + Exercise) —</option>
+                  {PAKET_JAGO_LESSON_TEMPLATES.map((tpl) => (
+                    <option key={tpl.id} value={tpl.id}>
+                      [{tpl.level}] {tpl.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="block">
+                <span className="label flex items-center justify-between">
+                  <span>Text content <span className="text-red-500">*</span></span>
+                  {fieldErrors.text && (
+                    <span className="text-xs font-semibold text-red-500">{fieldErrors.text}</span>
+                  )}
+                </span>
+                <textarea
+                  className={`input min-h-40 font-mono text-xs ${fieldErrors.text ? "!border-red-500 !bg-red-50/20 ring-1 ring-red-500/30" : ""}`}
+                  value={text}
+                  placeholder="Write lesson notes, Vocabulary (20 verbs/20 nouns/5 adjectives), Useful Expressions, Dialogue, Role Play, Exercise..."
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    clearFieldError("text");
+                  }}
+                />
+              </label>
+            </div>
           ) : null}
 
           {type !== "live_class" ? (

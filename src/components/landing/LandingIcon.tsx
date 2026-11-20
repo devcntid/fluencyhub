@@ -204,6 +204,16 @@ export function LandingIcon({
           <line x1="12" x2="12" y1="19" y2="22" />
         </>
       )}
+      {name === "Bot" && (
+        <>
+          <path d="M12 8V4H8" />
+          <rect width="16" height="12" x="4" y="8" rx="2" />
+          <path d="M2 14h2" />
+          <path d="M20 14h2" />
+          <path d="M15 13v2" />
+          <path d="M9 13v2" />
+        </>
+      )}
       {name === "Trash" && (
         <>
           <polyline points="3 6 5 6 21 6" />

@@ -1,5 +1,7 @@
 "use client";
 
+import { EnglishReadyLogo } from "@/components/brand/EnglishReadyLogo";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -46,12 +48,7 @@ export function AdminMobileNav({ base, groups }: { base: string; groups: AdminNa
           <div className="relative flex w-[260px] flex-col bg-[var(--sidebar)] h-full overflow-y-auto shadow-2xl animate-in slide-in-from-left-full duration-200">
             <div className="flex items-center justify-between p-4 border-b border-white/10">
               <Link href={base} className="flex items-center gap-2" onClick={() => setOpen(false)}>
-                <span className="flex h-6 w-6 items-center justify-center rounded-[var(--r)] bg-[var(--sidebar-active-admin)] text-[10px] font-extrabold text-white">
-                  F
-                </span>
-                <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-white">
-                  Fluency<span className="text-[var(--sidebar-active-admin)]">Hub</span>
-                </span>
+                <EnglishReadyLogo height={26} mode="dark" />
               </Link>
               <button onClick={() => setOpen(false)} className="text-white/50 hover:text-white">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

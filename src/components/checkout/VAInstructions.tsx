@@ -27,7 +27,7 @@ export function VAInstructions({
   methodCode,
   methodType,
   logoUrl,
-  merchantName = "FluencyHub",
+  merchantName = "English Ready",
   totalAmount,
   expiresAt,
   createdAt,
@@ -110,7 +110,7 @@ export function VAInstructions({
 
     // 3. Prioritas ketiga: localStorage per orderNumber
     if (!targetMs && typeof window !== "undefined" && orderNumber) {
-      const storageKey = `fluencyhub_expiry_${orderNumber}`;
+      const storageKey = `englishready_expiry_${orderNumber}`;
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const ms = parseInt(stored, 10);
@@ -174,7 +174,7 @@ export function VAInstructions({
         const qrisString = generateQrisString({
           orderNumber,
           amount: Number(totalAmount) || 0,
-          merchantName: merchantName || "FluencyHub",
+          merchantName: merchantName || "English Ready",
         });
         QRCode.toDataURL(qrisString, { width: 280, margin: 2, errorCorrectionLevel: "M" })
           .then((url) => setInternalQr(url))
@@ -203,7 +203,7 @@ export function VAInstructions({
       if (activeQr.startsWith("data:")) {
         const link = document.createElement("a");
         link.href = activeQr;
-        link.download = `QRIS-${orderNumber || "FluencyHub"}.png`;
+        link.download = `QRIS-${orderNumber || "EnglishReady"}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -213,7 +213,7 @@ export function VAInstructions({
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `QRIS-${orderNumber || "FluencyHub"}.png`;
+        link.download = `QRIS-${orderNumber || "EnglishReady"}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -236,7 +236,7 @@ export function VAInstructions({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QRIS - ${orderNumber || "FluencyHub"}</title>
+  <title>QRIS - ${orderNumber || "English Ready"}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -367,7 +367,7 @@ export function VAInstructions({
 
     <div class="meta-box">
       <span class="meta-label">Merchant</span>
-      <span class="meta-val">${merchantName || "FluencyHub"}</span>
+      <span class="meta-val">${merchantName || "English Ready"}</span>
     </div>
     ${orderNumber ? `
     <div class="meta-box" style="margin-top: 6px; border-top: none; padding-top: 0;">
@@ -895,7 +895,7 @@ export function VAInstructions({
 
           <div className="flex items-center justify-between py-2.5 gap-2 min-w-0">
             <span className="text-xs sm:text-sm text-[var(--text-3)] shrink-0">Merchant</span>
-            <span className="text-xs sm:text-sm font-semibold text-[var(--text)] truncate">{merchantName || "FluencyHub"}</span>
+            <span className="text-xs sm:text-sm font-semibold text-[var(--text)] truncate">{merchantName || "English Ready"}</span>
           </div>
 
           {totalAmount != null && totalAmount > 0 && (
@@ -979,7 +979,7 @@ export function VAInstructions({
             {isRetail && (
               <ol className="list-decimal list-inside space-y-2 text-xs md:text-sm text-[var(--text-2)] leading-relaxed">
                 <li>Kunjungi gerai <strong>{methodName || "Indomaret / Alfamart"}</strong> terdekat.</li>
-                <li>Sampaikan ke kasir bahwa Anda ingin melakukan pembayaran tagihan <strong>Faspay / FluencyHub</strong>.</li>
+                <li>Sampaikan ke kasir bahwa Anda ingin melakukan pembayaran tagihan <strong>Faspay / English Ready</strong>.</li>
                 <li>Tunjukkan atau sebutkan <strong>Kode Pembayaran: {vaNumber}</strong> kepada kasir.</li>
                 <li>Kasir akan mengonfirmasi detail pesanan dan total tagihan sebesar <strong>{totalAmount ? formatIdr(totalAmount) : "sesuai rincian"}</strong>.</li>
                 <li>Lakukan pembayaran ke kasir secara tunai atau debit.</li>
@@ -993,7 +993,7 @@ export function VAInstructions({
                 <li>Buka aplikasi mobile banking atau e-wallet pilihan Anda (BCA, Mandiri, BRI, GoPay, OVO, Dana, ShopeePay, dll).</li>
                 <li>Pilih menu <strong>Scan QRIS</strong> atau <strong>Bayar</strong>.</li>
                 <li>Arahkan kamera ke QR Code di atas (atau pilih gambar tangkapan layar / gambar unduhan QR dari galeri ponsel).</li>
-                <li>Pastikan nama merchant penerima adalah <strong>FluencyHub</strong> dan total tagihan adalah <strong>{totalAmount ? formatIdr(totalAmount) : "sesuai rincian"}</strong>.</li>
+                <li>Pastikan nama merchant penerima adalah <strong>English Ready</strong> dan total tagihan adalah <strong>{totalAmount ? formatIdr(totalAmount) : "sesuai rincian"}</strong>.</li>
                 <li>Konfirmasi dan masukkan PIN transaksi Anda.</li>
                 <li>Setelah berhasil, klik tombol <strong>Cek Status Pembayaran</strong> di bawah untuk mengakses kelas.</li>
               </ol>
@@ -1043,7 +1043,7 @@ export function VAInstructions({
                     <li>Buka aplikasi m-Banking di ponsel Anda dan lakukan login.</li>
                     <li>Pilih menu <strong>Transfer</strong> &gt; <strong>Virtual Account</strong>.</li>
                     <li>Masukkan nomor Virtual Account: <strong className="font-mono">{vaNumber || "(Belum terbit)"}</strong>.</li>
-                    <li>Periksa detail tagihan <strong>FluencyHub</strong> dan nominal {totalAmount ? formatIdr(totalAmount) : ""}.</li>
+                    <li>Periksa detail tagihan <strong>English Ready</strong> dan nominal {totalAmount ? formatIdr(totalAmount) : ""}.</li>
                     <li>Masukkan PIN m-Banking untuk menyelesaikan transaksi.</li>
                   </ol>
                 )}
@@ -1073,7 +1073,7 @@ export function VAInstructions({
             {isEWallet && (
               <ol className="list-decimal list-inside space-y-2 text-xs md:text-sm text-[var(--text-2)] leading-relaxed">
                 <li>Buka notifikasi atau aplikasi <strong>{methodName}</strong> di ponsel Anda.</li>
-                <li>Periksa detail pembayaran merchant <strong>FluencyHub</strong> dan nominal <strong>{totalAmount ? formatIdr(totalAmount) : ""}</strong>.</li>
+                <li>Periksa detail pembayaran merchant <strong>English Ready</strong> dan nominal <strong>{totalAmount ? formatIdr(totalAmount) : ""}</strong>.</li>
                 <li>Konfirmasi pembayaran dan masukkan PIN keamanan akun Anda.</li>
                 <li>Setelah verifikasi selesai, klik tombol <strong>Cek Status Pembayaran</strong> di bawah ini.</li>
               </ol>

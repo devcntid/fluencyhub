@@ -12,6 +12,10 @@ const Schema = z.object({
   originalPrice: z.string().nullable().optional(),
   thumbnailUrl: z.string().url().nullable().optional(),
   level: z.enum(["beginner", "intermediate", "advanced", "all_levels"]).optional(),
+  tier: z.enum(["tier_bawah", "tier_menengah", "tier_tinggi"]).optional(),
+  speakingPartnerType: z.enum(["ai", "trainer_online", "trainer_offline"]).optional(),
+  tierBadge: z.string().nullable().optional(),
+  offlineSessionsCount: z.number().optional(),
 });
 
 export async function POST(req: Request) {
@@ -53,6 +57,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    const tier = parsed.data.tier ?? "tier_menengah";
+    const speakingPartnerType = parsed.data.speakingPartnerType ?? (
+      tier === "tier_bawah" ? "ai" : tier === "tier_tinggi" ? "trainer_offline" : "trainer_online"
+    );
+    const tierBadge = parsed.data.tierBadge ?? (
+      tier === "tier_bawah" ? "Self-Paced AI" : tier === "tier_tinggi" ? "Executive 1-on-1" : "Online Cohort"
+    );
+
     const course = await createCourseAdmin({
       ...parsed.data,
       slug: targetSlug,
@@ -61,6 +73,10 @@ export async function POST(req: Request) {
       isFeatured: false,
       marketingTag: null,
       level: parsed.data.level ?? "beginner",
+      tier,
+      speakingPartnerType,
+      tierBadge,
+      offlineSessionsCount: parsed.data.offlineSessionsCount ?? (tier === "tier_tinggi" ? 4 : 0),
     });
 
     return NextResponse.json({ data: course }, { status: 201 });

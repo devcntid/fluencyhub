@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { LandingIcon } from "@/components/landing/LandingIcon";
+import { EnglishReadyLogo } from "@/components/brand/EnglishReadyLogo";
 
 export interface CertificateData {
   id: number;
@@ -87,7 +88,7 @@ export function CertificateViewer({
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
               <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
-                Akreditasi Resmi FluencyHub
+                Sertifikasi Resmi English Ready
               </span>
             </div>
             <p className="text-xs text-slate-400 font-mono mt-0.5">
@@ -201,7 +202,7 @@ export function CertificateViewer({
                     fill="currentColor"
                     letterSpacing="4"
                   >
-                    FLUENCYHUB ACADEMY
+                    ENGLISH READY
                   </text>
                 </svg>
               </div>
@@ -264,18 +265,24 @@ export function CertificateViewer({
               {/* ================= CERTIFICATE HEADER ================= */}
               <div className="relative z-10 flex flex-col items-center text-center mt-3">
                 {/* Official Crest Badge */}
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-[#f59e0b] shadow-md border-2 border-[#d4af37]">
-                    <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
-                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                    </svg>
+                <div className="flex items-center gap-3.5 mb-1">
+                  <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white p-1 shadow-md border-2 border-[#d4af37]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/brand/logo-icon.svg"
+                      alt="English Ready"
+                      className="h-10 w-10 object-contain"
+                    />
                   </div>
                   <div className="text-left">
-                    <span className="block text-[13px] font-black tracking-[0.28em] text-[#0f172a] uppercase font-serif">
-                      FluencyHub Academy
+                    <span className="block text-[14px] font-black tracking-[0.25em] text-[#0B2559] uppercase font-serif">
+                      English Ready
                     </span>
-                    <span className="block text-[9px] font-bold tracking-[0.2em] text-[#b8860b] uppercase">
+                    <span className="block text-[9px] font-bold tracking-[0.18em] text-[#b8860b] uppercase">
                       Institute of English Proficiency & Global Communication
+                    </span>
+                    <span className="block text-[8px] font-extrabold tracking-[0.2em] text-[#0073F5] uppercase mt-0.5">
+                      Speak. Connect. Contribute.
                     </span>
                   </div>
                 </div>
@@ -362,14 +369,14 @@ export function CertificateViewer({
                 <div className="relative flex flex-col items-center justify-center -mb-2">
                   {/* Seal Ribbons */}
                   <div className="absolute top-12 flex gap-1 pointer-events-none">
-                    {/* Left Ribbon Tail (Navy) */}
+                    {/* Left Ribbon Tail (English Ready Navy) */}
                     <div
-                      className="w-4 h-12 bg-[#0e172a] shadow-md -rotate-6"
+                      className="w-4 h-12 bg-[#0B2559] shadow-md -rotate-6"
                       style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }}
                     />
-                    {/* Right Ribbon Tail (Gold) */}
+                    {/* Right Ribbon Tail (English Ready Orange) */}
                     <div
-                      className="w-4 h-12 bg-[#c29837] shadow-md rotate-6"
+                      className="w-4 h-12 bg-[#F26A12] shadow-md rotate-6"
                       style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)" }}
                     />
                   </div>
@@ -380,7 +387,7 @@ export function CertificateViewer({
                       <div className="text-[9px] leading-tight font-black uppercase tracking-tighter text-[#4a3504]">
                         <span className="text-[8px] tracking-widest block font-bold text-[#6d4d03]">SEAL OF</span>
                         <span className="text-sm font-black text-[#2e1d00] block my-0.5">EXCELLENCE</span>
-                        <span className="text-[8px] font-extrabold tracking-wider block text-[#503b07]">FLUENCYHUB</span>
+                        <span className="text-[8px] font-extrabold tracking-wider block text-[#503b07]">ENGLISH READY</span>
                       </div>
                     </div>
                   </div>
@@ -390,7 +397,7 @@ export function CertificateViewer({
                   </span>
                 </div>
 
-                {/* 3. Official FluencyHub Digital Signature (Verified QR Code) */}
+                {/* 3. Official English Ready Digital Signature (Verified QR Code) */}
                 <div className="flex flex-col items-center text-center min-w-[220px]">
                   <div className="h-16 flex items-end justify-center mb-1">
                     <div className="p-0.5 bg-white rounded-lg border border-slate-300 shadow-xs">
@@ -404,7 +411,7 @@ export function CertificateViewer({
                   </div>
                   <div className="h-[1.5px] w-52 bg-[#0e172a] mb-1" />
                   <span className="text-xs font-bold text-slate-900 tracking-tight">
-                    FluencyHub Academic Board
+                    English Ready Academic Board
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[10px] font-semibold text-[#b8860b] uppercase tracking-wider">
@@ -434,16 +441,21 @@ export function CertificateViewer({
             <div>
               {/* Report Header */}
               <div className="flex items-start justify-between border-b-2 border-slate-900 pb-6 mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-[#f59e0b] font-black text-xl border-2 border-[#d4af37]">
-                    FH
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white p-1 border-2 border-[#0073F5]/30 shadow-xs">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/brand/logo-icon.svg"
+                      alt="English Ready"
+                      className="h-10 w-10 object-contain"
+                    />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight font-serif uppercase">
-                      FluencyHub Academy
+                    <h1 className="text-2xl font-black text-[#0B2559] tracking-tight font-serif uppercase">
+                      English Ready
                     </h1>
-                    <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
-                      Official Student Competency & Transcript Report
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#0062D1]">
+                      Official Student Competency &amp; Transcript Report
                     </p>
                     <p className="text-[11px] text-slate-500">
                       Transkrip Penilaian Kompetensi Standar Kerangka Kerja CEFR / TOEFL Equivalent
@@ -578,7 +590,7 @@ export function CertificateViewer({
               {/* Grading Scale Explanation */}
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-600 space-y-1">
                 <span className="font-bold text-slate-900 block mb-1 uppercase tracking-wider text-[10px]">
-                  Skala Penilaian Akademik FluencyHub:
+                  Skala Penilaian Akademik English Ready:
                 </span>
                 <p>&bull; <strong>Grade A (90 - 100):</strong> Sangat Baik / Advanced Professional Proficiency (Distinction)</p>
                 <p>&bull; <strong>Grade B+ / B (70 - 89):</strong> Baik / Competent Working Proficiency (Passing Grade: 70)</p>
@@ -614,7 +626,7 @@ export function CertificateViewer({
                 <div className="inline-flex items-center justify-center h-12 w-12 rounded-full border border-blue-900 bg-blue-50 text-blue-900 mb-1">
                   <span className="text-[10px] font-black tracking-tighter">VERIFIED</span>
                 </div>
-                <p className="text-[11px] font-bold text-slate-900">FluencyHub Academic Board</p>
+                <p className="text-[11px] font-bold text-slate-900">English Ready Academic Board</p>
                 <p className="text-[10px] text-slate-500">Divisi Penjaminan Mutu & Sertifikasi</p>
               </div>
 

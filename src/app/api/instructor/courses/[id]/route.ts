@@ -16,6 +16,10 @@ const Schema = z.object({
   thumbnailUrl: z.string().url().nullable().optional(),
   status: z.enum(["draft", "published"]).optional(),
   level: z.enum(["beginner", "intermediate", "advanced", "all_levels"]).optional(),
+  tier: z.enum(["tier_bawah", "tier_menengah", "tier_tinggi"]).optional(),
+  speakingPartnerType: z.enum(["ai", "trainer_online", "trainer_offline"]).optional(),
+  tierBadge: z.string().nullable().optional(),
+  offlineSessionsCount: z.number().optional(),
 });
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -91,7 +95,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    // Update course fields including status and level
+    // Update course fields including status, level, tier
+    const tier = parsed.data.tier;
+    const speakingPartnerType = parsed.data.speakingPartnerType ?? (
+      tier === "tier_bawah" ? "ai" : tier === "tier_tinggi" ? "trainer_offline" : tier === "tier_menengah" ? "trainer_online" : undefined
+    );
+    const tierBadge = parsed.data.tierBadge ?? (
+      tier === "tier_bawah" ? "Self-Paced AI" : tier === "tier_tinggi" ? "Executive 1-on-1" : tier === "tier_menengah" ? "Online Cohort" : undefined
+    );
+
     const updated = await updateCourseAdmin(courseId, {
       title: parsed.data.title,
       slug: parsed.data.slug,
@@ -100,6 +112,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       thumbnailUrl: parsed.data.thumbnailUrl,
       status: parsed.data.status,
       level: parsed.data.level,
+      tier,
+      speakingPartnerType,
+      tierBadge,
+      offlineSessionsCount: parsed.data.offlineSessionsCount ?? (tier === "tier_tinggi" ? 4 : undefined),
     });
 
     return NextResponse.json({ data: updated });

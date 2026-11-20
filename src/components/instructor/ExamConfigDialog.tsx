@@ -1,16 +1,70 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AdminFormDialog } from "@/components/admin/AdminFormDialog";
 import { LandingIcon } from "@/components/landing/LandingIcon";
+import {
+  DEFAULT_CBT_QUESTIONS,
+  type CbtQuestion,
+  type CbtQuestionType,
+} from "@/lib/exams/cbt";
 import type { Exam } from "@/types/db";
+
+const SECTIONS: CbtQuestion["section"][] = [
+  "Reading & Grammar",
+  "Listening & Speaking",
+  "Business English",
+];
+
+function createBlankQuestion(type: CbtQuestionType, prefix: string): CbtQuestion {
+  const uid = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  if (type === "audio_speaking") {
+    return {
+      id: uid,
+      type: "audio_speaking",
+      section: "Listening & Speaking",
+      title: "",
+      instructions:
+        "Dengarkan audio pertanyaan berikut, lalu rekam jawaban lisanmu dalam bahasa Inggris secara jelas dan profesional.",
+      audioPrompt: "",
+      question: "",
+      targetAnswer: "",
+      keyPhrases: [],
+      timeLimitSeconds: 120,
+      points: 20,
+    };
+  }
+  return {
+    id: uid,
+    type: "text_fill",
+    section: "Reading & Grammar",
+    title: "",
+    instructions:
+      "Lengkapi bagian rumpang (_____) pada kalimat berikut dengan kata atau frasa bahasa Inggris yang tepat.",
+    passage: "",
+    question: "",
+    targetAnswer: "",
+    acceptableAnswers: [],
+    timeLimitSeconds: 90,
+    points: 15,
+  };
+}
+
+function cloneTemplateQuestions(prefix: string): CbtQuestion[] {
+  return DEFAULT_CBT_QUESTIONS.map((q, idx) => ({
+    ...q,
+    id: `${prefix}-q${idx + 1}-${Math.random().toString(36).slice(2, 5)}`,
+    acceptableAnswers: q.acceptableAnswers ? [...q.acceptableAnswers] : undefined,
+    keyPhrases: q.keyPhrases ? [...q.keyPhrases] : undefined,
+  }));
+}
 
 export function ExamConfigDialog({
   courseId,
   courseTitle,
   initialExam,
-  triggerLabel = "Upload Exam Paper (PDF)",
+  triggerLabel = "Kelola Soal CBT",
   triggerClassName = "btn btn-secondary btn-sm",
   initialTab = "main",
   iconName = "FileText",
@@ -27,144 +81,225 @@ export function ExamConfigDialog({
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"main" | "remedial">(initialTab);
 
-  const [title, setTitle] = useState(initialExam?.title || `Final Examination — ${courseTitle}`);
-  const [passingScore, setPassingScore] = useState<number | string>(initialExam?.passingScore || 70);
+  const [title, setTitle] = useState(
+    initialExam?.title || `Final Competency Exam (CBT) — ${courseTitle}`
+  );
+  const [passingScore, setPassingScore] = useState<number | string>(
+    initialExam?.passingScore || 70
+  );
   const [instructions, setInstructions] = useState(
     initialExam?.content?.examInstructions ||
-      "1. Download the question paper PDF below.\n2. Complete all instructions and questions independently.\n3. Upload your completed answer sheet in PDF or DOC format using the submission form below."
+      "Kerjakan seluruh soal ujian CBT secara mandiri. Soal terdiri dari isian teks (auto-grading toleransi typo) dan latihan speaking dengan audio."
   );
-
-  const [fileUrl, setFileUrl] = useState(initialExam?.content?.questionFileUrl || "");
-  const [fileName, setFileName] = useState(initialExam?.content?.questionFileName || "");
-
-  const [remedialFileUrl, setRemedialFileUrl] = useState(initialExam?.content?.remedialFileUrl || "");
-  const [remedialFileName, setRemedialFileName] = useState(initialExam?.content?.remedialFileName || "");
   const [remedialInstructions, setRemedialInstructions] = useState(
     initialExam?.content?.remedialInstructions || ""
   );
 
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState("");
-  const [uploadingRemedial, setUploadingRemedial] = useState(false);
-  const [uploadProgressRemedial, setUploadProgressRemedial] = useState("");
+  const [mainQuestions, setMainQuestions] = useState<CbtQuestion[]>(
+    () => (initialExam?.content?.cbtQuestions as CbtQuestion[] | undefined) || []
+  );
+  const [remedialQuestions, setRemedialQuestions] = useState<CbtQuestion[]>(
+    () => (initialExam?.content?.remedialCbtQuestions as CbtQuestion[] | undefined) || []
+  );
 
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [speakingPreviewId, setSpeakingPreviewId] = useState<string | null>(null);
 
-  // Load existing exam config when dialog opens
+  // Preserve any legacy PDF fields if they existed so nothing is lost on save
+  const [legacyFields, setLegacyFields] = useState<{
+    questionFileUrl?: string;
+    questionFileName?: string;
+    remedialFileUrl?: string;
+    remedialFileName?: string;
+  }>({
+    questionFileUrl: initialExam?.content?.questionFileUrl,
+    questionFileName: initialExam?.content?.questionFileName,
+    remedialFileUrl: initialExam?.content?.remedialFileUrl,
+    remedialFileName: initialExam?.content?.remedialFileName,
+  });
+
+  // Load latest exam config when dialog opens
   useEffect(() => {
     if (open && courseId) {
       fetch(`/api/instructor/exams/config?courseId=${courseId}`)
         .then((res) => res.json())
         .then((data) => {
           if (data?.data) {
-            const ex = data.data;
+            const ex = data.data as Exam;
             if (ex.title) setTitle(ex.title);
             if (ex.passingScore) setPassingScore(ex.passingScore);
             if (ex.content?.examInstructions) setInstructions(ex.content.examInstructions);
-            if (ex.content?.questionFileUrl) setFileUrl(ex.content.questionFileUrl);
-            if (ex.content?.questionFileName) setFileName(ex.content.questionFileName);
-            if (ex.content?.remedialFileUrl) setRemedialFileUrl(ex.content.remedialFileUrl);
-            if (ex.content?.remedialFileName) setRemedialFileName(ex.content.remedialFileName);
-            if (ex.content?.remedialInstructions) setRemedialInstructions(ex.content.remedialInstructions);
+            if (ex.content?.remedialInstructions) {
+              setRemedialInstructions(ex.content.remedialInstructions);
+            }
+            if (Array.isArray(ex.content?.cbtQuestions)) {
+              setMainQuestions(ex.content.cbtQuestions as CbtQuestion[]);
+            }
+            if (Array.isArray(ex.content?.remedialCbtQuestions)) {
+              setRemedialQuestions(ex.content.remedialCbtQuestions as CbtQuestion[]);
+            }
+            setLegacyFields({
+              questionFileUrl: ex.content?.questionFileUrl,
+              questionFileName: ex.content?.questionFileName,
+              remedialFileUrl: ex.content?.remedialFileUrl,
+              remedialFileName: ex.content?.remedialFileName,
+            });
           }
         })
         .catch(() => {});
     }
   }, [open, courseId]);
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const activeList = activeTab === "main" ? mainQuestions : remedialQuestions;
+  const setActiveList = activeTab === "main" ? setMainQuestions : setRemedialQuestions;
 
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    if (file.size > MAX_FILE_SIZE) {
-      setError(`Ukuran file soal ujian melebihi batas maksimal 5MB (ukuran file Anda: ${(file.size / (1024 * 1024)).toFixed(1)}MB). Silakan kompres atau pilih file yang lebih kecil.`);
-      e.target.value = "";
-      return;
-    }
+  const stats = useMemo(() => {
+    const textCount = activeList.filter((q) => q.type === "text_fill").length;
+    const audioCount = activeList.filter((q) => q.type === "audio_speaking").length;
+    const totalPoints = activeList.reduce((acc, q) => acc + (Number(q.points) || 0), 0);
+    const totalSec = activeList.reduce((acc, q) => acc + (Number(q.timeLimitSeconds) || 0), 0);
+    return {
+      total: activeList.length,
+      textCount,
+      audioCount,
+      totalPoints,
+      totalMinutes: Math.max(1, Math.ceil(totalSec / 60)),
+    };
+  }, [activeList]);
 
-    setUploading(true);
-    setUploadProgress("Uploading exam question paper to cloud storage...");
+  function handleAddQuestion(type: CbtQuestionType) {
+    const q = createBlankQuestion(type, activeTab === "main" ? "cbt" : "rem");
+    setActiveList((prev) => [...prev, q]);
+    setExpandedId(q.id);
     setError("");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "exams");
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(json.error || "Failed to upload exam paper.");
-      }
-
-      setFileUrl(json.data.url);
-      setFileName(file.name);
-      setUploadProgress("File uploaded successfully!");
-      setTimeout(() => setUploadProgress(""), 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to upload exam paper.");
-    } finally {
-      setUploading(false);
-    }
   }
 
-  async function handleRemedialFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function handleLoadTemplate() {
+    const prefix = activeTab === "main" ? "cbt" : "rem";
+    const cloned = cloneTemplateQuestions(prefix);
+    setActiveList(cloned);
+    setExpandedId(cloned[0]?.id || null);
+    setError("");
+  }
 
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    if (file.size > MAX_FILE_SIZE) {
-      setError(`Ukuran file soal remedial melebihi batas maksimal 5MB (ukuran file Anda: ${(file.size / (1024 * 1024)).toFixed(1)}MB). Silakan kompres atau pilih file yang lebih kecil.`);
-      e.target.value = "";
+  function handleUpdateQuestion(id: string, patch: Partial<CbtQuestion>) {
+    setActiveList((prev) =>
+      prev.map((q) => {
+        if (q.id !== id) return q;
+        const updated = { ...q, ...patch };
+        if (patch.type === "audio_speaking" && q.type !== "audio_speaking") {
+          updated.section = "Listening & Speaking";
+          updated.timeLimitSeconds = updated.timeLimitSeconds || 120;
+        } else if (patch.type === "text_fill" && q.type !== "text_fill") {
+          updated.section = "Reading & Grammar";
+          updated.timeLimitSeconds = updated.timeLimitSeconds || 90;
+        }
+        return updated;
+      })
+    );
+  }
+
+  function handleDeleteQuestion(id: string) {
+    setActiveList((prev) => prev.filter((q) => q.id !== id));
+    if (expandedId === id) setExpandedId(null);
+  }
+
+  function handleDuplicateQuestion(q: CbtQuestion) {
+    const copy: CbtQuestion = {
+      ...q,
+      id: `${activeTab === "main" ? "cbt" : "rem"}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      title: q.title ? `${q.title} (Salinan)` : "",
+      acceptableAnswers: q.acceptableAnswers ? [...q.acceptableAnswers] : undefined,
+      keyPhrases: q.keyPhrases ? [...q.keyPhrases] : undefined,
+    };
+    setActiveList((prev) => [...prev, copy]);
+    setExpandedId(copy.id);
+  }
+
+  function handleMoveQuestion(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= activeList.length) return;
+    setActiveList((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(target, 0, moved);
+      return next;
+    });
+  }
+
+  function previewAudioPrompt(q: CbtQuestion) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const text = (q.audioPrompt || q.question || "").trim();
+    if (!text) return;
+
+    window.speechSynthesis.cancel();
+    if (speakingPreviewId === q.id) {
+      setSpeakingPreviewId(null);
       return;
     }
 
-    setUploadingRemedial(true);
-    setUploadProgressRemedial("Uploading remedial question paper to cloud storage...");
-    setError("");
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 0.92;
+    const voices = window.speechSynthesis.getVoices();
+    const enVoice = voices.find((v) => v.lang.startsWith("en"));
+    if (enVoice) utterance.voice = enVoice;
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "exams");
+    utterance.onstart = () => setSpeakingPreviewId(q.id);
+    utterance.onend = () => setSpeakingPreviewId(null);
+    utterance.onerror = () => setSpeakingPreviewId(null);
+    window.speechSynthesis.speak(utterance);
+  }
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(json.error || "Failed to upload remedial paper.");
+  function validateQuestionList(list: CbtQuestion[], label: string): string | null {
+    for (let i = 0; i < list.length; i++) {
+      const q = list[i];
+      const num = i + 1;
+      if (!q.title.trim()) return `${label} — Soal #${num}: Judul soal wajib diisi.`;
+      if (!q.question.trim()) return `${label} — Soal #${num}: Teks pertanyaan wajib diisi.`;
+      if (!q.targetAnswer.trim()) return `${label} — Soal #${num}: Kunci jawaban utama wajib diisi.`;
+      if (q.type === "audio_speaking" && !(q.audioPrompt || "").trim()) {
+        return `${label} — Soal #${num}: Teks Audio Prompt wajib diisi untuk soal Listening & Speaking.`;
       }
-
-      setRemedialFileUrl(json.data.url);
-      setRemedialFileName(file.name);
-      setUploadProgressRemedial("Remedial paper uploaded successfully!");
-      setTimeout(() => setUploadProgressRemedial(""), 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to upload remedial paper.");
-    } finally {
-      setUploadingRemedial(false);
+      if (!q.points || Number(q.points) < 1) {
+        return `${label} — Soal #${num}: Poin minimal 1.`;
+      }
+      if (!q.timeLimitSeconds || Number(q.timeLimitSeconds) < 15) {
+        return `${label} — Soal #${num}: Batas waktu minimal 15 detik.`;
+      }
     }
+    return null;
   }
 
   async function handleSave() {
-    if (!fileUrl) {
-      setError("Please upload the main exam paper (PDF) first.");
+    if (mainQuestions.length === 0) {
+      setActiveTab("main");
+      setError("Tambahkan minimal 1 soal CBT utama terlebih dahulu (atau klik 'Muat Template Default').");
       return;
+    }
+
+    const mainErr = validateQuestionList(mainQuestions, "Soal Utama");
+    if (mainErr) {
+      setActiveTab("main");
+      setError(mainErr);
+      return;
+    }
+
+    if (remedialQuestions.length > 0) {
+      const remErr = validateQuestionList(remedialQuestions, "Soal Remedial");
+      if (remErr) {
+        setActiveTab("remedial");
+        setError(remErr);
+        return;
+      }
     }
 
     const numScore = Number(passingScore);
     if (!passingScore || isNaN(numScore) || numScore < 1 || numScore > 100) {
-      setError("Passing Score Threshold (KKM) must be between 1 and 100.");
+      setError("Passing Score (KKM) harus antara 1 sampai 100.");
       return;
     }
 
@@ -172,39 +307,82 @@ export function ExamConfigDialog({
     setError("");
     setSuccess("");
 
+    const totalMainPoints = mainQuestions.reduce((acc, q) => acc + (Number(q.points) || 0), 0);
+    const totalMainSec = mainQuestions.reduce((acc, q) => acc + (Number(q.timeLimitSeconds) || 90), 0);
+
     try {
       const res = await fetch("/api/instructor/exams/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseId,
-          title: title.trim() || `Final Examination — ${courseTitle}`,
-          passingScore: Number(passingScore) || 70,
+          title: title.trim() || `Final Competency Exam (CBT) — ${courseTitle}`,
+          passingScore: numScore,
+          durationMinutes: Math.max(5, Math.min(300, Math.ceil(totalMainSec / 60))),
           description: instructions.trim(),
           content: {
-            questionFileUrl: fileUrl || undefined,
-            questionFileName: fileUrl ? (fileName || "Final_Exam_Paper.pdf") : undefined,
+            ...legacyFields,
+            cbtQuestions: mainQuestions.map((q) => ({
+              ...q,
+              title: q.title.trim(),
+              instructions: q.instructions.trim(),
+              question: q.question.trim(),
+              passage: q.type === "text_fill" ? (q.passage || "").trim() || undefined : undefined,
+              audioPrompt: q.type === "audio_speaking" ? (q.audioPrompt || "").trim() : undefined,
+              targetAnswer: q.targetAnswer.trim(),
+              acceptableAnswers:
+                q.type === "text_fill"
+                  ? (q.acceptableAnswers || []).map((s) => s.trim()).filter(Boolean)
+                  : undefined,
+              keyPhrases:
+                q.type === "audio_speaking"
+                  ? (q.keyPhrases || []).map((s) => s.trim()).filter(Boolean)
+                  : undefined,
+              timeLimitSeconds: Math.max(15, Number(q.timeLimitSeconds) || 90),
+              points: Math.max(1, Number(q.points) || 15),
+            })),
+            remedialCbtQuestions:
+              remedialQuestions.length > 0
+                ? remedialQuestions.map((q) => ({
+                    ...q,
+                    title: q.title.trim(),
+                    instructions: q.instructions.trim(),
+                    question: q.question.trim(),
+                    passage: q.type === "text_fill" ? (q.passage || "").trim() || undefined : undefined,
+                    audioPrompt: q.type === "audio_speaking" ? (q.audioPrompt || "").trim() : undefined,
+                    targetAnswer: q.targetAnswer.trim(),
+                    acceptableAnswers:
+                      q.type === "text_fill"
+                        ? (q.acceptableAnswers || []).map((s) => s.trim()).filter(Boolean)
+                        : undefined,
+                    keyPhrases:
+                      q.type === "audio_speaking"
+                        ? (q.keyPhrases || []).map((s) => s.trim()).filter(Boolean)
+                        : undefined,
+                    timeLimitSeconds: Math.max(15, Number(q.timeLimitSeconds) || 90),
+                    points: Math.max(1, Number(q.points) || 15),
+                  }))
+                : undefined,
             examInstructions: instructions.trim(),
-            remedialFileUrl: remedialFileUrl || undefined,
-            remedialFileName: remedialFileUrl ? (remedialFileName || undefined) : undefined,
             remedialInstructions: remedialInstructions.trim() || undefined,
+            totalPoints: totalMainPoints,
           },
         }),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json.error || "Failed to save exam configuration.");
+        throw new Error(json.error || "Gagal menyimpan bank soal CBT.");
       }
 
-      setSuccess("Exam paper saved and published to students successfully!");
+      setSuccess("Bank soal ujian CBT berhasil disimpan dan langsung aktif untuk siswa!");
       router.refresh();
       setTimeout(() => {
         setOpen(false);
         setSuccess("");
-      }, 1500);
+      }, 1200);
     } catch (err: any) {
-      setError(err.message || "Failed to save exam configuration.");
+      setError(err.message || "Gagal menyimpan konfigurasi ujian.");
     } finally {
       setSaving(false);
     }
@@ -222,15 +400,23 @@ export function ExamConfigDialog({
           setSuccess("");
         }}
       >
-        {iconName && <LandingIcon name={iconName} size={14} color="currentColor" className="shrink-0" />}
+        {iconName && (
+          <LandingIcon name={iconName} size={14} color="currentColor" className="shrink-0" />
+        )}
         <span className="leading-none">{triggerLabel}</span>
       </button>
 
       <AdminFormDialog
-        title={`Manage Exam Papers — ${courseTitle}`}
+        title={`Kelola Bank Soal Ujian CBT — ${courseTitle}`}
         open={open}
-        onClose={() => setOpen(false)}
-        maxWidth="min(720px, 95vw)"
+        onClose={() => {
+          if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+          }
+          setSpeakingPreviewId(null);
+          setOpen(false);
+        }}
+        maxWidth="min(860px, 96vw)"
       >
         <div className="space-y-4">
           {error && (
@@ -245,402 +431,578 @@ export function ExamConfigDialog({
             </div>
           )}
 
-          {/* Differentiated Tabs Navigation */}
+          {/* Tabs: Main CBT Bank vs Remedial Set B */}
           <div className="grid grid-cols-2 gap-2 p-1.5 bg-zinc-100 rounded-2xl border border-zinc-200">
             <button
               type="button"
-              onClick={() => setActiveTab("main")}
+              onClick={() => {
+                setActiveTab("main");
+                setExpandedId(null);
+                setError("");
+              }}
               className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer ${
                 activeTab === "main"
                   ? "bg-white text-blue-700 shadow-sm border border-zinc-200"
                   : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50"
               }`}
             >
-              <LandingIcon name="FileText" size={15} color={activeTab === "main" ? "#2563eb" : "currentColor"} />
-              <span>1. Main Exam Paper</span>
-              {fileUrl ? (
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                  ✓ Ready
-                </span>
-              ) : (
-                <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
-                  Required
-                </span>
-              )}
+              <LandingIcon
+                name="FileText"
+                size={15}
+                color={activeTab === "main" ? "#2563eb" : "currentColor"}
+              />
+              <span>1. Soal Ujian Utama</span>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  mainQuestions.length > 0
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-amber-100 text-amber-800"
+                }`}
+              >
+                {mainQuestions.length > 0 ? `${mainQuestions.length} Soal` : "Default"}
+              </span>
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveTab("remedial")}
+              onClick={() => {
+                setActiveTab("remedial");
+                setExpandedId(null);
+                setError("");
+              }}
               className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer ${
                 activeTab === "remedial"
                   ? "bg-white text-amber-800 shadow-sm border border-amber-300"
                   : "text-zinc-600 hover:text-amber-900 hover:bg-amber-100/50"
               }`}
             >
-              <LandingIcon name="RotateCcw" size={15} color={activeTab === "remedial" ? "#d97706" : "currentColor"} />
-              <span>2. Remedial Paper</span>
-              {remedialFileUrl ? (
-                <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
-                  Set B Active
-                </span>
-              ) : (
-                <span className="text-[10px] bg-zinc-200 text-zinc-600 px-2 py-0.5 rounded-full font-semibold">
-                  Default (Optional)
-                </span>
-              )}
+              <LandingIcon
+                name="RotateCcw"
+                size={15}
+                color={activeTab === "remedial" ? "#d97706" : "currentColor"}
+              />
+              <span>2. Soal Remedial (Set B)</span>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  remedialQuestions.length > 0
+                    ? "bg-amber-100 text-amber-900 border border-amber-300"
+                    : "bg-zinc-200 text-zinc-600"
+                }`}
+              >
+                {remedialQuestions.length > 0 ? `${remedialQuestions.length} Soal` : "Opsional"}
+              </span>
             </button>
           </div>
 
-          {/* TAB 1: MAIN EXAM PAPER */}
-          {activeTab === "main" && (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-200/80 text-xs text-blue-900 flex items-start gap-2">
-                <LandingIcon name="FileText" size={15} color="#2563eb" />
-                <p>
-                  <strong>Main Exam Paper:</strong> Official question paper that all students in this course must download and complete first.
-                </p>
-              </div>
-
-              {/* Main Question File Upload Card */}
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider block">
-                    Main Exam Question Paper (PDF / DOC)
-                  </span>
-                  <span className="text-[11px] font-bold text-blue-700 bg-blue-100/70 border border-blue-200 px-2 py-0.5 rounded-md">
-                    Maks. 5MB
-                  </span>
-                </div>
-
-                {fileUrl ? (
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-blue-200 shadow-xs">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 font-bold text-xs border border-red-100">
-                        PDF
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-zinc-900 truncate">
-                          {fileName || "Final_Exam_Paper.pdf"}
-                        </p>
-                        <a
-                          href={fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] font-semibold text-blue-600 hover:underline inline-flex items-center gap-1"
-                        >
-                          View / Download question paper &rarr;
-                        </a>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <label className="btn btn-secondary btn-sm cursor-pointer text-xs shrink-0 font-bold">
-                        <span>Replace File</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          className="hidden"
-                          onChange={handleFileUpload}
-                          disabled={uploading}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFileUrl("");
-                          setFileName("");
-                        }}
-                        className="btn btn-secondary btn-sm text-xs text-red-600 hover:bg-red-50 hover:border-red-200 shrink-0 font-bold flex items-center gap-1"
-                      >
-                        <LandingIcon name="Trash" size={13} color="currentColor" />
-                        <span>Remove File</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-zinc-300 bg-white hover:bg-zinc-50 hover:border-blue-400 cursor-pointer transition text-center">
-                    <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
-                      <LandingIcon name="Download" size={20} color="currentColor" />
-                    </div>
-                    <span className="text-xs font-bold text-zinc-800">
-                      {uploading ? "Uploading..." : "Click to Upload Main Question Paper (PDF / DOC)"}
-                    </span>
-                    <span className="text-[11px] text-zinc-500 font-medium mt-0.5">
-                      Maksimal 5MB. Format yang didukung: PDF, DOCX
-                    </span>
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                      disabled={uploading}
-                    />
-                  </label>
-                )}
-
-                {uploadProgress && (
-                  <p className="text-xs font-semibold text-blue-600 animate-pulse">{uploadProgress}</p>
-                )}
-              </div>
-
-              {/* Exam Details */}
-              <div className="space-y-3">
-                <label className="block">
-                  <span className="label font-bold text-xs text-zinc-700">Exam Title</span>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Final Exam — Applied English Proficiency"
-                    className="input input-default w-full text-xs sm:text-sm font-semibold"
-                  />
+          {/* General Settings (Main Tab) */}
+          {activeTab === "main" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                  Judul Ujian CBT
                 </label>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="label font-bold text-xs text-zinc-700 flex items-center justify-between">
-                      <span>Passing Score Threshold (KKM)</span>
-                      <span className="text-[10px] text-zinc-400 font-normal">Scale: 1 – 100</span>
-                    </span>
-                    <div className="relative mt-1">
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        value={passingScore}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          if (raw === "") {
-                            setPassingScore("");
-                            return;
-                          }
-                          const val = parseInt(raw, 10);
-                          if (isNaN(val)) return;
-                          if (val > 100) {
-                            setPassingScore(100);
-                          } else if (val < 0) {
-                            setPassingScore(0);
-                          } else {
-                            setPassingScore(val);
-                          }
-                        }}
-                        onBlur={() => {
-                          if (passingScore === "" || Number(passingScore) < 1) {
-                            setPassingScore(70);
-                          }
-                        }}
-                        placeholder="e.g. 70"
-                        className={`input input-default w-full text-xs sm:text-sm font-semibold pr-12 ${
-                          passingScore !== "" && (Number(passingScore) < 1 || Number(passingScore) > 100)
-                            ? "border-red-400 focus:border-red-500 bg-red-50/40 text-red-900"
-                            : ""
-                        }`}
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400 pointer-events-none">
-                        / 100
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] mt-1 text-zinc-400">
-                      <span>Scores below this threshold require <strong>Remedial</strong>.</span>
-                      {passingScore !== "" && (Number(passingScore) < 1 || Number(passingScore) > 100) && (
-                        <span className="font-bold text-red-600">Must be 1 - 100</span>
-                      )}
-                    </div>
-                  </label>
-                </div>
-
-                <label className="block">
-                  <span className="label font-bold text-xs text-zinc-700">Instructions & Guidelines for Students</span>
-                  <textarea
-                    rows={4}
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    placeholder="Write exam guidelines and instructions for students..."
-                    className="input input-default w-full text-xs font-medium leading-relaxed"
-                  />
-                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Contoh: Final Competency Exam — Ready for Work"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-900 focus:border-blue-500 focus:outline-none"
+                />
               </div>
 
-              {/* Quick teaser to Remedial tab */}
-              <div className="p-3 rounded-xl bg-amber-50/50 border border-amber-200/80 flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 text-amber-900">
-                  <LandingIcon name="RotateCcw" size={14} color="#d97706" />
-                  <span>
-                    Need a separate question paper specifically for remedial exams?
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("remedial")}
-                  className="font-bold text-amber-700 hover:text-amber-800 hover:underline shrink-0"
-                >
-                  Open Remedial Tab &rarr;
-                </button>
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                  Passing Score / KKM (1–100)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={passingScore}
+                  onChange={(e) => setPassingScore(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-bold text-zinc-900 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                  Petunjuk Ujian (Tampil di Lobby Siswa)
+                </label>
+                <textarea
+                  rows={2}
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  placeholder="Tulis instruksi singkat pengerjaan ujian CBT..."
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-800 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 space-y-2">
+              <p className="text-xs text-amber-950 font-semibold">
+                Soal Remedial (Set B) bersifat opsional. Jika diisi, siswa yang nilainya belum mencapai KKM (&lt; {passingScore}) akan otomatis mendapatkan paket soal ini saat mengulang ujian.
+              </p>
+              <div>
+                <label className="block text-[11px] font-bold text-amber-900 mb-1">
+                  Catatan Khusus Remedial (Opsional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={remedialInstructions}
+                  onChange={(e) => setRemedialInstructions(e.target.value)}
+                  placeholder="Contoh: Fokus perbaiki kelancaran speaking dan struktur past tense pada percobaan remedial ini."
+                  className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs text-zinc-800 focus:border-amber-500 focus:outline-none"
+                />
               </div>
             </div>
           )}
 
-          {/* TAB 2: REMEDIAL EXAM PAPER (SET B) */}
-          {activeTab === "remedial" && (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              {/* Informative Callout Card */}
-              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1.5">
-                <div className="flex items-center gap-2 font-black text-amber-900">
-                  <LandingIcon name="RotateCcw" size={15} color="#d97706" />
-                  <span>REMEDIAL EXAM PAPER (SET B) — OPTIONAL</span>
-                </div>
-                <p className="leading-relaxed text-amber-900/90 text-[11px]">
-                  Upload this question paper if you want students who <strong>did not pass (score &lt; {passingScore})</strong> to work on a fresh set of questions instead of revising the main paper.
-                </p>
-                <div className="pt-1.5 flex items-center gap-2 text-[11px]">
-                  <span className="font-bold text-amber-900">System Policy:</span>
-                  {remedialFileUrl ? (
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">
-                      ✓ Dedicated Set B paper will be downloaded by remedial students
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-md bg-zinc-200 text-zinc-700 font-semibold">
-                      Remedial students automatically use the Main Exam Paper for revisions
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Remedial Question File Upload Card */}
-              <div className="rounded-2xl border border-amber-200/90 bg-amber-50/30 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block">
-                    Remedial Question Paper (PDF / DOC)
-                  </span>
-                  <span className="text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md">
-                    Maks. 5MB
-                  </span>
-                </div>
-
-                {remedialFileUrl ? (
-                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-white border border-amber-300 shadow-xs">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-900 font-bold text-xs border border-amber-200">
-                        PDF
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-zinc-900 truncate">
-                            {remedialFileName || "Remedial_Question_Paper.pdf"}
-                          </p>
-                          <span className="bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full border border-amber-200 shrink-0">
-                            Set B
-                          </span>
-                        </div>
-                        <a
-                          href={remedialFileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] font-semibold text-amber-700 hover:underline inline-flex items-center gap-1"
-                        >
-                          View remedial paper &rarr;
-                        </a>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="btn btn-secondary btn-sm cursor-pointer text-xs shrink-0 font-bold">
-                        <span>Replace File</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          className="hidden"
-                          onChange={handleRemedialFileUpload}
-                          disabled={uploadingRemedial}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRemedialFileUrl("");
-                          setRemedialFileName("");
-                        }}
-                        className="btn btn-secondary btn-sm text-xs text-red-600 hover:bg-red-50 hover:border-red-200 shrink-0 font-bold flex items-center gap-1"
-                      >
-                        <LandingIcon name="Trash" size={13} color="currentColor" />
-                        <span>Remove File</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-amber-300 bg-white hover:bg-amber-50/50 hover:border-amber-400 cursor-pointer transition text-center">
-                    <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mb-2">
-                      <LandingIcon name="Download" size={20} color="currentColor" />
-                    </div>
-                    <span className="text-xs font-bold text-amber-950">
-                      {uploadingRemedial ? "Uploading..." : "+ Upload Remedial Question Paper (Set B)"}
-                    </span>
-                    <span className="text-[11px] text-amber-800 font-semibold mt-0.5">
-                      Maksimal 5MB. Format yang didukung: PDF, DOCX
-                    </span>
-                    <span className="text-[10px] text-zinc-500">
-                      (Kosongkan jika siswa remedial menggunakan lembar soal utama)
-                    </span>
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      className="hidden"
-                      onChange={handleRemedialFileUpload}
-                      disabled={uploadingRemedial}
-                    />
-                  </label>
-                )}
-
-                {uploadProgressRemedial && (
-                  <p className="text-xs font-semibold text-amber-700 animate-pulse">{uploadProgressRemedial}</p>
-                )}
-              </div>
-
-              {/* Remedial Instructions */}
-              <div className="space-y-1">
-                <label className="block">
-                  <span className="label font-bold text-xs text-zinc-700">
-                    Additional Instructions for Remedial (Optional)
-                  </span>
-                  <textarea
-                    rows={3}
-                    value={remedialInstructions}
-                    onChange={(e) => setRemedialInstructions(e.target.value)}
-                    placeholder="e.g. Complete questions 4 and 5 on this remedial sheet to improve your score..."
-                    className="input input-default w-full text-xs font-medium leading-relaxed bg-white"
-                  />
-                  <span className="text-[10px] text-zinc-400 mt-1 block">
-                    This instruction note will only appear on the exam portal for remedial students.
-                  </span>
-                </label>
-              </div>
+          {/* Action Toolbar & Stats */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white p-3.5">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+              <span className="px-2.5 py-1 rounded-lg bg-zinc-100 text-zinc-800">
+                Total: {stats.total} Soal
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
+                ✍️ {stats.textCount} Teks Isian
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
+                🎙️ {stats.audioCount} Audio Speaking
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+                {stats.totalPoints} Poin • ~{stats.totalMinutes} mnt
+              </span>
             </div>
-          )}
 
-          {/* Dialog Action Buttons */}
-          <div className="flex justify-between items-center pt-3 border-t border-zinc-200">
-            <span className="text-[11px] text-zinc-400">
-              {activeTab === "main" ? "Currently editing: Main Exam Paper" : "Currently editing: Remedial Paper (Set B)"}
-            </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => setOpen(false)}
-                disabled={saving}
+                onClick={() => handleAddQuestion("text_fill")}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#F26A12] hover:bg-[#D65507] text-white text-[11px] font-bold shadow-2xs cursor-pointer"
               >
-                Close
+                <span>+ Soal Teks</span>
               </button>
               <button
                 type="button"
-                className="btn btn-primary btn-sm bg-blue-600 hover:bg-blue-700"
-                onClick={handleSave}
-                disabled={saving || uploading || uploadingRemedial}
+                onClick={() => handleAddQuestion("audio_speaking")}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold shadow-2xs cursor-pointer"
               >
-                {saving
-                  ? "Saving..."
-                  : activeTab === "remedial"
-                  ? "Save Remedial Paper"
-                  : "Save & Publish Exam"}
+                <span>+ Soal Audio Speaking</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleLoadTemplate}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-zinc-300 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 text-[11px] font-bold cursor-pointer"
+                title="Muat 8 soal contoh bawaan English Ready yang bisa langsung diedit"
+              >
+                <span>Template (8 Soal)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Question Bank List */}
+          {activeList.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50/70 p-8 text-center space-y-3">
+              <p className="text-sm font-bold text-zinc-800">
+                {activeTab === "main"
+                  ? "Belum Ada Soal CBT Khusus untuk Kelas Ini"
+                  : "Belum Ada Soal Remedial (Set B)"}
+              </p>
+              <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                {activeTab === "main"
+                  ? "Tambahkan soal isian teks atau audio speaking baru, atau klik tombol Template untuk memuat 8 soal standar English Ready lalu sesuaikan."
+                  : "Jika dibiarkan kosong, siswa remedial akan otomatis mengerjakan ulang soal ujian utama dengan urutan acak."}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleLoadTemplate}
+                  className="px-3.5 py-2 rounded-xl bg-[#F26A12] hover:bg-[#D65507] text-white text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  ✨ Muat Template 8 Soal Default
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddQuestion("text_fill")}
+                  className="px-3.5 py-2 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-800 text-xs font-bold cursor-pointer"
+                >
+                  + Buat Soal dari Awal
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+              {activeList.map((q, index) => {
+                const isOpen = expandedId === q.id;
+                const isAudio = q.type === "audio_speaking";
+
+                return (
+                  <div
+                    key={q.id}
+                    className={`rounded-2xl border transition ${
+                      isOpen
+                        ? isAudio
+                          ? "border-purple-300 bg-purple-50/20 shadow-xs"
+                          : "border-blue-300 bg-blue-50/20 shadow-xs"
+                        : "border-zinc-200 bg-white hover:border-zinc-300"
+                    }`}
+                  >
+                    {/* Accordion Header */}
+                    <div className="flex items-center justify-between gap-2 p-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(isOpen ? null : q.id)}
+                        className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer"
+                      >
+                        <span
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black ${
+                            isAudio
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs font-bold text-zinc-900 truncate max-w-[260px] sm:max-w-[380px]">
+                              {q.title || "(Judul soal belum diisi)"}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                isAudio
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {isAudio ? "🎙️ Audio Speaking" : "✍️ Teks Isian"}
+                            </span>
+                            <span className="text-[10px] font-semibold text-zinc-500">
+                              {q.points} poin • {q.timeLimitSeconds}d
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 truncate mt-0.5">
+                            {q.question || "Klik untuk mengisi pertanyaan & kunci jawaban..."}
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Row Controls */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveQuestion(index, -1)}
+                          disabled={index === 0}
+                          className="p-1.5 rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 text-[10px] font-bold cursor-pointer"
+                          title="Pindah ke atas"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveQuestion(index, 1)}
+                          disabled={index === activeList.length - 1}
+                          className="p-1.5 rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 text-[10px] font-bold cursor-pointer"
+                          title="Pindah ke bawah"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDuplicateQuestion(q)}
+                          className="px-2 py-1.5 rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 text-[10px] font-bold cursor-pointer"
+                          title="Duplikat soal"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteQuestion(q.id)}
+                          className="px-2 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-bold cursor-pointer"
+                          title="Hapus soal"
+                        >
+                          Hapus
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(isOpen ? null : q.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-zinc-900 text-white text-[10px] font-bold cursor-pointer"
+                        >
+                          {isOpen ? "Tutup" : "Edit"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded Editor Form */}
+                    {isOpen && (
+                      <div className="border-t border-zinc-200/80 p-4 space-y-3 bg-white rounded-b-2xl">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                          <div className="sm:col-span-2">
+                            <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                              Tipe Soal
+                            </label>
+                            <select
+                              value={q.type}
+                              onChange={(e) =>
+                                handleUpdateQuestion(q.id, {
+                                  type: e.target.value as CbtQuestionType,
+                                })
+                              }
+                              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-900"
+                            >
+                              <option value="text_fill">
+                                ✍️ Teks Isian (Fill-in-the-blank + Typo Grading)
+                              </option>
+                              <option value="audio_speaking">
+                                🎙️ Audio Listening & Speaking (Voice Recognition)
+                              </option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                              Kategori / Section
+                            </label>
+                            <select
+                              value={q.section}
+                              onChange={(e) =>
+                                handleUpdateQuestion(q.id, {
+                                  section: e.target.value as CbtQuestion["section"],
+                                })
+                              }
+                              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-900"
+                            >
+                              {SECTIONS.map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                                Poin
+                              </label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={q.points}
+                                onChange={(e) =>
+                                  handleUpdateQuestion(q.id, {
+                                    points: Number(e.target.value) || 0,
+                                  })
+                                }
+                                className="w-full rounded-xl border border-zinc-300 px-2.5 py-2 text-xs font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                                Waktu (dtk)
+                              </label>
+                              <input
+                                type="number"
+                                min={15}
+                                max={600}
+                                value={q.timeLimitSeconds}
+                                onChange={(e) =>
+                                  handleUpdateQuestion(q.id, {
+                                    timeLimitSeconds: Number(e.target.value) || 0,
+                                  })
+                                }
+                                className="w-full rounded-xl border border-zinc-300 px-2.5 py-2 text-xs font-bold"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                              Judul Soal *
+                            </label>
+                            <input
+                              type="text"
+                              value={q.title}
+                              onChange={(e) =>
+                                handleUpdateQuestion(q.id, { title: e.target.value })
+                              }
+                              placeholder="Contoh: Past Tense in Business Reporting"
+                              className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                              Instruksi Pengerjaan
+                            </label>
+                            <input
+                              type="text"
+                              value={q.instructions}
+                              onChange={(e) =>
+                                handleUpdateQuestion(q.id, { instructions: e.target.value })
+                              }
+                              placeholder="Arahan singkat untuk siswa..."
+                              className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        {isAudio ? (
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-bold text-purple-800">
+                                Teks Audio Prompt (Dibacakan Otomatis Bahasa Inggris) *
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => previewAudioPrompt(q)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-900 text-[10px] font-bold cursor-pointer"
+                              >
+                                <span>
+                                  {speakingPreviewId === q.id
+                                    ? "⏹ Stop Preview"
+                                    : "🔊 Preview Suara"}
+                                </span>
+                              </button>
+                            </div>
+                            <textarea
+                              rows={2}
+                              value={q.audioPrompt || ""}
+                              onChange={(e) =>
+                                handleUpdateQuestion(q.id, { audioPrompt: e.target.value })
+                              }
+                              placeholder="Contoh: Could you please explain why our team needs two more days for quality assurance?"
+                              className="w-full rounded-xl border border-purple-200 bg-purple-50/30 px-3 py-2 text-xs"
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                              Konteks / Bacaan Singkat (Opsional)
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={q.passage || ""}
+                              onChange={(e) =>
+                                handleUpdateQuestion(q.id, { passage: e.target.value })
+                              }
+                              placeholder="Paragraf konteks tambahan jika diperlukan..."
+                              className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                            Pertanyaan Utama *
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={q.question}
+                            onChange={(e) =>
+                              handleUpdateQuestion(q.id, { question: e.target.value })
+                            }
+                            placeholder={
+                              isAudio
+                                ? "Contoh: Jawab secara lisan: Jelaskan alasan teknis secara sopan..."
+                                : "Contoh: Yesterday, the marketing committee _____ (hold) an evaluation meeting."
+                            }
+                            className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-emerald-800 mb-1">
+                              {isAudio
+                                ? "Contoh Jawaban Ideal (Target Answer) *"
+                                : "Kunci Jawaban Utama *"}
+                            </label>
+                            <input
+                              type="text"
+                              value={q.targetAnswer}
+                              onChange={(e) =>
+                                handleUpdateQuestion(q.id, { targetAnswer: e.target.value })
+                              }
+                              placeholder={
+                                isAudio
+                                  ? "We need sufficient time for testing and QA..."
+                                  : "Contoh: held"
+                              }
+                              className="w-full rounded-xl border border-emerald-300 bg-emerald-50/30 px-3 py-2 text-xs font-semibold"
+                            />
+                          </div>
+
+                          {isAudio ? (
+                            <div>
+                              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                                Kata Kunci Penilaian Speaking (pisahkan koma)
+                              </label>
+                              <input
+                                type="text"
+                                value={(q.keyPhrases || []).join(", ")}
+                                onChange={(e) =>
+                                  handleUpdateQuestion(q.id, {
+                                    keyPhrases: e.target.value
+                                      .split(",")
+                                      .map((s) => s.replace(/^\s+/, "")),
+                                  })
+                                }
+                                placeholder="testing, quality assurance, schedule, client"
+                                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                                Alternatif Jawaban Benar (opsional, pisahkan koma)
+                              </label>
+                              <input
+                                type="text"
+                                value={(q.acceptableAnswers || []).join(", ")}
+                                onChange={(e) =>
+                                  handleUpdateQuestion(q.id, {
+                                    acceptableAnswers: e.target.value
+                                      .split(",")
+                                      .map((s) => s.replace(/^\s+/, "")),
+                                  })
+                                }
+                                placeholder="hearing, hearing back"
+                                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Footer Save Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-zinc-200">
+            <p className="text-[11px] text-zinc-500">
+              Urutan soal otomatis diacak per siswa saat ujian dimulai.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="px-4 py-2 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 text-xs font-bold text-zinc-700 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSave}
+                className="px-5 py-2 rounded-xl bg-[#F26A12] hover:bg-[#D65507] disabled:opacity-50 text-white text-xs font-extrabold shadow-xs cursor-pointer"
+              >
+                {saving ? "Menyimpan..." : "Simpan & Terbitkan Soal CBT"}
               </button>
             </div>
           </div>

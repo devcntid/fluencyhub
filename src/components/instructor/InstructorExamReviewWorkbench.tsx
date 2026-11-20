@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
-import { ExamConfigDialog } from "./ExamConfigDialog";
 import type { Exam, ExamSubmission } from "@/types/db";
 
 export type InstructorSubmissionRow = ExamSubmission & {
@@ -298,28 +297,29 @@ export function InstructorExamReviewWorkbench({
               </span>
             </div>
 
-            <ExamConfigDialog
-              courseId={course.id}
-              courseTitle={course.title}
-              initialExam={exam}
-              initialTab="main"
-              triggerLabel="Main Paper"
-              triggerClassName="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/70 text-xs font-bold text-blue-900 shadow-xs transition shrink-0 cursor-pointer"
-            />
+            <Link
+              href={`/instructor/exams/builder?courseId=${course.id}&tab=main`}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/70 text-xs font-bold text-blue-900 shadow-xs transition shrink-0"
+            >
+              <LandingIcon name="FileText" size={14} color="currentColor" className="shrink-0" />
+              <span>Kelola Soal CBT</span>
+            </Link>
 
-            <ExamConfigDialog
-              courseId={course.id}
-              courseTitle={course.title}
-              initialExam={exam}
-              initialTab="remedial"
-              iconName="RotateCcw"
-              triggerLabel={exam?.content?.remedialFileUrl ? "Remedial (Active)" : "+ Remedial"}
-              triggerClassName={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold shadow-xs transition shrink-0 cursor-pointer ${
-                exam?.content?.remedialFileUrl
+            <Link
+              href={`/instructor/exams/builder?courseId=${course.id}&tab=remedial`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold shadow-xs transition shrink-0 ${
+                exam?.content?.remedialCbtQuestions?.length
                   ? "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
                   : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
               }`}
-            />
+            >
+              <LandingIcon name="RotateCcw" size={14} color="currentColor" className="shrink-0" />
+              <span>
+                {exam?.content?.remedialCbtQuestions?.length
+                  ? `Remedial (${exam.content.remedialCbtQuestions.length} Soal)`
+                  : "+ Soal Remedial"}
+              </span>
+            </Link>
           </div>
         </div>
 
@@ -333,7 +333,7 @@ export function InstructorExamReviewWorkbench({
                 onClick={() => setShowStudentList((prev) => !prev)}
                 className={`btn btn-sm text-xs font-bold border transition flex items-center gap-1.5 px-3 py-1.5 rounded-xl shrink-0 ${
                   showStudentList
-                    ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                    ? "bg-[#0B2559] text-white border-[#0B2559] shadow-xs"
                     : "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50"
                 }`}
                 title={showStudentList ? "Hide student list (Maximize Document Width)" : "Show all students"}
@@ -430,7 +430,7 @@ export function InstructorExamReviewWorkbench({
           <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
             <Link
               href={`/instructor/curriculum?tab=exams&courseId=${course.id}`}
-              className="btn btn-primary btn-sm text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-xs"
+              className="btn btn-primary btn-sm text-xs font-bold bg-[#F26A12] hover:bg-[#D65507] text-white flex items-center gap-1.5 shadow-xs"
             >
               <LandingIcon name="FileText" size={13} color="#fff" />
               Manage Exam Questions &rarr;
@@ -681,7 +681,7 @@ export function InstructorExamReviewWorkbench({
                           target="_blank"
                           rel="noreferrer"
                           download
-                          className="btn btn-primary btn-sm text-[11px] font-bold py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5 rounded-lg"
+                          className="btn btn-primary btn-sm text-[11px] font-bold py-1.5 px-3 bg-[#F26A12] hover:bg-[#D65507] text-white shadow-xs flex items-center justify-center gap-1.5 rounded-lg"
                         >
                           <LandingIcon name="Download" size={12} color="#fff" />
                           <span>Download</span>
@@ -728,7 +728,7 @@ export function InstructorExamReviewWorkbench({
                             target="_blank"
                             rel="noreferrer"
                             download
-                            className="btn btn-primary btn-sm text-xs font-bold flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs"
+                            className="btn btn-primary btn-sm text-xs font-bold flex items-center gap-2 px-4 py-2 bg-[#F26A12] hover:bg-[#D65507] text-white rounded-xl shadow-xs"
                           >
                             <LandingIcon name="Download" size={14} color="#fff" />
                             <span>Download Document &rarr;</span>
@@ -754,9 +754,70 @@ export function InstructorExamReviewWorkbench({
                           />
                         </div>
                       )
+                    ) : selectedSubmission.answers?.cbtResults ? (
+                      <div className="w-full h-full overflow-y-auto p-4 sm:p-5 bg-zinc-50 space-y-4">
+                        <div className="rounded-xl border border-indigo-200 bg-white p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">
+                              Hasil Ujian CBT Interaktif (Auto-Graded)
+                            </span>
+                            <p className="text-sm font-black text-zinc-900 mt-0.5">
+                              Skor Total: {selectedSubmission.answers.cbtResults.finalPercentage ?? selectedSubmission.finalScore ?? 0}%{" "}
+                              <span className="text-xs font-semibold text-zinc-500">
+                                ({selectedSubmission.answers.cbtResults.totalEarnedPoints ?? 0} / {selectedSubmission.answers.cbtResults.totalPossiblePoints ?? 100} poin)
+                              </span>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs font-bold">
+                            <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
+                              Teks: {selectedSubmission.answers.cbtResults.readingScore ?? 0}%
+                            </span>
+                            <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
+                              Speaking: {selectedSubmission.answers.cbtResults.speakingScore ?? 0}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {Object.values(
+                            (selectedSubmission.answers.cbtResults.answers || {}) as Record<string, any>
+                          ).map((ans: any, idx: number) => (
+                            <div
+                              key={ans.questionId || idx}
+                              className="rounded-xl border border-zinc-200 bg-white p-3.5 text-xs space-y-1.5 shadow-2xs"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-bold text-zinc-900">
+                                  Soal #{idx + 1}{" "}
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 ml-1">
+                                    {ans.type === "audio_speaking"
+                                      ? "🎙️ Speaking Interview"
+                                      : ans.type === "vocab_match"
+                                      ? "🔤 Vocab Matching"
+                                      : ans.type === "translate"
+                                      ? "🌐 Translate (ID→EN)"
+                                      : "✍️ Lengkapi Kalimat"}
+                                  </span>
+                                </span>
+                                <span className="font-extrabold text-blue-700">
+                                  {ans.earnedPoints} / {ans.maxPoints} poin ({ans.similarity}% mirip)
+                                </span>
+                              </div>
+                              <p className="text-zinc-700 bg-zinc-50 rounded-lg p-2 border border-zinc-100">
+                                <strong className="text-zinc-500">Jawaban Siswa:</strong> {ans.userResponse}
+                              </p>
+                              {ans.feedback && (
+                                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                  {ans.feedback}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex h-full items-center justify-center text-center p-8 text-zinc-400 text-xs">
-                        Student has not attached an answer sheet file.
+                        Belum ada data jawaban ujian untuk peserta ini.
                       </div>
                     )
                   ) : (
@@ -1148,7 +1209,7 @@ export function InstructorExamReviewWorkbench({
                       disabled={saving}
                       onClick={handleGrade}
                       className={`w-full py-2.5 px-4 rounded-xl text-xs font-black text-white shadow-xs transition flex items-center justify-center gap-2 ${
-                        isPassingGrade ? "bg-blue-600 hover:bg-blue-700" : "bg-amber-600 hover:bg-amber-700"
+                        isPassingGrade ? "bg-[#F26A12] hover:bg-[#D65507]" : "bg-[#0B2559] hover:bg-[#133575]"
                       }`}
                     >
                       <LandingIcon name={isPassingGrade ? "Award" : "FileText"} size={14} color="#fff" />

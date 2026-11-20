@@ -68,7 +68,7 @@ export async function GET() {
     for (const r of h24Rows) {
       const wa = formatPhone(r.whatsapp as string);
       const time = formatDate(r.live_class_datetime);
-      const msg = `*FluencyHub - Pengingat Live Class H-1!* ⏰\n\nHalo *${r.user_name}*, besok kamu ada jadwal kelas live!\n\n📚 Kelas: *${r.course_title}*\n📝 Modul: *${r.lesson_title}*\n📅 Waktu: *${time} WIB*\n\nJangan lupa persiapkan diri kamu ya! Link Zoom bisa diakses melalui dashboard:\n👉 https://fluencyhub.id/dashboard\n\nSemangat belajarnya brok! 🔥`;
+      const msg = `*English Ready - Pengingat Live Class H-1!* ⏰\n\nHalo *${r.user_name}*, besok kamu ada jadwal kelas live!\n\n📚 Kelas: *${r.course_title}*\n📝 Modul: *${r.lesson_title}*\n📅 Waktu: *${time} WIB*\n\nJangan lupa persiapkan diri kamu ya! Link Zoom bisa diakses melalui dashboard:\n👉 https://englishready.co.id/dashboard\n\nSemangat belajarnya brok! 🔥`;
       
       await sendFonnteWhatsApp(wa, msg);
       sentCount++;
@@ -78,7 +78,7 @@ export async function GET() {
     for (const r of h1Rows) {
       const wa = formatPhone(r.whatsapp as string);
       const time = formatDate(r.live_class_datetime);
-      const msg = `*FluencyHub - Live Class Segera Dimulai!* 🚀\n\nHalo *${r.user_name}*, kelas live kamu akan dimulai dalam waktu kurang dari 1 jam!\n\n📚 Kelas: *${r.course_title}*\n📝 Modul: *${r.lesson_title}*\n📅 Waktu: *${time} WIB*\n\nBuruan login ke dashboard dan klik tombol Join Zoom-nya sekarang:\n👉 https://fluencyhub.id/dashboard\n\nSee you in class brok! 👋`;
+      const msg = `*English Ready - Live Class Segera Dimulai!* 🚀\n\nHalo *${r.user_name}*, kelas live kamu akan dimulai dalam waktu kurang dari 1 jam!\n\n📚 Kelas: *${r.course_title}*\n📝 Modul: *${r.lesson_title}*\n📅 Waktu: *${time} WIB*\n\nBuruan login ke dashboard dan klik tombol Join Zoom-nya sekarang:\n👉 https://englishready.co.id/dashboard\n\nSee you in class brok! 👋`;
       
       await sendFonnteWhatsApp(wa, msg);
       sentCount++;

@@ -260,7 +260,7 @@ export function AdminMethodsClient({ initialMethods }: { initialMethods: Payment
               </button>
               <button
                 onClick={saveEdit}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                className="rounded-md bg-[#F26A12] px-4 py-2 text-sm font-semibold text-white hover:bg-[#D65507]"
                 disabled={saving}
               >
                 {saving ? "Menyimpan..." : "Simpan"}

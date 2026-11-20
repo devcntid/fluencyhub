@@ -9,72 +9,106 @@ export function ClassroomClientTabs({
   hasExam,
   isCertified,
   isExamUnlocked = false,
+  hasLiveZoom = true,
+  videosCount,
+  liveCount,
+  resourcesCount,
 }: {
   currentTab: string;
   courseId?: number | "all";
   hasExam?: boolean;
   isCertified?: boolean;
   isExamUnlocked?: boolean;
+  hasLiveZoom?: boolean;
+  videosCount?: number;
+  liveCount?: number;
+  resourcesCount?: number;
 }) {
+  void hasExam;
+  void isExamUnlocked;
   const cParam = courseId ? `&c=${courseId}` : "";
 
-  const tabs = [
+  const tabs: {
+    id: string;
+    label: string;
+    shortLabel: string;
+    icon: string;
+    href: string;
+    count?: number;
+  }[] = [
     {
       id: "videos",
       label: "Video Lessons",
-      icon: "Play",
+      shortLabel: "Video",
+      icon: "PlayCircle",
       href: `/dashboard/classroom?tab=videos${cParam}`,
+      count: videosCount,
     },
-    {
-      id: "live",
-      label: "Live Zoom",
-      icon: "Video",
-      href: `/dashboard/classroom?tab=live${cParam}`,
-    },
+    ...(hasLiveZoom
+      ? [
+          {
+            id: "live",
+            label: "Live Zoom",
+            shortLabel: "Live Zoom",
+            icon: "Video",
+            href: `/dashboard/classroom?tab=live${cParam}`,
+            count: liveCount,
+          },
+        ]
+      : []),
     {
       id: "resources",
       label: "Resources",
+      shortLabel: "Materi",
       icon: "BookOpen",
       href: `/dashboard/classroom?tab=resources${cParam}`,
+      count: resourcesCount,
     },
     {
       id: "exam",
       label: isCertified ? "Certificate & Exam" : "Final Exam",
-      icon: isCertified ? "Award" : isExamUnlocked ? "Award" : "Lock",
-      badge: isCertified ? "Passed" : isExamUnlocked ? (hasExam ? "Unlocked" : "Ready") : "Locked",
-      badgeColor: isCertified
-        ? "bg-emerald-100 text-emerald-800 border border-emerald-200/60"
-        : isExamUnlocked
-        ? "bg-blue-100 text-blue-800 border border-blue-200/60"
-        : "bg-amber-100 text-amber-800 border border-amber-200/60",
+      shortLabel: isCertified ? "Sertifikat" : "Final Exam",
+      icon: "Award",
       href: `/dashboard/classroom?tab=exam${cParam}`,
     },
   ];
 
+  const mobileGridCols = tabs.length === 3 ? "grid-cols-3" : "grid-cols-2";
+
   return (
-    <div className="flex border-b border-zinc-200 bg-white px-4 md:px-8 overflow-x-auto no-scrollbar gap-1 sm:gap-2">
+    <nav
+      aria-label="Navigasi Ruang Kelas"
+      className={`grid ${mobileGridCols} sm:flex sm:flex-wrap lg:flex-nowrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#FBF6F1] border border-[#E6DED4]`}
+    >
       {tabs.map((t) => {
         const isActive = currentTab === t.id;
         return (
           <Link
             key={t.id}
             href={t.href}
-            className={`flex items-center gap-2 px-4 sm:px-5 py-3.5 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition-all duration-200 ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${
               isActive
-                ? "border-[var(--brand)] text-[var(--brand)] bg-blue-50/50 shadow-xs"
-                : "border-transparent text-zinc-500 hover:text-zinc-900 hover:border-zinc-300 hover:bg-zinc-50/50"
+                ? "bg-[#0B2559] text-white shadow-sm"
+                : "text-zinc-600 hover:text-[#0B2559] hover:bg-white/80"
             }`}
           >
-            <LandingIcon name={t.icon} size={16} color="currentColor" />
-            <span>{t.label}</span>
-            {t.badge && (
-              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${t.badgeColor}`}>
-                {t.badge}
+            <LandingIcon name={t.icon} size={15} color="currentColor" />
+            <span className="sm:hidden">{t.shortLabel}</span>
+            <span className="hidden sm:inline">{t.label}</span>
+            {typeof t.count === "number" && (
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[10px] font-extrabold ${
+                  isActive
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-zinc-500 border border-[#E6DED4]"
+                }`}
+              >
+                {t.count}
               </span>
             )}
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

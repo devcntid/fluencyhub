@@ -101,25 +101,55 @@ async function seed() {
     INSERT INTO courses (
       id, instructor_id, category_id, title, slug, short_description,
       price, original_price, status, is_featured, level,
-      enrollment_count, platform_fee_pct, published_at, thumbnail_url
+      enrollment_count, platform_fee_pct, published_at, thumbnail_url,
+      tier, speaking_partner_type, tier_badge, features_json
     ) VALUES
     (1, 2, 1, 'Applied English for STEM Professionals', 'applied-english-stem-professionals',
      'Master technical English for data presentations, research, and international collaboration.',
-     1499000, 2499000, 'published', TRUE, 'intermediate', 0, 30.00, NOW(),
-     'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80'),
+     1499000, 2499000, 'published', FALSE, 'intermediate', 0, 30.00, NOW(),
+     'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
+     'tier_menengah', 'trainer_online', 'Online Cohort', NULL),
     (2, 2, 2, 'Business English Masterclass: Negotiation & Meetings', 'business-english-masterclass',
      'Communicate confidently in international meetings, contract negotiations, and boardroom presentations.',
-     1799000, 2799000, 'published', TRUE, 'intermediate', 0, 30.00, NOW(),
-     'https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=800&q=80'),
+     1799000, 2799000, 'published', FALSE, 'intermediate', 0, 30.00, NOW(),
+     'https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=800&q=80',
+     'tier_menengah', 'trainer_online', 'Online Cohort', NULL),
     (3, 3, 3, 'Public Speaking in English: Zero to Confident', 'public-speaking-english-zero-confident',
      'From speaking anxiety to delivering compelling English presentations in front of any audience.',
      999000, 1699000, 'published', FALSE, 'beginner', 0, 30.00, NOW(),
-     'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=800&q=80'),
+     'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=800&q=80',
+     'tier_bawah', 'ai', 'Self-Paced AI', NULL),
     (4, 4, 5, 'English Interview Prep: Tech & Multinational Companies', 'english-interview-prep-tech',
      'Ace HRD and user interviews at multinational and tech companies with confidence.',
-     1299000, 1999000, 'published', TRUE, 'all_levels', 0, 30.00, NOW(),
-     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80')
-    ON CONFLICT (slug) DO NOTHING
+     1299000, 1999000, 'published', FALSE, 'all_levels', 0, 30.00, NOW(),
+     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80',
+     'tier_tinggi', 'trainer_offline', 'Executive 1-on-1', NULL),
+    (5, 2, 2, 'Ready Daily: Latihan Mandiri & AI Speaking Partner', 'ready-daily',
+     'Bangun kebiasaan bicara bahasa Inggris setiap hari bersama AI Speaking Partner 24/7 dan auto-scoring poin terukur.',
+     99000, 199000, 'published', FALSE, 'beginner', 0, 30.00, NOW(),
+     'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
+     'tier_bawah', 'ai', 'Self-Paced AI',
+     '["Akses penuh materi video modul pembelajaran 24/7", "AI Speaking Partner 24/7 (latihan bicara kapan saja)", "Auto-scoring poin & evaluasi kemampuan instan", "Daily speaking challenge harian di platform", "Grup komunitas diskusi WhatsApp aktif", "Pelacakan grafik Ready Points di dashboard progres"]'::jsonb),
+    (6, 2, 2, 'Cohort Ready for Work: 6-Week Live Online Mentoring', 'cohort-ready-for-work',
+     'Program intensif 6 minggu bersama Live Trainer online dalam kelompok kecil (maks. 12 orang) untuk siap kerja, rapat, dan presentasi global.',
+     1490000, 1990000, 'published', TRUE, 'intermediate', 0, 30.00, NOW(),
+     'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80',
+     'tier_menengah', 'trainer_online', 'Paling Diminati',
+     '["Semua fasilitas Paket Bawah (Materi Video + AI Partner)", "6 sesi live online mentoring (90 menit) via Zoom", "Kelas kecil interaktif (maksimal 12 orang per kelompok)", "Live feedback & koreksi aksen/grammar langsung dari trainer", "Tes Baseline & Exit untuk mengukur kenaikan Ready Score", "Ready Certificate resmi berbasis skor untuk profil LinkedIn", "Opsi cicilan 3x Rp 497.000 / bulan"]'::jsonb),
+    (7, 2, 2, 'Ready Path: Executive 1-on-1 Offline Mentoring', 'ready-path-executive',
+     'Pendampingan privat tatap muka langsung (offline) bersama trainer dengan fitur bebas memilih titik lokasi pertemuan di coworking atau kafe.',
+     2690000, 3490000, 'published', FALSE, 'advanced', 0, 30.00, NOW(),
+     'https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=800&q=80',
+     'tier_tinggi', 'trainer_offline', 'Executive 1-on-1',
+     '["Semua fasilitas Paket Menengah (Cohort + AI Speaking Partner)", "Sesi privat tatap muka langsung (offline 1-on-1) bersama Trainer", "Fitur Atur Lokasi Temu (Coworking Space, Kafe, atau Kantor)", "Simulasi intensif wawancara kerja & pitch presentation personal", "Review eksklusif dokumen (CV, resume, slide deck presentasi)", "Akses konsultasi prioritas personal langsung dengan coach"]'::jsonb)
+    ON CONFLICT (slug) DO UPDATE SET
+      tier = EXCLUDED.tier,
+      speaking_partner_type = EXCLUDED.speaking_partner_type,
+      tier_badge = EXCLUDED.tier_badge,
+      features_json = EXCLUDED.features_json,
+      price = EXCLUDED.price,
+      original_price = EXCLUDED.original_price,
+      is_featured = EXCLUDED.is_featured
   `;
   await sql`SELECT setval('courses_id_seq', 10)`;
 

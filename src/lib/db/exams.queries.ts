@@ -335,8 +335,15 @@ export async function submitExamAnswers(data: {
   answers: Record<string, any>;
   youtubeUrl?: string | null;
   autoScore: number;
+  readingScore?: number | null;
+  listeningScore?: number | null;
+  writingScore?: number | null;
+  speakingScore?: number | null;
+  finalScore?: number | null;
+  status?: ExamSubmission["status"];
 }): Promise<ExamSubmission> {
   const answersJson = JSON.stringify(data.answers);
+  const status = data.status || "pending";
 
   // If a pending submission already exists, update it (allows learner to re-upload if wrong file)
   const existingPending = await sql`
@@ -351,6 +358,12 @@ export async function submitExamAnswers(data: {
       UPDATE exam_submissions SET
         answers = ${answersJson}::jsonb,
         auto_score = ${data.autoScore},
+        reading_score = COALESCE(${data.readingScore ?? null}, reading_score),
+        listening_score = COALESCE(${data.listeningScore ?? null}, listening_score),
+        writing_score = COALESCE(${data.writingScore ?? null}, writing_score),
+        speaking_score = COALESCE(${data.speakingScore ?? null}, speaking_score),
+        final_score = COALESCE(${data.finalScore ?? null}, final_score),
+        status = ${status},
         youtube_url = ${data.youtubeUrl ?? null},
         submitted_at = NOW(),
         updated_at = NOW()
@@ -361,11 +374,13 @@ export async function submitExamAnswers(data: {
     rows = await sql`
       INSERT INTO exam_submissions (
         exam_id, user_id, course_id, answers, auto_score,
+        reading_score, listening_score, writing_score, speaking_score, final_score,
         youtube_url, status, submitted_at, created_at, updated_at
       ) VALUES (
         ${data.examId}, ${data.userId}, ${data.courseId},
         ${answersJson}::jsonb, ${data.autoScore},
-        ${data.youtubeUrl ?? null}, 'pending', NOW(), NOW(), NOW()
+        ${data.readingScore ?? null}, ${data.listeningScore ?? null}, ${data.writingScore ?? null}, ${data.speakingScore ?? null}, ${data.finalScore ?? null},
+        ${data.youtubeUrl ?? null}, ${status}, NOW(), NOW(), NOW()
       )
       RETURNING *
     `;

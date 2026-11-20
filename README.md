@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# English Ready
 
-## Getting Started
+> **Speak. Connect. Contribute.**
 
-First, run the development server:
+Platform kesiapan dan pembelajaran bahasa Inggris terapan (*Applied English*) untuk mahasiswa, profesional, dan persiapan karir global.
+
+---
+
+## Memulai Proyek (Getting Started)
+
+Jalankan server pengembangan:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
+# atau
 pnpm dev
-# or
-bun dev
+# atau
+yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000) di browser untuk melihat hasilnya.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Skrip yang Tersedia
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev`: Menjalankan Next.js development server
+- `npm run build`: Membangun bundle produksi teroptimasi
+- `npm run start`: Menjalankan production server
+- `npm run typecheck`: Menjalankan validasi TypeScript tanpa emit
+- `npm run db:push`: Sinkronisasi skema Drizzle ORM ke database
+- `npm run db:seed`: Memasukkan data awal database
 
-## Learn More
+## Identitas Brand & Desain
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Nama Brand**: English Ready
+- **Palet Warna**:
+  - Primary Navy: `#0B2559`
+  - Biru Ready: `#0073F5`
+  - Oranye Centang: `#F26A12`
+  - Oranye Teks: `#C2530A`
+  - Krem Latar: `#FBF6F1`
+- **Tipografi**: Plus Jakarta Sans

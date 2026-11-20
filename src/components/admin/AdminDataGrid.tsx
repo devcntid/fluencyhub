@@ -45,7 +45,7 @@ export function AdminDataGrid({
           </tbody>
         </table>
       </div>
-      <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 pb-12 sm:pb-16">
+      <div className="mt-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 pt-3 border-t border-slate-100">
         <span className="font-medium self-start sm:self-auto">
           {rowCount === 0 ? "0 rows" : `${start + 1}–${end} of ${rowCount}`}
         </span>

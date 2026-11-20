@@ -16,7 +16,7 @@ export async function generateMetadata({
 
   if (!certificate) {
     return {
-      title: "Sertifikat Tidak Ditemukan — FluencyHub",
+      title: "Sertifikat Tidak Ditemukan — English Ready",
     };
   }
 
@@ -30,7 +30,7 @@ export async function generateMetadata({
       : `Sertifikat - ${cleanStudent} - ${cleanCourse}`,
     description: `Dokumen resmi ${
       isReport ? "Rapor Nilai Akademik" : "Sertifikat Kelulusan"
-    } siswa ${certificate.studentName} untuk kursus ${certificate.courseTitle} di FluencyHub Academy.`,
+    } siswa ${certificate.studentName} untuk kursus ${certificate.courseTitle} di English Ready.`,
   };
 }
 
@@ -53,7 +53,7 @@ export default async function CertificatePage({
   const baseUrl =
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://fluencyhub-theta.vercel.app");
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://englishready.co.id");
   const validationUrl = `${baseUrl}/certificates/${certificate.certificateCode}`;
   const qrDataUrl = await QRCode.toDataURL(validationUrl, {
     margin: 1,

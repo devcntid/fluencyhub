@@ -126,7 +126,7 @@ export function CheckoutStepper({
 
   const handleReorder = useCallback(() => {
     if (orderNumber && typeof window !== "undefined") {
-      localStorage.removeItem(`fluencyhub_expiry_${orderNumber}`);
+      localStorage.removeItem(`englishready_expiry_${orderNumber}`);
     }
     setOrderNumber(null);
     setOrderId(null);
@@ -559,8 +559,17 @@ export function CheckoutStepper({
                 <div>
                   <p className="mb-1 text-[13px] font-bold font-heading">{course.title}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    <span className="badge badge-primary"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect width="15" height="14" x="1" y="5" rx="2" ry="2"/></svg> Live Class</span>
-                    <span className="badge badge-success"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 1 0 0-8c-2 0-4 1.33-6 4Z"/></svg> Seumur Hidup</span>
+                    <span className="badge badge-primary">
+                      {course.tierBadge ??
+                        (course.tier === "tier_bawah"
+                          ? "🤖 Self-Paced AI"
+                          : course.tier === "tier_tinggi"
+                          ? "📍 Offline 1-on-1"
+                          : "💻 Online Cohort")}
+                    </span>
+                    <span className="badge badge-success">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 1 0 0-8c-2 0-4 1.33-6 4Z"/></svg> Akses Penuh
+                    </span>
                   </div>
                 </div>
               </div>
@@ -826,7 +835,7 @@ export function CheckoutStepper({
                     <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-4)] mb-1">
                       {method?.name} (TRANSFER MANUAL)
                     </p>
-                    <p className="font-semibold text-[15px]">{method?.accountName || "PT FluencyHub Edukasi"}</p>
+                    <p className="font-semibold text-[15px]">{method?.accountName || "English Ready Indonesia"}</p>
                   </div>
                   
                   <div className="rounded-md bg-[var(--surface)] p-4 text-center mb-5 border border-[var(--border)]">
@@ -916,7 +925,7 @@ export function CheckoutStepper({
               methodCode={method?.code}
               methodType={method?.type}
               logoUrl={method?.logoUrl}
-              merchantName="FluencyHub"
+              merchantName="English Ready"
               totalAmount={total}
               expiresAt={expiresAt}
               createdAt={createdAt}
@@ -1017,7 +1026,19 @@ export function CheckoutStepper({
               <div className="mb-3 h-[110px] w-full rounded-[var(--r-md)] bg-zinc-200" />
             )}
             <p className="mb-1 font-heading text-[13px] font-bold leading-tight">{course.title}</p>
-            <p className="mb-3.5 text-[11px] text-[var(--text-4)]">Akses Seumur Hidup · Sertifikat</p>
+            <div className="mb-2 flex flex-wrap gap-1">
+              <span className="badge badge-primary text-[10px]">
+                {course.tierBadge ?? (course.tier === "tier_bawah" ? "Paket Bawah" : course.tier === "tier_tinggi" ? "Paket Tinggi" : "Paket Menengah")}
+              </span>
+              <span className="badge badge-default text-[10px]">
+                {course.speakingPartnerType === "ai"
+                  ? "🤖 AI Partner 24/7"
+                  : course.speakingPartnerType === "trainer_offline"
+                  ? "📍 Offline 1-on-1"
+                  : "💻 Online Zoom"}
+              </span>
+            </div>
+            <p className="mb-3 text-[11px] text-[var(--text-4)]">Akses Materi · Sertifikat Kesiapan</p>
             
             <div className="flex flex-col gap-1.5 border-t border-[var(--border)] pt-3">
               <div className="flex justify-between text-[13px]">

@@ -270,7 +270,7 @@ export function ExamSubmissionsDialog({
                           target="_blank"
                           rel="noreferrer"
                           download
-                          className="btn btn-primary btn-sm flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                          className="btn btn-primary btn-sm flex items-center gap-1.5 text-xs font-bold bg-[#F26A12] hover:bg-[#D65507] text-white shadow-xs"
                         >
                           <LandingIcon name="Download" size={13} color="#fff" />
                           <span>Download Answers</span>
@@ -408,7 +408,7 @@ export function ExamSubmissionsDialog({
                     onClick={handleGrade}
                     className={`btn btn-default text-white font-extrabold shadow-sm flex items-center gap-2 ${
                       score >= passingScore
-                        ? "bg-blue-600 hover:bg-blue-700 btn-primary"
+                        ? "bg-[#F26A12] hover:bg-[#D65507] btn-primary"
                         : "bg-amber-600 hover:bg-amber-700"
                     }`}
                   >

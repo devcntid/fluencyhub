@@ -13,6 +13,42 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
+export const TIER_CONFIG = {
+  tier_bawah: {
+    label: "🥉 Paket Bawah (Self-Paced AI Partner)",
+    badge: "Self-Paced AI",
+    partner: "ai" as const,
+    partnerLabel: "🤖 AI Speaking Partner 24/7",
+    suggestedPrice: "99000",
+    minPrice: 49000,
+    maxPrice: 199000,
+    rangeText: "Rp 49.000 – Rp 199.000 (Standar: Rp 99.000/bln)",
+    desc: "Materi video mandiri + AI speaking partner 24/7 (tanpa tatap muka langsung)",
+  },
+  tier_menengah: {
+    label: "🥈 Paket Menengah (Live Online Zoom Cohort)",
+    badge: "Paling Diminati",
+    partner: "trainer_online" as const,
+    partnerLabel: "💻 Live Trainer Online via Zoom",
+    suggestedPrice: "1490000",
+    minPrice: 799000,
+    maxPrice: 1990000,
+    rangeText: "Rp 799.000 – Rp 1.990.000 (Standar: Rp 1.490.000)",
+    desc: "Kelas kelompok intensif 6 minggu (maks. 12 murid) via Zoom bersama instruktur",
+  },
+  tier_tinggi: {
+    label: "🥇 Paket Tinggi (Executive Offline 1-on-1)",
+    badge: "Executive 1-on-1",
+    partner: "trainer_offline" as const,
+    partnerLabel: "📍 Trainer Tatap Muka (Offline) + Atur Lokasi",
+    suggestedPrice: "2690000",
+    minPrice: 1990000,
+    maxPrice: 3990000,
+    rangeText: "Rp 1.990.000 – Rp 3.990.000 (Standar: Rp 2.690.000)",
+    desc: "Bimbingan privat tatap muka 1-on-1 langsung + fitur bebas tentukan lokasi temu",
+  },
+};
+
 export function InstructorCourseCreateButton() {
   const router = useRouter();
   const toast = useToast();
@@ -24,17 +60,26 @@ export function InstructorCourseCreateButton() {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [shortDescription, setShortDescription] = useState("");
-  const [price, setPrice] = useState("0");
+  const [price, setPrice] = useState("1490000");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [level, setLevel] = useState<"beginner" | "intermediate" | "advanced" | "all_levels">("beginner");
+  const [tier, setTier] = useState<"tier_bawah" | "tier_menengah" | "tier_tinggi">("tier_menengah");
+
+  function handleTierChange(newTier: "tier_bawah" | "tier_menengah" | "tier_tinggi") {
+    setTier(newTier);
+    if (!price || price === "0" || price === "99000" || price === "1490000" || price === "2690000") {
+      setPrice(TIER_CONFIG[newTier].suggestedPrice);
+    }
+  }
 
   function startCreate() {
     setTitle("");
     setSlug("");
     setShortDescription("");
-    setPrice("0");
+    setPrice("1490000");
     setThumbnailUrl("");
     setLevel("beginner");
+    setTier("tier_menengah");
     setError("");
     setUploading(false);
     setOpen(true);
@@ -77,6 +122,9 @@ export function InstructorCourseCreateButton() {
       price: price ? price.replace(",", ".") : "0",
       thumbnailUrl: thumbnailUrl || null,
       level,
+      tier,
+      speakingPartnerType: TIER_CONFIG[tier].partner,
+      tierBadge: TIER_CONFIG[tier].badge,
     };
     try {
       const res = await fetch("/api/instructor/courses", {
@@ -132,7 +180,7 @@ export function InstructorCourseCreateButton() {
             <input className="input" value={slug} onChange={(e) => setSlug(e.target.value)} />
           </label>
           <label>
-            <span className="label">Level</span>
+            <span className="label">Level Kemampuan</span>
             <select
               className="input"
               value={level}
@@ -140,11 +188,31 @@ export function InstructorCourseCreateButton() {
                 setLevel(e.target.value as "beginner" | "intermediate" | "advanced" | "all_levels")
               }
             >
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-              <option value="all_levels">All Levels</option>
+              <option value="beginner">Beginner (Dasar)</option>
+              <option value="intermediate">Intermediate (Menengah)</option>
+              <option value="advanced">Advanced (Mahir)</option>
+              <option value="all_levels">All Levels (Semua Level)</option>
             </select>
+          </label>
+          <label>
+            <div className="flex items-center justify-between mb-1">
+              <span className="label !mb-0 font-bold">Tingkatan Paket Program (Tier)</span>
+              <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                {TIER_CONFIG[tier].partnerLabel}
+              </span>
+            </div>
+            <select
+              className="input bg-white font-medium"
+              value={tier}
+              onChange={(e) => handleTierChange(e.target.value as any)}
+            >
+              <option value="tier_bawah">🥉 Paket Bawah (Self-Paced AI Partner)</option>
+              <option value="tier_menengah">🥈 Paket Menengah (Live Online Zoom Cohort)</option>
+              <option value="tier_tinggi">🥇 Paket Tinggi (Executive Offline 1-on-1)</option>
+            </select>
+            <p className="mt-1 text-xs text-zinc-500 leading-snug">
+              {TIER_CONFIG[tier].desc}
+            </p>
           </label>
           <label>
             <span className="label">Short description</span>
@@ -155,15 +223,27 @@ export function InstructorCourseCreateButton() {
             />
           </label>
           <label>
-            <span className="label">Price</span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="label !mb-0 font-bold">Harga Kursus (IDR)</span>
+              <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Saran: {TIER_CONFIG[tier].rangeText}
+              </span>
+            </div>
             <input
               type="number"
               min="0"
               step="any"
-              className="input"
+              className="input font-semibold"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+              placeholder={`Contoh: ${TIER_CONFIG[tier].suggestedPrice}`}
             />
+            {Number(price) > 0 && (Number(price) < TIER_CONFIG[tier].minPrice || Number(price) > TIER_CONFIG[tier].maxPrice) && (
+              <p className="mt-1 text-xs text-amber-600 font-medium flex items-center gap-1">
+                <span>⚠️</span>
+                <span>Harga di luar rentang rekomendasi ({TIER_CONFIG[tier].rangeText}).</span>
+              </p>
+            )}
           </label>
           <label>
             <span className="label">Thumbnail</span>

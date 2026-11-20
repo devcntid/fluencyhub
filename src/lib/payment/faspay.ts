@@ -145,7 +145,7 @@ export async function createFaspayTransaction(params: FaspayChargeParams): Promi
     .slice(0, 30) || "Customer";
 
   // Sanitize description
-  const cleanDesc = `FluencyHub Course Order ${params.orderNumber}`
+  const cleanDesc = `English Ready Course Order ${params.orderNumber}`
     .replace(/[^a-zA-Z0-9\s\-]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
@@ -165,7 +165,7 @@ export async function createFaspayTransaction(params: FaspayChargeParams): Promi
     },
     metadata: {
       order_number: params.orderNumber,
-      source: "fluencyhub",
+      source: "englishready",
     },
   };
 
@@ -330,7 +330,7 @@ export async function reconcileGatewayTransaction(
       method: "POST",
       headers: {
         Authorization: `Bearer ${adminToken}`,
-        "X-Operator": "fluencyhub_auto_reconcile",
+        "X-Operator": "englishready_auto_reconcile",
       },
       cache: "no-store",
     });

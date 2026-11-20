@@ -19,7 +19,7 @@ export async function sendEmail({
 }) {
   try {
     const info = await transporter.sendMail({
-      from: `"FluencyHub" <${process.env.SMTP_USER}>`,
+      from: `"English Ready" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,

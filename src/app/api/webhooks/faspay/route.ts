@@ -136,7 +136,7 @@ export async function POST(req: Request) {
   const signature = String(body.signature ?? "");
   const trxId = String(body.trx_id ?? "");
   const merchantId = String(body.merchant_id ?? "");
-  const merchant = String(body.merchant ?? "FluencyHub");
+  const merchant = String(body.merchant ?? "English Ready");
 
   const validSig = verifyFaspayLegacySignature(billNo, statusCode, signature);
 

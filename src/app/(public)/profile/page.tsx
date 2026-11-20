@@ -76,7 +76,7 @@ export default async function PublicProfilePage() {
             <div className="flex flex-col w-full gap-4 rounded-xl bg-blue-50 p-5 border border-blue-100">
               <div className="flex justify-between items-center gap-4">
                 <span className="text-sm font-semibold text-blue-900">Tipe Member</span>
-                <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white text-right">
+                <span className="rounded-full bg-[#0B2559] px-3 py-1 text-xs font-bold text-white text-right">
                   {dbUser?.role === 'admin' ? 'Admin' : dbUser?.role === 'instructor' ? 'Instructor' : 'Hybrid Pro'}
                 </span>
               </div>

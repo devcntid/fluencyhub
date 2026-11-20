@@ -165,6 +165,10 @@ export type CourseAdminInput = {
   marketingTag?: string | null;
   thumbnailUrl?: string | null;
   level?: Course["level"];
+  tier?: Course["tier"];
+  speakingPartnerType?: Course["speakingPartnerType"];
+  tierBadge?: string | null;
+  offlineSessionsCount?: number;
 };
 
 export async function createCourseAdmin(data: {
@@ -179,17 +183,26 @@ export async function createCourseAdmin(data: {
   marketingTag?: string | null;
   thumbnailUrl?: string | null;
   level?: Course["level"];
+  tier?: Course["tier"];
+  speakingPartnerType?: Course["speakingPartnerType"];
+  tierBadge?: string | null;
+  offlineSessionsCount?: number;
 }): Promise<Course> {
   const rows = await sql`
     INSERT INTO courses (
       instructor_id, title, slug, short_description, price, original_price,
-      status, is_featured, marketing_tag, thumbnail_url, published_at, level
+      status, is_featured, marketing_tag, thumbnail_url, published_at, level,
+      tier, speaking_partner_type, tier_badge, offline_sessions_count
     ) VALUES (
       ${data.instructorId}, ${data.title}, ${data.slug}, ${data.shortDescription ?? null},
       ${data.price}, ${data.originalPrice ?? null}, ${data.status}, ${data.isFeatured},
       ${data.marketingTag ?? null}, ${data.thumbnailUrl ?? null},
       ${data.status === "published" ? new Date() : null},
-      ${data.level ?? "all_levels"}
+      ${data.level ?? "all_levels"},
+      COALESCE(${data.tier ?? null}, 'tier_menengah'),
+      COALESCE(${data.speakingPartnerType ?? null}, 'trainer_online'),
+      ${data.tierBadge ?? null},
+      ${data.offlineSessionsCount ?? 0}
     )
     RETURNING *
   `;
@@ -208,6 +221,13 @@ export async function updateCourseAdmin(id: number, data: CourseAdminInput): Pro
       is_featured = COALESCE(${data.isFeatured ?? null}, is_featured),
       marketing_tag = COALESCE(${data.marketingTag ?? null}, marketing_tag),
       level = COALESCE(${data.level ?? null}, level),
+      tier = COALESCE(${data.tier ?? null}, tier),
+      speaking_partner_type = COALESCE(${data.speakingPartnerType ?? null}, speaking_partner_type),
+      tier_badge = CASE
+        WHEN ${typeof data.tierBadge !== "undefined"} THEN ${data.tierBadge ?? null}
+        ELSE tier_badge
+      END,
+      offline_sessions_count = COALESCE(${data.offlineSessionsCount ?? null}, offline_sessions_count),
       thumbnail_url = CASE
         WHEN ${typeof data.thumbnailUrl !== "undefined"} THEN ${data.thumbnailUrl ?? null}
         ELSE thumbnail_url
@@ -236,7 +256,8 @@ export async function getInstructorUpcomingLiveClasses(instructorId: number | nu
     SELECT 
       l.id, 
       l.title, 
-      l.live_class_datetime as datetime, 
+      l.live_class_datetime as datetime,
+      l.live_class_url as live_class_url,
       COALESCE(l.duration_minutes, l.live_class_duration_min, 60) as duration_minutes,
       c.title as course_title, 
       c.id as course_id
@@ -255,10 +276,48 @@ export async function getInstructorUpcomingLiveClasses(instructorId: number | nu
     id: Number(r.id),
     title: String(r.title),
     datetime: (r.datetime as Date).toISOString(),
+    liveClassUrl: r.live_class_url ? String(r.live_class_url) : null,
     durationMinutes: Number(r.duration_minutes ?? 60),
     courseTitle: String(r.course_title),
     courseId: Number(r.course_id),
   }));
+}
+
+export async function getInstructorActionSummary(instructorId: number | null): Promise<{
+  pendingPrivateSessions: number;
+  upcomingConfirmedPrivate: number;
+  pendingExamReviews: number;
+}> {
+  const [privPending, privUpcoming, examPending] = await Promise.all([
+    sql`
+      SELECT COUNT(*)::int AS n
+      FROM private_sessions ps
+      WHERE ps.status = 'pending'
+        AND (${instructorId}::bigint IS NULL OR ps.instructor_id = ${instructorId})
+    `,
+    sql`
+      SELECT COUNT(*)::int AS n
+      FROM private_sessions ps
+      JOIN instructor_slots s ON s.id = ps.slot_id
+      WHERE ps.status = 'confirmed'
+        AND s.start_at > NOW()
+        AND (${instructorId}::bigint IS NULL OR ps.instructor_id = ${instructorId})
+    `,
+    sql`
+      SELECT COUNT(*)::int AS n
+      FROM exam_submissions es
+      JOIN courses c ON c.id = es.course_id
+      WHERE es.status = 'pending'
+        AND c.deleted_at IS NULL
+        AND (${instructorId}::bigint IS NULL OR c.instructor_id = ${instructorId})
+    `,
+  ]);
+
+  return {
+    pendingPrivateSessions: Number(privPending[0]?.n ?? 0),
+    upcomingConfirmedPrivate: Number(privUpcoming[0]?.n ?? 0),
+    pendingExamReviews: Number(examPending[0]?.n ?? 0),
+  };
 }
 
 export type CoursePublishEligibility = {

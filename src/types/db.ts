@@ -1,6 +1,10 @@
+import type { CbtQuestion } from "@/lib/exams/cbt";
+
 export type UserRole = "user" | "instructor" | "admin";
 export type CourseStatus = "draft" | "published" | "archived";
 export type CourseLevel = "beginner" | "intermediate" | "advanced" | "all_levels";
+export type ProgramTier = "tier_bawah" | "tier_menengah" | "tier_tinggi";
+export type SpeakingPartnerType = "ai" | "trainer_online" | "trainer_offline";
 export type PaymentMethodType =
   | "e_wallet"
   | "va"
@@ -32,6 +36,10 @@ export interface User {
   signatureUrl?: string | null;
   isActive: boolean;
   revenueSharePct: string;
+  totalReadyPoints?: number;
+  currentReadyScore?: number;
+  speakingStreakDays?: number;
+  lastPracticeDate?: string | null;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -68,6 +76,11 @@ export interface Course {
   language: string;
   level: CourseLevel;
   marketingTag: string | null;
+  tier?: ProgramTier | string;
+  speakingPartnerType?: SpeakingPartnerType | string;
+  tierBadge?: string | null;
+  offlineSessionsCount?: number;
+  featuresJson?: string[] | null;
   platformFeePct: string;
   createdAt: Date;
   updatedAt: Date;
@@ -327,6 +340,8 @@ export interface ExamQuestion {
 }
 
 export interface ExamContent {
+  cbtQuestions?: CbtQuestion[];
+  remedialCbtQuestions?: CbtQuestion[];
   questionFileUrl?: string;
   questionFileName?: string;
   examInstructions?: string;
@@ -393,4 +408,43 @@ export interface Certificate {
   issuedAt: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface SpeakingCorrection {
+  original: string;
+  improved: string;
+  explanation: string;
+}
+
+export interface SpeakingSession {
+  id: number;
+  userId: number;
+  courseId: number | null;
+  scenarioId: string;
+  scenarioTitle: string;
+  durationSeconds: number;
+  transcriptUser: string | null;
+  transcriptAi: string | null;
+  fluencyScore: number;
+  pronunciationScore: number;
+  grammarScore: number;
+  vocabularyScore: number;
+  overallReadyScore: number;
+  feedbackText: string | null;
+  correctionsJson: SpeakingCorrection[];
+  pointsAwarded: number;
+  createdAt: Date;
+}
+
+export interface StudentProgressSummary {
+  readyScore: number;
+  totalPoints: number;
+  streakDays: number;
+  sessionsCount: number;
+  fluencyAvg: number;
+  pronunciationAvg: number;
+  grammarAvg: number;
+  vocabularyAvg: number;
+  weeklyTrend: Array<{ label: string; score: number }>;
+  recentSessions: SpeakingSession[];
 }

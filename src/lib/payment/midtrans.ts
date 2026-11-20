@@ -74,7 +74,7 @@ function coreChargeConfig(
     case "MIDTRANS_MANDIRI_VA":
       return {
         paymentType: "echannel",
-        extra: { echannel: { bill_info1: "Payment For", bill_info2: "FluencyHub" } },
+        extra: { echannel: { bill_info1: "Payment For", bill_info2: "English Ready" } },
       };
     default:
       return null;

@@ -89,8 +89,26 @@ export default async function InstructorCoursesPage() {
               {/* Course Details */}
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
+                  {c.tier ? (
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                        c.tier === "tier_bawah"
+                          ? "bg-amber-50 text-amber-800 border border-amber-200"
+                          : c.tier === "tier_tinggi"
+                          ? "bg-purple-50 text-purple-800 border border-purple-200"
+                          : "bg-blue-50 text-blue-800 border border-blue-200"
+                      }`}
+                    >
+                      {c.tierBadge ||
+                        (c.tier === "tier_bawah"
+                          ? "🥉 Paket Bawah"
+                          : c.tier === "tier_tinggi"
+                          ? "🥇 Paket Tinggi"
+                          : "🥈 Paket Menengah")}
+                    </span>
+                  ) : null}
                   {c.level ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 capitalize">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 capitalize">
                       {c.level.replace("_", " ")}
                     </span>
                   ) : null}
@@ -171,6 +189,7 @@ export default async function InstructorCoursesPage() {
                     thumbnailUrl: c.thumbnailUrl,
                     status: c.status as "draft" | "published",
                     level: c.level,
+                    tier: (c.tier as "tier_bawah" | "tier_menengah" | "tier_tinggi" | null) || null,
                   }}
                 />
                 <InstructorCourseDeleteButton id={c.id} title={c.title} />

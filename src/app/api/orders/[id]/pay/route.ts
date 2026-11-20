@@ -369,7 +369,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         qrString = generateQrisString({
           orderNumber: order.orderNumber,
           amount,
-          merchantName: "FluencyHub",
+          merchantName: "English Ready",
         });
       }
 

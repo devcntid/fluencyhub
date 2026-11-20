@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LandingIcon as Icon } from "@/components/landing/LandingIcon";
+import { ProtectedVideoPlayer } from "@/components/video/ProtectedVideoPlayer";
 import type { PlayerLesson, PlayerSection } from "@/lib/db/lessons.queries";
 
 function typeLabel(type: string) {
@@ -97,19 +98,12 @@ export function CoursePlayer({
             {current.isFreePreview ? <span className="badge badge-warning">Free Preview</span> : null}
           </div>
 
-          {current.contentType === "youtube_video" && current.youtubeVideoId ? (
-            <iframe
-              className="aspect-video w-full rounded-[var(--r-lg)] bg-black"
-              src={`https://www.youtube-nocookie.com/embed/${current.youtubeVideoId}`}
+          {current.contentType === "youtube_video" ? (
+            <ProtectedVideoPlayer
+              youtubeVideoId={current.youtubeVideoId}
               title={current.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
+              autoplay={false}
             />
-          ) : null}
-          {current.contentType === "youtube_video" && !current.youtubeVideoId ? (
-            <div className="flex aspect-video items-center justify-center rounded-[var(--r-lg)] bg-[#09090b] text-sm text-zinc-400">
-              No YouTube URL on this lesson yet.
-            </div>
           ) : null}
           {current.contentType === "live_class" ? (
             <div className="card">

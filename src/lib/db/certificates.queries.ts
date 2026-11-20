@@ -47,9 +47,9 @@ export async function getCertificateByCode(certificateCode: string): Promise<(Ce
     issuedAt: new Date(r.issued_at),
     createdAt: new Date(r.created_at),
     updatedAt: new Date(r.updated_at),
-    studentName: String(r.student_name || "Siswa FluencyHub"),
+    studentName: String(r.student_name || "Siswa English Ready"),
     courseTitle: String(r.course_title || "Program Kursus"),
-    instructorName: String(r.instructor_name || "Instruktur FluencyHub"),
+    instructorName: String(r.instructor_name || "Instruktur English Ready"),
     instructorSignatureUrl: r.instructor_signature_url ? String(r.instructor_signature_url) : null,
   };
 }

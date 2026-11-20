@@ -1,3 +1,4 @@
+import { EnglishReadyLogo } from "@/components/brand/EnglishReadyLogo";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
@@ -23,13 +24,8 @@ export default async function MemberSignInPage({
 
       <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col justify-center px-4 py-12 md:flex-row md:items-center md:gap-16">
         <div className="mb-10 max-w-md md:mb-0">
-          <Link href="/" className="mb-8 inline-flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand)] text-sm font-extrabold text-white">
-              F
-            </span>
-            <span className="font-[family-name:var(--font-heading)] text-xl font-extrabold">
-              Fluency<span className="text-[var(--brand)]">Hub</span>
-            </span>
+          <Link href="/" className="mb-8 inline-flex items-center">
+            <EnglishReadyLogo height={36} />
           </Link>
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--brand)]">Member access</p>
           <h1 className="heading-lg mb-3">Masuk ke kelas dan kelanjutkan belajar.</h1>
@@ -56,7 +52,7 @@ export default async function MemberSignInPage({
           </div>
 
           <p className="mt-5 text-center text-xs text-[var(--text-4)]">
-            Dengan masuk, Anda menyetujui penggunaan akun untuk akses kursus FluencyHub.
+            Dengan masuk, Anda menyetujui penggunaan akun untuk akses kursus English Ready.
           </p>
         </div>
       </div>

@@ -62,13 +62,21 @@ export function ProfileDropdown({
                 Portal Instruktur &rarr;
               </Link>
             )}
-            {hasDashboardAccess && (
+            {hasDashboardAccess ? (
               <Link
                 href="/dashboard"
                 onClick={() => setIsOpen(false)}
                 className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
               >
                 Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/ready-check"
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-2 text-sm font-bold text-[#C2530A] hover:bg-[#FFF4EC]"
+              >
+                Cek Ready Score Gratis
               </Link>
             )}
             {pathname !== "/" && (

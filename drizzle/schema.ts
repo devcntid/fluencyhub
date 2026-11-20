@@ -1,4 +1,4 @@
-import {
+  import {
   bigint,
   bigserial,
   serial,
@@ -31,6 +31,10 @@ export const users = pgTable(
     signatureUrl: text("signature_url"),
     isActive: boolean("is_active").notNull().default(true),
     revenueSharePct: numeric("revenue_share_pct", { precision: 5, scale: 2 }).default("70.00"),
+    totalReadyPoints: integer("total_ready_points").notNull().default(0),
+    currentReadyScore: integer("current_ready_score").notNull().default(0),
+    speakingStreakDays: integer("speaking_streak_days").notNull().default(0),
+    lastPracticeDate: text("last_practice_date"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -79,6 +83,11 @@ export const courses = pgTable(
     language: varchar("language", { length: 10 }).notNull().default("id"),
     level: varchar("level", { length: 50 }).notNull().default("beginner"),
     marketingTag: varchar("marketing_tag", { length: 50 }),
+    tier: varchar("tier", { length: 50 }).notNull().default("tier_menengah"),
+    speakingPartnerType: varchar("speaking_partner_type", { length: 50 }).notNull().default("trainer_online"),
+    tierBadge: varchar("tier_badge", { length: 100 }),
+    offlineSessionsCount: integer("offline_sessions_count").default(0),
+    featuresJson: jsonb("features_json"),
     platformFeePct: numeric("platform_fee_pct", { precision: 5, scale: 2 }).notNull().default("30.00"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -506,6 +515,11 @@ export const privateSessions = pgTable(
     instructorNotes: text("instructor_notes"),
     rejectReason: text("reject_reason"),
     zoomLink: text("zoom_link"), // override per session, fallback to users.zoom_link
+    sessionType: varchar("session_type", { length: 50 }).notNull().default("online"), // online, offline
+    locationName: varchar("location_name", { length: 255 }),
+    locationAddress: text("location_address"),
+    locationMapsUrl: text("location_maps_url"),
+    locationNotes: text("location_notes"),
     status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, confirmed, completed, no_show, rejected, cancelled
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -513,6 +527,7 @@ export const privateSessions = pgTable(
   },
   (t) => [
     check("private_sessions_status_check", sql`${t.status} IN ('pending', 'confirmed', 'completed', 'no_show', 'rejected', 'cancelled')`),
+    check("private_sessions_type_check", sql`${t.sessionType} IN ('online', 'offline')`),
     index("idx_private_sessions_learner").on(t.learnerId),
     index("idx_private_sessions_instructor").on(t.instructorId),
     uniqueIndex("unq_private_sessions_active_slot").on(t.slotId).where(sql`${t.status} IN ('pending', 'confirmed')`),
@@ -605,4 +620,36 @@ export const certificates = pgTable(
     uniqueIndex("unq_certificates_user_course").on(t.userId, t.courseId),
     index("idx_certificates_code").on(t.certificateCode),
   ],
+);
+
+export const speakingSessions = pgTable(
+  "speaking_sessions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: bigint("course_id", { mode: "number" }).references(
+      () => courses.id,
+      { onDelete: "set null" }
+    ),
+    scenarioId: varchar("scenario_id", { length: 50 }).notNull(),
+    scenarioTitle: varchar("scenario_title", { length: 255 }).notNull(),
+    durationSeconds: integer("duration_seconds").notNull().default(0),
+    transcriptUser: text("transcript_user"),
+    transcriptAi: text("transcript_ai"),
+    fluencyScore: integer("fluency_score").notNull().default(75),
+    pronunciationScore: integer("pronunciation_score").notNull().default(75),
+    grammarScore: integer("grammar_score").notNull().default(75),
+    vocabularyScore: integer("vocabulary_score").notNull().default(75),
+    overallReadyScore: integer("overall_ready_score").notNull().default(75),
+    feedbackText: text("feedback_text"),
+    correctionsJson: jsonb("corrections_json").default([]),
+    pointsAwarded: integer("points_awarded").notNull().default(50),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_speaking_sessions_user_id").on(t.userId),
+    index("idx_speaking_sessions_created_at").on(t.createdAt),
+  ]
 );

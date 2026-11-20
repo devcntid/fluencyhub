@@ -1,5 +1,7 @@
 "use client";
 
+import { EnglishReadyLogo } from "@/components/brand/EnglishReadyLogo";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AdminSignOut } from "@/components/admin/AdminSignOut";
@@ -25,12 +27,7 @@ export function AdminSidebar({
     <aside className="sidebar">
       <div className="sidebar-top">
         <Link href={base} className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-[var(--r)] bg-[var(--sidebar-active-admin)] text-xs font-extrabold text-white">
-            F
-          </span>
-          <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-white">
-            Fluency<span className="text-[var(--sidebar-active-admin)]">Hub</span>
-          </span>
+          <EnglishReadyLogo height={28} mode="dark" />
         </Link>
       </div>
       <div className="sidebar-profile">

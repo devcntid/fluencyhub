@@ -49,8 +49,8 @@ export async function POST(req: Request) {
           <tr><td style="padding-right: 10px;">📅 <strong>Date</strong></td><td>: {DATE}</td></tr>
           <tr><td style="padding-right: 10px;">🔖 <strong>Order ID</strong></td><td>: {ORDER_ID}</td></tr>
         </table>
-        <p>Access your course now:<br>👉 <a href="https://fluencyhub.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://fluencyhub.id/dashboard</a></p>
-        <p style="margin-top: 30px;">The FluencyHub Team</p>
+        <p>Access your course now:<br>👉 <a href="https://englishready.co.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://englishready.co.id/dashboard</a></p>
+        <p style="margin-top: 30px;">The English Ready Team</p>
       </div>`);
       wa = replaceVars(settings.notif_wa_success || "");
     } else {
@@ -68,8 +68,8 @@ export async function POST(req: Request) {
           <strong>Reason for rejection:</strong><br>
           {NOTE}
         </div>
-        <p>Please re-upload a clear and valid payment proof to continue accessing your course:<br>👉 <a href="https://fluencyhub.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://fluencyhub.id/dashboard</a></p>
-        <p style="margin-top: 30px;">Thank you,<br>The FluencyHub Team</p>
+        <p>Please re-upload a clear and valid payment proof to continue accessing your course:<br>👉 <a href="https://englishready.co.id/dashboard" style="color: #4F46E5; text-decoration: none; font-weight: bold;">https://englishready.co.id/dashboard</a></p>
+        <p style="margin-top: 30px;">Thank you,<br>The English Ready Team</p>
       </div>`);
       wa = replaceVars(settings.notif_wa_rejected || "");
     }

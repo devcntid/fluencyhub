@@ -59,7 +59,8 @@ export async function listEnrollmentsForUser(
       c.short_description, c.description, c.thumbnail_url, c.promo_video_url,
       c.price, c.original_price, c.status AS c_status, c.is_featured, c.is_free,
       c.total_duration_min, c.enrollment_count, c.max_students, c.language,
-      c.level, c.platform_fee_pct, c.created_at AS c_created_at,
+      c.level, c.tier, c.speaking_partner_type, c.tier_badge, c.offline_sessions_count,
+      c.features_json, c.platform_fee_pct, c.created_at AS c_created_at,
       c.updated_at AS c_updated_at, c.published_at, c.deleted_at
     FROM enrollments e
     JOIN courses c ON c.id = e.course_id

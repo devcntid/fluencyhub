@@ -6,6 +6,8 @@ import { getAdminPath } from "@/lib/auth";
 import { auth } from "@/lib/session";
 import { getUserById } from "@/lib/db/users.queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
   params,

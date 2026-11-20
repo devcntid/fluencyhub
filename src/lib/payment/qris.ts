@@ -16,7 +16,7 @@ export function crc16(str: string): string {
 export function generateQrisString({
   orderNumber,
   amount,
-  merchantName = "FluencyHub",
+  merchantName = "English Ready",
 }: {
   orderNumber: string;
   amount: number;
