@@ -1,9 +1,17 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
+import {
+  DEFAULT_CBT_QUESTIONS,
+  getOfficialGradeLabel,
+  type CbtExamResult,
+  type CbtQuestion,
+  type CbtQuestionType,
+  type CbtUserAnswer,
+} from "@/lib/exams/cbt";
 import type { Exam, ExamSubmission } from "@/types/db";
 
 export type InstructorSubmissionRow = ExamSubmission & {
@@ -12,15 +20,74 @@ export type InstructorSubmissionRow = ExamSubmission & {
   examTitle: string;
 };
 
-function getYouTubeId(url: string | null): string | null {
-  if (!url) return null;
-  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-  return match ? match[1] : null;
+const emptySubscribe = () => () => {};
+
+function getQuestionTypeBadge(type: CbtQuestionType | string) {
+  if (type === "audio_speaking") {
+    return {
+      label: "Speaking Interview",
+      cls: "bg-purple-50 text-purple-800 border-purple-200",
+    };
+  }
+  if (type === "vocab_match") {
+    return {
+      label: "Vocab A–D",
+      cls: "bg-teal-50 text-teal-800 border-teal-200",
+    };
+  }
+  if (type === "translate") {
+    return {
+      label: "Translate (ID → EN)",
+      cls: "bg-amber-50 text-amber-900 border-amber-200",
+    };
+  }
+  return {
+    label: "Lengkapi Kalimat",
+    cls: "bg-blue-50 text-[#0062D1] border-blue-200",
+  };
+}
+
+function extractCbtResult(sub: InstructorSubmissionRow | null): CbtExamResult | null {
+  if (!sub?.answers || typeof sub.answers !== "object") return null;
+  const raw = (sub.answers as Record<string, unknown>).cbtResults;
+  if (!raw || typeof raw !== "object") return null;
+  const cbt = raw as Partial<CbtExamResult>;
+  if (!cbt.answers || typeof cbt.answers !== "object") return null;
+  return {
+    totalEarnedPoints: Number(cbt.totalEarnedPoints ?? 0),
+    totalPossiblePoints: Number(cbt.totalPossiblePoints ?? 100),
+    finalPercentage: Number(cbt.finalPercentage ?? sub.finalScore ?? 0),
+    passingScore: Number(cbt.passingScore ?? 70),
+    passed: Boolean(cbt.passed),
+    readingScore: Number(cbt.readingScore ?? sub.readingScore ?? 0),
+    speakingScore: Number(cbt.speakingScore ?? sub.speakingScore ?? 0),
+    answers: cbt.answers as Record<string, CbtUserAnswer>,
+    completedAt: String(cbt.completedAt ?? sub.submittedAt),
+  };
+}
+
+function getInitialPointsMap(sub: InstructorSubmissionRow | null): Record<string, number> {
+  const cbt = extractCbtResult(sub);
+  if (!cbt) return {};
+  const map: Record<string, number> = {};
+  for (const [key, ans] of Object.entries(cbt.answers)) {
+    const qKey = ans.questionId || key;
+    map[qKey] = Number(ans.earnedPoints ?? 0);
+  }
+  return map;
+}
+
+function getInitialLegacyScore(sub: InstructorSubmissionRow | null): number {
+  if (!sub) return 0;
+  if (sub.finalScore !== null && sub.finalScore !== undefined) return Number(sub.finalScore);
+  if (sub.manualScore !== null && sub.manualScore !== undefined) return Number(sub.manualScore);
+  if (sub.autoScore !== null && sub.autoScore !== undefined) return Number(sub.autoScore);
+  return 0;
 }
 
 export function InstructorExamReviewWorkbench({
   course,
-  courses: _courses,
+  courses = [],
   submissions: initialSubmissions,
   exam,
   initialSubmissionId,
@@ -34,11 +101,11 @@ export function InstructorExamReviewWorkbench({
   instructorHasSignature?: boolean;
 }) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   const [submissions, setSubmissions] = useState<InstructorSubmissionRow[]>(initialSubmissions);
   const [selectedId, setSelectedId] = useState<number | null>(() => {
@@ -49,89 +116,60 @@ export function InstructorExamReviewWorkbench({
     return firstPending ? firstPending.id : initialSubmissions[0]?.id ?? null;
   });
 
+  const initialSelected = useMemo(
+    () => initialSubmissions.find((s) => s.id === selectedId) ?? null,
+    [initialSubmissions, selectedId]
+  );
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "passed" | "failed">("all");
   const [showStudentList, setShowStudentList] = useState(false);
-  const [activeMediaTab, setActiveMediaTab] = useState<"pdf" | "video">("pdf");
 
-  const selectedSubmission = useMemo(() => {
-    return submissions.find((s) => s.id === selectedId) || null;
-  }, [submissions, selectedId]);
-
-  const answerFileUrl = selectedSubmission?.answers?.answerFileUrl || "";
-  const answerFileName = selectedSubmission?.answers?.answerFileName || "";
-
-  const isImageFile = useMemo(() => {
-    if (!answerFileUrl && !answerFileName) return false;
-    const imgRegex = /\.(png|jpe?g|webp|gif|svg|bmp)($|\?)/i;
-    return imgRegex.test(answerFileUrl) || imgRegex.test(answerFileName) || answerFileUrl.startsWith("data:image/");
-  }, [answerFileUrl, answerFileName]);
-
-  const isDocFile = useMemo(() => {
-    if (!answerFileUrl && !answerFileName) return false;
-    const docRegex = /\.(docx?|odt|rtf|txt)($|\?)/i;
-    return docRegex.test(answerFileUrl) || docRegex.test(answerFileName);
-  }, [answerFileUrl, answerFileName]);
-
-  const [readingScore, setReadingScore] = useState<number>(
-    () => selectedSubmission?.readingScore ?? selectedSubmission?.manualScore ?? 85
+  const [pointsByQuestion, setPointsByQuestion] = useState<Record<string, number>>(() =>
+    getInitialPointsMap(initialSelected)
   );
-  const [listeningScore, setListeningScore] = useState<number>(
-    () => selectedSubmission?.listeningScore ?? selectedSubmission?.manualScore ?? 85
+  const [legacyScore, setLegacyScore] = useState<number>(() =>
+    getInitialLegacyScore(initialSelected)
   );
-  const [writingScore, setWritingScore] = useState<number>(
-    () => selectedSubmission?.writingScore ?? selectedSubmission?.manualScore ?? 85
+  const [feedback, setFeedback] = useState<string>(
+    () => initialSelected?.instructorFeedback ?? ""
   );
-  const [speakingScore, setSpeakingScore] = useState<number>(
-    () => selectedSubmission?.speakingScore ?? selectedSubmission?.manualScore ?? 85
-  );
-
-  const averageScore = Math.round(
-    (Number(readingScore || 0) +
-      Number(listeningScore || 0) +
-      Number(writingScore || 0) +
-      Number(speakingScore || 0)) /
-      4
-  );
-
-  const [feedback, setFeedback] = useState<string>(() => selectedSubmission?.instructorFeedback ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Sync state whenever props change (e.g. course switched)
-  useEffect(() => {
-    setSubmissions(initialSubmissions);
-    const targetId =
-      initialSubmissionId && initialSubmissions.some((s) => s.id === initialSubmissionId)
-        ? initialSubmissionId
-        : initialSubmissions.find((s) => s.status === "pending")?.id ?? initialSubmissions[0]?.id ?? null;
-    setSelectedId(targetId);
-    const targetSub = initialSubmissions.find((s) => s.id === targetId);
-    const defScore = targetSub?.status === "passed" ? 85 : targetSub?.status === "failed" ? 55 : 80;
-    setReadingScore(targetSub?.readingScore ?? targetSub?.manualScore ?? defScore);
-    setListeningScore(targetSub?.listeningScore ?? targetSub?.manualScore ?? defScore);
-    setWritingScore(targetSub?.writingScore ?? targetSub?.manualScore ?? defScore);
-    setSpeakingScore(targetSub?.speakingScore ?? targetSub?.manualScore ?? defScore);
-    setFeedback(targetSub?.instructorFeedback ?? "");
-    setError("");
-    setSuccessMsg("");
-    setActiveMediaTab("pdf");
-    setSearchQuery("");
-    setStatusFilter("all");
-  }, [initialSubmissions, initialSubmissionId, course.id]);
+  const selectedSubmission = useMemo(
+    () => submissions.find((s) => s.id === selectedId) || null,
+    [submissions, selectedId]
+  );
+
+  const cbtResult = useMemo(
+    () => extractCbtResult(selectedSubmission),
+    [selectedSubmission]
+  );
+
+  // Lookup map of all known questions in this course's exam (main + remedial + defaults)
+  const questionLookup = useMemo(() => {
+    const map = new Map<string, CbtQuestion>();
+    const mainQs = Array.isArray(exam?.content?.cbtQuestions)
+      ? (exam.content.cbtQuestions as CbtQuestion[])
+      : [];
+    const remedialQs = Array.isArray(exam?.content?.remedialCbtQuestions)
+      ? (exam.content.remedialCbtQuestions as CbtQuestion[])
+      : [];
+    for (const q of [...DEFAULT_CBT_QUESTIONS, ...mainQs, ...remedialQs]) {
+      if (q?.id) map.set(q.id, q);
+    }
+    return map;
+  }, [exam]);
 
   function selectSubmission(sub: InstructorSubmissionRow) {
     setSelectedId(sub.id);
-    const defScore = sub.status === "passed" ? 85 : sub.status === "failed" ? 55 : 80;
-    setReadingScore(sub.readingScore ?? sub.manualScore ?? defScore);
-    setListeningScore(sub.listeningScore ?? sub.manualScore ?? defScore);
-    setWritingScore(sub.writingScore ?? sub.manualScore ?? defScore);
-    setSpeakingScore(sub.speakingScore ?? sub.manualScore ?? defScore);
+    setPointsByQuestion(getInitialPointsMap(sub));
+    setLegacyScore(getInitialLegacyScore(sub));
     setFeedback(sub.instructorFeedback ?? "");
     setError("");
     setSuccessMsg("");
-    setActiveMediaTab("pdf");
   }
 
   const filteredSubmissions = useMemo(() => {
@@ -162,6 +200,109 @@ export function InstructorExamReviewWorkbench({
     if (hasNext) selectSubmission(filteredSubmissions[currentIndex + 1]);
   }
 
+  // Live computed CBT metrics directly from student's answers + any per-question point adjustment
+  const computedCbt = useMemo(() => {
+    if (!cbtResult) return null;
+    const entries = Object.entries(cbtResult.answers);
+    let totalEarned = 0;
+    let totalPossible = 0;
+    let textEarned = 0;
+    let textPossible = 0;
+    let speakingEarned = 0;
+    let speakingPossible = 0;
+    let hasManualAdjustment = false;
+
+    const updatedAnswers: Record<string, CbtUserAnswer> = {};
+
+    for (const [key, ans] of entries) {
+      const qKey = ans.questionId || key;
+      const maxPts = Math.max(0, Number(ans.maxPoints ?? 0));
+      const origPts = Math.max(0, Math.min(maxPts, Number(ans.earnedPoints ?? 0)));
+      const currentPts =
+        pointsByQuestion[qKey] !== undefined
+          ? Math.max(0, Math.min(maxPts, Number(pointsByQuestion[qKey])))
+          : origPts;
+
+      if (currentPts !== origPts) {
+        hasManualAdjustment = true;
+      }
+
+      totalEarned += currentPts;
+      totalPossible += maxPts;
+
+      if (ans.type === "audio_speaking") {
+        speakingEarned += currentPts;
+        speakingPossible += maxPts;
+      } else {
+        textEarned += currentPts;
+        textPossible += maxPts;
+      }
+
+      updatedAnswers[key] = {
+        ...ans,
+        earnedPoints: currentPts,
+      };
+    }
+
+    const finalPercentage =
+      totalPossible > 0
+        ? Math.round((totalEarned / totalPossible) * 100)
+        : Math.round(Number(cbtResult.finalPercentage ?? 0));
+
+    const readingScore =
+      textPossible > 0 ? Math.round((textEarned / textPossible) * 100) : finalPercentage;
+    const speakingScore =
+      speakingPossible > 0 ? Math.round((speakingEarned / speakingPossible) * 100) : finalPercentage;
+
+    return {
+      totalEarnedPoints: totalEarned,
+      totalPossiblePoints: totalPossible,
+      finalPercentage,
+      readingScore,
+      speakingScore,
+      hasTextQuestions: textPossible > 0,
+      hasSpeakingQuestions: speakingPossible > 0,
+      hasManualAdjustment,
+      answersList: entries.map(([key, ans]) => {
+        const qKey = ans.questionId || key;
+        const maxPts = Math.max(0, Number(ans.maxPoints ?? 0));
+        const earnedPts =
+          pointsByQuestion[qKey] !== undefined
+            ? Math.max(0, Math.min(maxPts, Number(pointsByQuestion[qKey])))
+            : Number(ans.earnedPoints ?? 0);
+        return {
+          key,
+          qKey,
+          answer: ans,
+          earnedPts,
+          maxPts,
+          questionMeta: questionLookup.get(qKey) || null,
+        };
+      }),
+      updatedCbtResult: {
+        ...cbtResult,
+        totalEarnedPoints: totalEarned,
+        totalPossiblePoints: totalPossible,
+        finalPercentage,
+        passingScore,
+        passed: finalPercentage >= passingScore,
+        readingScore,
+        speakingScore,
+        answers: updatedAnswers,
+      } satisfies CbtExamResult,
+    };
+  }, [cbtResult, pointsByQuestion, questionLookup, passingScore]);
+
+  const effectiveFinalScore = computedCbt ? computedCbt.finalPercentage : legacyScore;
+  const isPassingGrade = effectiveFinalScore >= passingScore;
+
+  function handleResetToAutoCbt() {
+    if (!selectedSubmission) return;
+    setPointsByQuestion(getInitialPointsMap(selectedSubmission));
+    setSuccessMsg("");
+    setError("");
+  }
+
   function appendFeedbackTemplate(text: string) {
     setFeedback((prev) => (prev ? `${prev}\n\n${text}` : text));
   }
@@ -172,13 +313,7 @@ export function InstructorExamReviewWorkbench({
     setError("");
     setSuccessMsg("");
 
-    const calculatedAverage = Math.round(
-      (Number(readingScore) + Number(listeningScore) + Number(writingScore) + Number(speakingScore)) / 4
-    );
-    const isPassed = calculatedAverage >= passingScore;
-
-    // Cek apakah instruktur sudah memiliki tanda tangan di profil sebelum menerbitkan sertifikat
-    if (isPassed && !instructorHasSignature) {
+    if (isPassingGrade && !instructorHasSignature) {
       setSaving(false);
       setError(
         "Tanda tangan digital Anda belum diunggah di profil. Harap lengkapi tanda tangan digital di menu Profil Instruktur sebelum menerbitkan sertifikat kelulusan siswa."
@@ -187,43 +322,52 @@ export function InstructorExamReviewWorkbench({
     }
 
     try {
+      const payload = computedCbt
+        ? {
+            submissionId: selectedSubmission.id,
+            finalScore: computedCbt.finalPercentage,
+            readingScore: computedCbt.readingScore,
+            speakingScore: computedCbt.speakingScore,
+            cbtResults: computedCbt.updatedCbtResult,
+            feedback: feedback.trim(),
+          }
+        : {
+            submissionId: selectedSubmission.id,
+            finalScore: legacyScore,
+            readingScore: legacyScore,
+            speakingScore: legacyScore,
+            feedback: feedback.trim(),
+          };
+
       const res = await fetch("/api/instructor/exams/grade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          submissionId: selectedSubmission.id,
-          readingScore: Number(readingScore),
-          listeningScore: Number(listeningScore),
-          writingScore: Number(writingScore),
-          speakingScore: Number(speakingScore),
-          feedback: feedback.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const json = await res.json().catch(() => ({}));
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(json.error || "Failed to save grading evaluation.");
+        setError(json.error || "Gagal menyimpan penilaian ujian.");
         setSaving(false);
         return;
       }
 
-      const calculatedAverage = Math.round(
-        (Number(readingScore) + Number(listeningScore) + Number(writingScore) + Number(speakingScore)) / 4
-      );
-      const isPassed = calculatedAverage >= passingScore;
-      const newStatus = isPassed ? "passed" : "failed";
+      const newStatus: ExamSubmission["status"] = isPassingGrade ? "passed" : "failed";
 
       setSubmissions((prev) =>
         prev.map((s) =>
           s.id === selectedSubmission.id
             ? {
                 ...s,
-                readingScore: Number(readingScore),
-                listeningScore: Number(listeningScore),
-                writingScore: Number(writingScore),
-                speakingScore: Number(speakingScore),
-                manualScore: calculatedAverage,
-                finalScore: calculatedAverage,
+                answers: computedCbt
+                  ? { ...s.answers, cbtResults: computedCbt.updatedCbtResult }
+                  : s.answers,
+                readingScore: computedCbt ? computedCbt.readingScore : legacyScore,
+                listeningScore: computedCbt ? computedCbt.speakingScore : legacyScore,
+                writingScore: computedCbt ? computedCbt.readingScore : legacyScore,
+                speakingScore: computedCbt ? computedCbt.speakingScore : legacyScore,
+                manualScore: effectiveFinalScore,
+                finalScore: effectiveFinalScore,
                 status: newStatus,
                 instructorFeedback: feedback.trim(),
               }
@@ -233,64 +377,70 @@ export function InstructorExamReviewWorkbench({
 
       setSaving(false);
       setSuccessMsg(
-        isPassed
-          ? `✓ Average score of ${calculatedAverage} saved! Student has Passed and official Certificate has been issued.`
-          : `✓ Evaluation saved (Average score ${calculatedAverage}). Student status: Needs Remedial.`
+        isPassingGrade
+          ? `✓ Nilai akhir ${effectiveFinalScore}/100 tersimpan! Siswa dinyatakan Lulus dan sertifikat resmi ber-QR otomatis diterbitkan.`
+          : `✓ Evaluasi tersimpan (Nilai akhir ${effectiveFinalScore}/100). Status siswa: Perlu Remedial CBT.`
       );
       router.refresh();
     } catch {
       setSaving(false);
-      setError("Network error occurred while saving evaluation.");
+      setError("Terjadi gangguan jaringan saat menyimpan penilaian.");
     }
   }
 
-  const ytId = selectedSubmission ? getYouTubeId(selectedSubmission.youtubeUrl) : null;
-  const videoUrl = selectedSubmission?.youtubeUrl || (ytId ? `https://www.youtube.com/watch?v=${ytId}` : null);
-  const isPassingGrade = averageScore >= passingScore;
-
   return (
     <div suppressHydrationWarning className="flex flex-col gap-3 min-h-[calc(100vh-100px)]">
-      {/* Top Header: Structured 2-Tier SpeedGrader Controls */}
-      <div className="bg-white rounded-2xl border border-zinc-200 p-3 sm:px-4 sm:py-3 shadow-xs space-y-2.5 shrink-0">
-        {/* Tier 1: Context, Back Button, Course Title, and Exam Configurations */}
+      {/* Top Header: Structured 2-Tier CBT Review Controls */}
+      <div className="bg-white rounded-2xl border border-[#E6DED4] p-3 sm:px-4 sm:py-3 shadow-xs space-y-2.5 shrink-0">
+        {/* Tier 1: Back, Course Selector & Exam Builder Links */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-zinc-100">
-          {/* Left: Back & Course Title */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1 flex-wrap">
             <Link
               href={`/instructor/curriculum?tab=exams&courseId=${course.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-bold text-zinc-700 shadow-xs transition shrink-0"
-              title="Back to Curriculum"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E6DED4] bg-white hover:bg-[#FBF6F1] text-xs font-bold text-[#0B2559] shadow-xs transition shrink-0"
+              title="Kembali ke Tab Final Exam"
             >
               <LandingIcon name="ArrowLeft" size={13} color="currentColor" />
-              <span>Curriculum</span>
+              <span>Kurikulum</span>
             </Link>
 
             <span className="text-zinc-300 hidden sm:inline">•</span>
 
-            {/* Course Title Badge */}
-            <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/70 border border-blue-200/80 text-blue-950 text-xs font-extrabold max-w-[200px] sm:max-w-[420px] truncate shadow-2xs"
-              title={`Active Course: ${course.title}`}
-            >
-              <LandingIcon name="BookOpen" size={13} color="#2563eb" />
-              <span className="truncate">{course.title}</span>
-              {exam && (
-                <span className="hidden md:inline-block text-[11px] font-semibold text-blue-600/80 shrink-0 ml-1">
-                  (Passing: {passingScore})
-                </span>
-              )}
-            </div>
+            {courses.length > 1 ? (
+              <select
+                aria-label="Pilih kelas untuk review ujian"
+                value={course.id}
+                onChange={(e) => router.push(`/instructor/exams/review?courseId=${e.target.value}`)}
+                className="px-3 py-1.5 rounded-xl bg-blue-50/70 border border-blue-200/80 text-[#0B2559] text-xs font-extrabold max-w-[260px] sm:max-w-[380px] truncate cursor-pointer focus:outline-none focus:border-[#0073F5]"
+              >
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/70 border border-blue-200/80 text-[#0B2559] text-xs font-extrabold max-w-[240px] sm:max-w-[420px] truncate"
+                title={course.title}
+              >
+                <LandingIcon name="BookOpen" size={13} color="#0073F5" />
+                <span className="truncate">{course.title}</span>
+              </div>
+            )}
+
+            <span className="rounded-lg bg-[#FBF6F1] border border-[#E6DED4] px-2 py-1 text-[11px] font-extrabold text-[#0B2559] shrink-0">
+              KKM {passingScore}
+            </span>
           </div>
 
-          {/* Right: Question Config Dialog Triggers & Summary Badges */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {/* Quick Metrics Badges */}
             <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold mr-1">
-              <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200">
                 {pendingCount} Pending
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {passedCount} Passed
+                {passedCount} Lulus
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-zinc-100 text-zinc-600 border border-zinc-200">
                 {failedCount} Remedial
@@ -299,9 +449,9 @@ export function InstructorExamReviewWorkbench({
 
             <Link
               href={`/instructor/exams/builder?courseId=${course.id}&tab=main`}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/70 text-xs font-bold text-blue-900 shadow-xs transition shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/70 text-xs font-bold text-[#0B2559] shadow-xs transition shrink-0"
             >
-              <LandingIcon name="FileText" size={14} color="currentColor" className="shrink-0" />
+              <LandingIcon name="FileText" size={14} color="#0073F5" className="shrink-0" />
               <span>Kelola Soal CBT</span>
             </Link>
 
@@ -310,7 +460,7 @@ export function InstructorExamReviewWorkbench({
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold shadow-xs transition shrink-0 ${
                 exam?.content?.remedialCbtQuestions?.length
                   ? "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                  : "border-[#E6DED4] bg-[#FBF6F1] text-[#0B2559] hover:bg-[#EFE7DD]"
               }`}
             >
               <LandingIcon name="RotateCcw" size={14} color="currentColor" className="shrink-0" />
@@ -323,49 +473,46 @@ export function InstructorExamReviewWorkbench({
           </div>
         </div>
 
-        {/* Tier 2: SpeedGrader Student Stepper & Active Candidate Navigator */}
+        {/* Tier 2: Student Stepper */}
         {submissions.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-            {/* Left: Toggle Student Drawer & Active Student Stepper */}
             <div className="flex flex-wrap items-center gap-2 min-w-0 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setShowStudentList((prev) => !prev)}
-                className={`btn btn-sm text-xs font-bold border transition flex items-center gap-1.5 px-3 py-1.5 rounded-xl shrink-0 ${
+                className={`text-xs font-bold border transition flex items-center gap-1.5 px-3 py-1.5 rounded-xl shrink-0 cursor-pointer ${
                   showStudentList
                     ? "bg-[#0B2559] text-white border-[#0B2559] shadow-xs"
-                    : "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50"
+                    : "bg-white text-[#0B2559] border-[#E6DED4] hover:bg-[#FBF6F1]"
                 }`}
-                title={showStudentList ? "Hide student list (Maximize Document Width)" : "Show all students"}
               >
                 <LandingIcon name="Users" size={13} color="currentColor" />
-                <span>{showStudentList ? "Hide Student List" : `Student List (${submissions.length})`}</span>
+                <span>{showStudentList ? "Tutup Daftar Siswa" : `Daftar Siswa (${submissions.length})`}</span>
               </button>
 
               <span className="text-zinc-200 hidden sm:inline">|</span>
 
-              {/* Student Stepper with Active Student Badge */}
-              <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50/80 p-0.5 shadow-xs max-w-full">
+              <div className="flex items-center rounded-xl border border-[#E6DED4] bg-[#FBF6F1]/70 p-0.5 max-w-full">
                 <button
                   type="button"
                   onClick={handlePrev}
                   disabled={!hasPrev}
-                  className="p-1.5 rounded-lg text-zinc-600 hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
-                  title="Previous Student (Keyboard: Left Arrow)"
+                  className="p-1.5 rounded-lg text-[#0B2559] hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0 cursor-pointer"
+                  title="Siswa Sebelumnya"
                 >
                   <LandingIcon name="ArrowLeft" size={13} color="currentColor" />
                 </button>
 
                 <div className="flex items-center gap-1.5 sm:gap-2 px-2 py-0.5 min-w-0">
-                  <span className="text-[11px] font-black text-zinc-800 truncate max-w-[110px] sm:max-w-[180px]">
-                    {selectedSubmission?.studentName || "Select Student"}
+                  <span className="text-[11px] font-extrabold text-[#0B2559] truncate max-w-[130px] sm:max-w-[200px]">
+                    {selectedSubmission?.studentName || "Pilih Siswa"}
                   </span>
                   <span className="text-[10px] font-bold text-zinc-400 shrink-0">
                     ({filteredSubmissions.length > 0 ? `${currentIndex + 1}/${filteredSubmissions.length}` : "0/0"})
                   </span>
                   {selectedSubmission && (
                     <span
-                      className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md shrink-0 hidden md:inline-block ${
+                      className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md shrink-0 hidden md:inline-block ${
                         selectedSubmission.status === "passed"
                           ? "bg-emerald-100 text-emerald-800"
                           : selectedSubmission.status === "failed"
@@ -374,9 +521,9 @@ export function InstructorExamReviewWorkbench({
                       }`}
                     >
                       {selectedSubmission.status === "passed"
-                        ? `Passed (${selectedSubmission.finalScore})`
+                        ? `Lulus (${selectedSubmission.finalScore ?? effectiveFinalScore})`
                         : selectedSubmission.status === "failed"
-                        ? "Remedial"
+                        ? `Remedial (${selectedSubmission.finalScore ?? effectiveFinalScore})`
                         : "Pending"}
                     </span>
                   )}
@@ -386,26 +533,19 @@ export function InstructorExamReviewWorkbench({
                   type="button"
                   onClick={handleNext}
                   disabled={!hasNext}
-                  className="p-1.5 rounded-lg text-zinc-600 hover:bg-white hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
-                  title="Next Student (Keyboard: Right Arrow)"
+                  className="p-1.5 rounded-lg text-[#0B2559] hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0 cursor-pointer"
+                  title="Siswa Berikutnya"
                 >
                   <LandingIcon name="ArrowRight" size={13} color="currentColor" />
                 </button>
               </div>
             </div>
 
-            {/* Right: Mode Tampilan Badge / Hint */}
-            <div className="flex items-center gap-2 text-xs text-zinc-400 self-start sm:self-auto shrink-0">
-              {!showStudentList ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Focus Mode (Full Width Document)
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-lg">
-                  Full Panel Mode (3 Columns)
-                </span>
-              )}
+            <div className="flex items-center gap-2 text-xs self-start sm:self-auto shrink-0">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0062D1] bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/80">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#0073F5]" />
+                Penilaian Langsung dari Jawaban Soal CBT
+              </span>
             </div>
           </div>
         )}
@@ -413,67 +553,63 @@ export function InstructorExamReviewWorkbench({
 
       {/* Main Workbench Body */}
       {submissions.length === 0 ? (
-        /* Empty State for course with 0 submissions */
-        <div className="bg-white rounded-2xl border border-zinc-200 p-8 sm:p-14 shadow-xs flex flex-col items-center justify-center text-center space-y-4 my-auto min-h-[420px]">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-[var(--brand)] border border-blue-100 shadow-xs">
+        <div className="bg-white rounded-2xl border border-[#E6DED4] p-8 sm:p-14 shadow-xs flex flex-col items-center justify-center text-center space-y-4 my-auto min-h-[420px]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-[#0073F5] border border-blue-100 shadow-xs">
             <LandingIcon name="FileText" size={32} color="currentColor" />
           </div>
           <div className="max-w-md space-y-1.5">
-            <h3 className="text-base sm:text-lg font-black text-zinc-900">
-              No Student Submissions Yet
+            <h3 className="text-base sm:text-lg font-extrabold text-[#0B2559]">
+              Belum Ada Hasil Ujian CBT
             </h3>
             <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">
-              Course <strong>{course.title}</strong> does not have any submitted exam papers yet.
+              Belum ada siswa yang menyelesaikan ujian CBT untuk kelas{" "}
+              <strong className="text-[#0B2559]">{course.title}</strong>. Setelah siswa mengerjakan
+              soal di sistem, hasil &amp; rincian jawaban otomatis muncul di sini.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
             <Link
-              href={`/instructor/curriculum?tab=exams&courseId=${course.id}`}
-              className="btn btn-primary btn-sm text-xs font-bold bg-[#F26A12] hover:bg-[#D65507] text-white flex items-center gap-1.5 shadow-xs"
+              href={`/instructor/exams/builder?courseId=${course.id}&tab=main`}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#F26A12] hover:bg-[#D65507] px-4 py-2.5 text-xs font-extrabold text-white shadow-xs transition"
             >
               <LandingIcon name="FileText" size={13} color="#fff" />
-              Manage Exam Questions &rarr;
+              <span>Kelola Soal CBT &rarr;</span>
             </Link>
             <Link
               href={`/instructor/curriculum?tab=exams&courseId=${course.id}`}
-              className="btn btn-secondary btn-sm text-xs font-bold"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#E6DED4] bg-[#FBF6F1] hover:bg-[#EFE7DD] px-4 py-2.5 text-xs font-bold text-[#0B2559] transition"
             >
-              Back to Curriculum
+              Kembali ke Kurikulum
             </Link>
           </div>
         </div>
       ) : (
-        /* Active Dual-Pane / Three-Pane SpeedGrader Workbench */
-        <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-[580px]">
-          {/* Left Drawer / Sidebar: Student List (Collapsible) */}
+        <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-[560px]">
+          {/* Left Collapsible Drawer: Student List */}
           {showStudentList && (
-            <div className="w-full lg:w-64 shrink-0 bg-white rounded-2xl border border-zinc-200 p-3 shadow-xs flex flex-col h-[520px] lg:h-[calc(100vh-215px)] min-h-[520px]">
-              {/* Drawer Header with Title & Quick Close */}
+            <div className="w-full lg:w-64 shrink-0 bg-white rounded-2xl border border-[#E6DED4] p-3 shadow-xs flex flex-col h-[500px] lg:h-[calc(100vh-215px)] min-h-[500px]">
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-100">
-                <span className="text-xs font-extrabold text-zinc-800 flex items-center gap-1.5">
-                  <LandingIcon name="Users" size={13} color="#2563eb" />
-                  Enrolled Students ({submissions.length})
+                <span className="text-xs font-extrabold text-[#0B2559] flex items-center gap-1.5">
+                  <LandingIcon name="Users" size={13} color="#0073F5" />
+                  Peserta Ujian ({submissions.length})
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowStudentList(false)}
-                  className="text-zinc-400 hover:text-zinc-700 text-xs px-1.5 py-0.5 rounded-lg hover:bg-zinc-100 transition font-bold flex items-center gap-1"
-                  title="Close panel (Maximize document canvas)"
+                  className="text-zinc-400 hover:text-zinc-700 text-xs px-1.5 py-0.5 rounded-lg hover:bg-zinc-100 transition font-bold cursor-pointer"
                 >
-                  <span>Close</span>
-                  <span>✕</span>
+                  ✕
                 </button>
               </div>
 
-              {/* Search Box */}
               <div className="relative mb-2">
                 <input
                   type="text"
-                  placeholder="Search student name or email..."
+                  placeholder="Cari nama atau email siswa..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-xs py-2 px-3 pl-8 rounded-xl border border-zinc-200 bg-zinc-50 placeholder:text-zinc-400 focus:bg-white focus:border-blue-500 outline-none transition"
+                  className="w-full text-xs py-2 px-3 pl-8 rounded-xl border border-[#E6DED4] bg-[#FBF6F1]/50 placeholder:text-zinc-400 focus:bg-white focus:border-[#0073F5] outline-none transition"
                 />
                 <div className="absolute left-2.5 top-2.5 text-zinc-400 pointer-events-none">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -481,83 +617,56 @@ export function InstructorExamReviewWorkbench({
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                   </svg>
                 </div>
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-2 text-zinc-400 hover:text-zinc-600 text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
               </div>
 
-              {/* Filter Pills */}
               <div className="flex items-center gap-1 overflow-x-auto pb-2 mb-1 text-[10px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("all")}
-                  className={`px-2 py-0.5 rounded-md transition whitespace-nowrap ${
-                    statusFilter === "all" ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-                  }`}
-                >
-                  All ({submissions.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("pending")}
-                  className={`px-2 py-0.5 rounded-md transition whitespace-nowrap ${
-                    statusFilter === "pending"
-                      ? "bg-amber-600 text-white"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
-                  }`}
-                >
-                  Pending ({pendingCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("passed")}
-                  className={`px-2 py-0.5 rounded-md transition whitespace-nowrap ${
-                    statusFilter === "passed"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  }`}
-                >
-                  Passed ({passedCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("failed")}
-                  className={`px-2 py-0.5 rounded-md transition whitespace-nowrap ${
-                    statusFilter === "failed" ? "bg-red-600 text-white" : "bg-red-50 text-red-700 border border-red-200"
-                  }`}
-                >
-                  Remedial ({failedCount})
-                </button>
+                {(
+                  [
+                    { id: "all", label: `Semua (${submissions.length})`, activeCls: "bg-[#0B2559] text-white" },
+                    { id: "pending", label: `Pending (${pendingCount})`, activeCls: "bg-amber-600 text-white" },
+                    { id: "passed", label: `Lulus (${passedCount})`, activeCls: "bg-emerald-600 text-white" },
+                    { id: "failed", label: `Remedial (${failedCount})`, activeCls: "bg-red-600 text-white" },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setStatusFilter(tab.id)}
+                    className={`px-2 py-0.5 rounded-md transition whitespace-nowrap cursor-pointer ${
+                      statusFilter === tab.id
+                        ? tab.activeCls
+                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              {/* Submissions List */}
               <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
                 {filteredSubmissions.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-zinc-200 p-6 text-center text-xs text-zinc-400 mt-2">
-                    No matching students found.
+                    Tidak ada siswa yang cocok.
                   </div>
                 ) : (
                   filteredSubmissions.map((s) => {
                     const isSelected = s.id === selectedId;
+                    const hasCbt = Boolean(extractCbtResult(s));
                     return (
                       <button
                         key={s.id}
                         type="button"
                         onClick={() => selectSubmission(s)}
-                        className={`w-full text-left p-2.5 rounded-xl border transition text-xs relative ${
+                        className={`w-full text-left p-2.5 rounded-xl border transition text-xs cursor-pointer ${
                           isSelected
-                            ? "border-blue-600 bg-blue-50/80 shadow-xs ring-1 ring-blue-500/30"
-                            : "border-zinc-200 bg-white hover:bg-zinc-50"
+                            ? "border-[#0073F5] bg-blue-50/70 shadow-xs ring-1 ring-[#0073F5]/25"
+                            : "border-[#E6DED4] bg-white hover:bg-[#FBF6F1]"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
-                          <span className="font-bold text-zinc-900 truncate block text-xs">{s.studentName}</span>
+                          <span className="font-bold text-[#0B2559] truncate block text-xs">
+                            {s.studentName}
+                          </span>
                           <span
                             className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md shrink-0 ${
                               s.status === "passed"
@@ -567,18 +676,18 @@ export function InstructorExamReviewWorkbench({
                                 : "bg-amber-100 text-amber-800"
                             }`}
                           >
-                            {s.status === "passed" ? "Passed" : s.status === "failed" ? "Remedial" : "Pending"}
+                            {s.status === "passed" ? "Lulus" : s.status === "failed" ? "Remedial" : "Pending"}
                           </span>
                         </div>
-                        <span className="text-[10px] text-zinc-400 block truncate mt-0.5">{s.studentEmail}</span>
-                        <div className="flex items-center justify-between mt-1 pt-1 border-t border-zinc-100 text-[10px]">
-                          <span suppressHydrationWarning className="text-zinc-400">
-                            {mounted
-                              ? new Date(s.submittedAt).toLocaleDateString("en-US", { day: "numeric", month: "short" })
-                              : "..."}
+                        <span className="text-[10px] text-zinc-400 block truncate mt-0.5">
+                          {s.studentEmail}
+                        </span>
+                        <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-zinc-100 text-[10px]">
+                          <span className="font-semibold text-zinc-500">
+                            {hasCbt ? "Ujian CBT" : "Data Lama"}
                           </span>
-                          <span className="font-bold text-blue-600">
-                            {s.finalScore !== null ? `${s.finalScore}/100` : "Not Graded"}
+                          <span className="font-extrabold text-[#0062D1]">
+                            {s.finalScore !== null ? `${s.finalScore}/100` : "Belum Dinilai"}
                           </span>
                         </div>
                       </button>
@@ -589,294 +698,250 @@ export function InstructorExamReviewWorkbench({
             </div>
           )}
 
-          {/* Center Canvas: Document & Video Media Viewer */}
-          <div className="flex-1 min-w-0 bg-white rounded-2xl border border-zinc-200 shadow-xs flex flex-col h-[480px] sm:h-[600px] lg:h-[calc(100vh-215px)] min-h-[380px] sm:min-h-[520px] overflow-hidden">
+          {/* Center Pane: CBT Question-by-Question Answer Breakdown */}
+          <div className="flex-1 min-w-0 bg-white rounded-2xl border border-[#E6DED4] shadow-xs flex flex-col lg:h-[calc(100vh-215px)] min-h-[480px] overflow-hidden">
             {selectedSubmission ? (
               <>
-                {/* Media Header Toolbar */}
-                <div className="p-3 border-b border-zinc-200 bg-zinc-50/70 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
-                  <div className="flex items-center justify-center sm:justify-start w-full sm:w-auto min-w-0">
-                    {/* Tab Selector if Video exists */}
-                    {(ytId || selectedSubmission.youtubeUrl) ? (
-                      <div className="inline-flex items-center bg-zinc-200/80 p-0.5 rounded-lg text-xs font-bold shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => setActiveMediaTab("pdf")}
-                          className={`px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            activeMediaTab === "pdf" ? "bg-white text-zinc-900 shadow-xs" : "text-zinc-600 hover:text-zinc-900"
-                          }`}
-                        >
-                          <LandingIcon name={isImageFile ? "Image" : isDocFile ? "FileText" : "FileText"} size={13} color="currentColor" />
-                          <span>{isImageFile ? "Image Answer Sheet" : isDocFile ? "Doc Answer Sheet" : "PDF Answer Sheet"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveMediaTab("video")}
-                          className={`px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            activeMediaTab === "video" ? "bg-white text-zinc-900 shadow-xs" : "text-zinc-600 hover:text-zinc-900"
-                          }`}
-                        >
-                          <LandingIcon name="Video" size={13} color="currentColor" />
-                          <span>Student Video</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className={`flex h-7 px-2 items-center justify-center rounded-lg font-extrabold text-[10px] border shrink-0 ${
-                            isImageFile
-                              ? "bg-purple-50 text-purple-700 border-purple-200"
-                              : isDocFile
-                              ? "bg-sky-50 text-sky-700 border-sky-200"
-                              : "bg-red-50 text-red-600 border-red-100"
-                          }`}
-                        >
-                          {isImageFile ? "IMG" : isDocFile ? "DOC" : "PDF"}
-                        </div>
-                        <span className="text-xs font-bold text-zinc-800 truncate">
-                          {selectedSubmission.answers?.answerFileName || (isImageFile ? "Answer_Sheet.png" : "Answer_Sheet.pdf")}
-                        </span>
-                      </div>
-                    )}
+                {/* CBT Sheet Header Bar */}
+                <div className="px-4 py-3 border-b border-[#E6DED4] bg-[#FBF6F1]/70 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#0B2559] text-white">
+                      <LandingIcon name="FileText" size={15} color="#fff" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="m-0 text-xs sm:text-sm font-extrabold text-[#0B2559] truncate">
+                        {computedCbt ? "Rincian Jawaban Ujian CBT Siswa" : "Ringkasan Pengumpulan Ujian"}
+                      </h2>
+                      <p className="m-0 text-[11px] text-zinc-500 truncate">
+                        {computedCbt
+                          ? `${computedCbt.answersList.length} soal dikerjakan langsung di sistem · Nilai otomatis dihitung dari poin per soal`
+                          : "Data pengumpulan lama sebelum format soal CBT interaktif diaktifkan"}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Media Action Buttons (Contextual based on Active Tab) */}
-                  {activeMediaTab === "video" ? (
-                    videoUrl ? (
-                      <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto shrink-0">
-                        <a
-                          href={videoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn btn-secondary btn-sm text-[11px] font-bold py-1.5 px-3 flex items-center justify-center gap-1.5 hover:text-red-600 rounded-lg shadow-2xs"
-                        >
-                          <LandingIcon name="Eye" size={12} color="currentColor" />
-                          <span>Open New Tab</span>
-                        </a>
-                        <a
-                          href={videoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn btn-primary btn-sm text-[11px] font-bold py-1.5 px-3 bg-red-600 hover:bg-red-700 text-white shadow-xs flex items-center justify-center gap-1.5 rounded-lg"
-                        >
-                          <LandingIcon name="Video" size={12} color="#fff" />
-                          <span>{ytId ? "Watch on YouTube" : "Watch Video"}</span>
-                        </a>
-                      </div>
-                    ) : null
-                  ) : (
-                    selectedSubmission.answers?.answerFileUrl ? (
-                      <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto shrink-0">
-                        <a
-                          href={selectedSubmission.answers.answerFileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn btn-secondary btn-sm text-[11px] font-bold py-1.5 px-3 flex items-center justify-center gap-1.5 rounded-lg shadow-2xs"
-                        >
-                          <LandingIcon name="Eye" size={12} color="currentColor" />
-                          <span>Open New Tab</span>
-                        </a>
-                        <a
-                          href={selectedSubmission.answers.answerFileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          download
-                          className="btn btn-primary btn-sm text-[11px] font-bold py-1.5 px-3 bg-[#F26A12] hover:bg-[#D65507] text-white shadow-xs flex items-center justify-center gap-1.5 rounded-lg"
-                        >
-                          <LandingIcon name="Download" size={12} color="#fff" />
-                          <span>Download</span>
-                        </a>
-                      </div>
-                    ) : null
-                  )}
-                </div>
-
-                {/* Media Body Viewer */}
-                <div className="flex-1 min-h-[340px] sm:min-h-[480px] bg-zinc-100/80 relative overflow-hidden flex flex-col">
-                  {activeMediaTab === "pdf" ? (
-                    selectedSubmission.answers?.answerFileUrl ? (
-                      isImageFile ? (
-                        <div className="w-full h-full min-h-[340px] sm:min-h-[480px] flex-1 flex flex-col items-center justify-center p-3 sm:p-5 bg-zinc-900/5 overflow-auto">
-                          <div className="relative max-w-full max-h-full flex items-center justify-center">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={selectedSubmission.answers.answerFileUrl}
-                              alt={selectedSubmission.answers.answerFileName || "Student Answer Sheet"}
-                              className="max-w-full max-h-[55vh] sm:max-h-[640px] w-auto h-auto object-contain rounded-xl shadow-md border border-zinc-200/80 bg-white"
-                            />
-                          </div>
-                          <span className="text-[10px] text-zinc-400 font-medium mt-2 text-center block">
-                            Tip: Klik &ldquo;Open New Tab&rdquo; di atas untuk zoom atau melihat file dalam resolusi asli.
-                          </span>
-                        </div>
-                      ) : isDocFile ? (
-                        <div className="w-full h-full min-h-[340px] sm:min-h-[480px] flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-zinc-50">
-                          <div className="h-16 w-16 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center shadow-xs">
-                            <LandingIcon name="FileText" size={32} color="currentColor" />
-                          </div>
-                          <div className="max-w-xs space-y-1">
-                            <h3 className="text-sm font-bold text-zinc-900">Word Document Submitted</h3>
-                            <p className="text-xs text-zinc-500 break-all font-semibold">
-                              {selectedSubmission.answers?.answerFileName || "Document.docx"}
-                            </p>
-                            <p className="text-[11px] text-zinc-400 pt-1">
-                              Dokumen Word tidak dapat di-render langsung di browser. Silakan unduh dokumen untuk memeriksa jawaban siswa.
-                            </p>
-                          </div>
-                          <a
-                            href={selectedSubmission.answers.answerFileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            download
-                            className="btn btn-primary btn-sm text-xs font-bold flex items-center gap-2 px-4 py-2 bg-[#F26A12] hover:bg-[#D65507] text-white rounded-xl shadow-xs"
-                          >
-                            <LandingIcon name="Download" size={14} color="#fff" />
-                            <span>Download Document &rarr;</span>
-                          </a>
-                        </div>
-                      ) : (
-                        <div className="w-full h-full flex flex-col flex-1">
-                          <div className="sm:hidden bg-blue-50/90 border-b border-blue-100 px-3 py-1.5 text-[11px] text-blue-800 flex items-center justify-between">
-                            <span>Tampilan PDF ringkas di HP.</span>
-                            <a
-                              href={selectedSubmission.answers.answerFileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-bold underline shrink-0 ml-1"
-                            >
-                              Buka Layar Penuh &rarr;
-                            </a>
-                          </div>
-                          <iframe
-                            src={selectedSubmission.answers.answerFileUrl}
-                            className="w-full h-full min-h-[340px] sm:min-h-[500px] border-0 flex-1"
-                            title="Student Answer Sheet"
-                          />
-                        </div>
-                      )
-                    ) : selectedSubmission.answers?.cbtResults ? (
-                      <div className="w-full h-full overflow-y-auto p-4 sm:p-5 bg-zinc-50 space-y-4">
-                        <div className="rounded-xl border border-indigo-200 bg-white p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">
-                              Hasil Ujian CBT Interaktif (Auto-Graded)
-                            </span>
-                            <p className="text-sm font-black text-zinc-900 mt-0.5">
-                              Skor Total: {selectedSubmission.answers.cbtResults.finalPercentage ?? selectedSubmission.finalScore ?? 0}%{" "}
-                              <span className="text-xs font-semibold text-zinc-500">
-                                ({selectedSubmission.answers.cbtResults.totalEarnedPoints ?? 0} / {selectedSubmission.answers.cbtResults.totalPossiblePoints ?? 100} poin)
-                              </span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs font-bold">
-                            <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
-                              Teks: {selectedSubmission.answers.cbtResults.readingScore ?? 0}%
-                            </span>
-                            <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
-                              Speaking: {selectedSubmission.answers.cbtResults.speakingScore ?? 0}%
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2.5">
-                          {Object.values(
-                            (selectedSubmission.answers.cbtResults.answers || {}) as Record<string, any>
-                          ).map((ans: any, idx: number) => (
-                            <div
-                              key={ans.questionId || idx}
-                              className="rounded-xl border border-zinc-200 bg-white p-3.5 text-xs space-y-1.5 shadow-2xs"
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="font-bold text-zinc-900">
-                                  Soal #{idx + 1}{" "}
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 ml-1">
-                                    {ans.type === "audio_speaking"
-                                      ? "🎙️ Speaking Interview"
-                                      : ans.type === "vocab_match"
-                                      ? "🔤 Vocab Matching"
-                                      : ans.type === "translate"
-                                      ? "🌐 Translate (ID→EN)"
-                                      : "✍️ Lengkapi Kalimat"}
-                                  </span>
-                                </span>
-                                <span className="font-extrabold text-blue-700">
-                                  {ans.earnedPoints} / {ans.maxPoints} poin ({ans.similarity}% mirip)
-                                </span>
-                              </div>
-                              <p className="text-zinc-700 bg-zinc-50 rounded-lg p-2 border border-zinc-100">
-                                <strong className="text-zinc-500">Jawaban Siswa:</strong> {ans.userResponse}
-                              </p>
-                              {ans.feedback && (
-                                <p className="text-[11px] text-zinc-500 leading-relaxed">
-                                  {ans.feedback}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-center p-8 text-zinc-400 text-xs">
-                        Belum ada data jawaban ujian untuk peserta ini.
-                      </div>
-                    )
-                  ) : (
-                    <div className="flex h-full items-center justify-center p-4 bg-black/95">
-                      {ytId ? (
-                        <div className="relative aspect-video w-full max-w-2xl max-h-full rounded-xl overflow-hidden shadow-lg border border-zinc-800">
-                          <iframe
-                            src={`https://www.youtube.com/embed/${ytId}`}
-                            title="Student Speaking Video"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            className="h-full w-full"
-                          />
-                        </div>
-                      ) : (
-                        <div className="text-white text-xs text-center space-y-2">
-                          <p>Student Video URL:</p>
-                          <a
-                            href={selectedSubmission.youtubeUrl || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-400 underline font-bold"
-                          >
-                            {selectedSubmission.youtubeUrl} &rarr;
-                          </a>
-                        </div>
+                  {computedCbt && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="rounded-lg bg-white border border-[#E6DED4] px-2.5 py-1 text-[11px] font-extrabold text-[#0B2559]">
+                        {computedCbt.totalEarnedPoints} / {computedCbt.totalPossiblePoints} Poin
+                      </span>
+                      {computedCbt.hasTextQuestions && (
+                        <span className="rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-1 text-[11px] font-bold text-[#0062D1]">
+                          Teks: {computedCbt.readingScore}%
+                        </span>
+                      )}
+                      {computedCbt.hasSpeakingQuestions && (
+                        <span className="rounded-lg bg-purple-50 border border-purple-200 px-2.5 py-1 text-[11px] font-bold text-purple-800">
+                          Speaking: {computedCbt.speakingScore}%
+                        </span>
                       )}
                     </div>
                   )}
                 </div>
 
-                {/* Student Notes Bar (if any) */}
-                {selectedSubmission.answers?.studentNotes && (
-                  <div className="px-4 py-2.5 bg-blue-50/80 border-t border-blue-100 text-xs text-zinc-700 flex items-start gap-2 shrink-0">
-                    <span className="font-bold text-blue-900 shrink-0">Student Notes:</span>
-                    <p className="italic text-zinc-600 truncate">&ldquo;{selectedSubmission.answers.studentNotes}&rdquo;</p>
-                  </div>
-                )}
+                {/* CBT Answers Scrollable Body */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-[#FAF8F5] space-y-3.5">
+                  {computedCbt ? (
+                    <>
+                      {/* Helpful Instructor Hint */}
+                      <div className="rounded-xl border border-blue-200/80 bg-blue-50/60 px-3.5 py-2.5 text-[11px] text-[#0B2559] flex items-start gap-2">
+                        <LandingIcon name="CheckCircle" size={14} color="#0073F5" className="shrink-0 mt-0.5" />
+                        <span>
+                          Sistem sudah menghitung poin otomatis dari jawaban siswa di tiap soal. Jika ingin
+                          menyesuaikan poin soal tertentu (misalnya terjemahan sinonim atau jawaban{" "}
+                          <strong>Speaking</strong>), ubah angka <strong>Poin</strong> pada soal terkait dan
+                          skor akhir di kanan otomatis terbarui.
+                        </span>
+                      </div>
+
+                      {/* Question Cards */}
+                      {computedCbt.answersList.map(
+                        ({ key, qKey, answer, earnedPts, maxPts, questionMeta }, idx) => {
+                          const badge = getQuestionTypeBadge(answer.type);
+                          const pct = maxPts > 0 ? Math.round((earnedPts / maxPts) * 100) : 0;
+                          const isGood = pct >= 70;
+                          const responseText = answer.userResponse?.trim();
+
+                          return (
+                            <div
+                              key={key}
+                              className="rounded-2xl border border-[#E6DED4] bg-white p-4 shadow-2xs space-y-3"
+                            >
+                              {/* Card Top Row: Question # + Type + Inline Point Adjuster */}
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#0B2559] text-white text-xs font-extrabold">
+                                    {idx + 1}
+                                  </span>
+                                  <div className="min-w-0 space-y-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span
+                                        className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-extrabold ${badge.cls}`}
+                                      >
+                                        {badge.label}
+                                      </span>
+                                      {questionMeta?.section && (
+                                        <span className="text-[10px] font-bold text-zinc-400">
+                                          {questionMeta.section}
+                                        </span>
+                                      )}
+                                      {answer.status === "timed_out" && (
+                                        <span className="rounded-md bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                                          Waktu Habis
+                                        </span>
+                                      )}
+                                      {answer.status === "skipped" && (
+                                        <span className="rounded-md bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 text-[10px] font-bold text-zinc-600">
+                                          Dilewati
+                                        </span>
+                                      )}
+                                    </div>
+                                    <h3 className="m-0 text-xs sm:text-sm font-extrabold text-[#0B2559] leading-snug">
+                                      {questionMeta?.title || `Soal CBT #${idx + 1}`}
+                                    </h3>
+                                  </div>
+                                </div>
+
+                                {/* Per-Question Score Box */}
+                                <div className="flex items-center gap-2 rounded-xl border border-[#E6DED4] bg-[#FBF6F1] px-2.5 py-1.5 shrink-0">
+                                  <div className="text-right">
+                                    <span className="block text-[9px] font-bold uppercase tracking-wider text-zinc-500">
+                                      Poin Soal
+                                    </span>
+                                    <span
+                                      className={`text-[10px] font-extrabold ${
+                                        isGood ? "text-emerald-700" : "text-amber-700"
+                                      }`}
+                                    >
+                                      {answer.similarity ?? pct}% cocok
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={maxPts}
+                                      aria-label={`Poin untuk soal ${idx + 1}`}
+                                      value={earnedPts}
+                                      onChange={(e) => {
+                                        const val = Math.max(
+                                          0,
+                                          Math.min(maxPts, Number(e.target.value) || 0)
+                                        );
+                                        setPointsByQuestion((prev) => ({ ...prev, [qKey]: val }));
+                                      }}
+                                      className="w-14 h-8 rounded-lg border border-[#D4C7B8] bg-white text-center text-sm font-black text-[#0B2559] focus:border-[#0073F5] focus:ring-2 focus:ring-[#0073F5]/20 outline-none"
+                                    />
+                                    <span className="text-xs font-bold text-zinc-500">/ {maxPts}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Question Prompt (if found in bank) */}
+                              {questionMeta?.question && (
+                                <div className="rounded-xl bg-[#FBF6F1]/70 border border-[#EFE7DC] px-3 py-2 text-xs text-[#3D4760]">
+                                  <span className="font-bold text-[#0B2559]">Pertanyaan: </span>
+                                  <span>{questionMeta.question}</span>
+                                </div>
+                              )}
+
+                              {/* Student Answer vs Target Key */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                                <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
+                                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-500 mb-1">
+                                    Jawaban Siswa
+                                  </div>
+                                  <p className="m-0 font-semibold text-[#0B2559] break-words leading-relaxed">
+                                    {responseText || (
+                                      <span className="italic font-normal text-zinc-400">
+                                        Tidak ada jawaban tercatat
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+
+                                <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-3">
+                                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 mb-1">
+                                    Kunci / Target Jawaban
+                                  </div>
+                                  <p className="m-0 font-semibold text-emerald-950 break-words leading-relaxed">
+                                    {questionMeta?.targetAnswer || (
+                                      <span className="italic font-normal text-emerald-700/70">
+                                        Sesuai rubrik &amp; evaluasi instruktur
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Engine Auto-Feedback */}
+                              {answer.feedback && (
+                                <p className="m-0 text-[11px] text-zinc-500 leading-relaxed flex items-start gap-1.5">
+                                  <span className="font-bold text-zinc-600 shrink-0">Catatan Sistem:</span>
+                                  <span>{answer.feedback}</span>
+                                </p>
+                              )}
+                            </div>
+                          );
+                        }
+                      )}
+                    </>
+                  ) : (
+                    /* Clean Non-Legacy Fallback when older DB record has no cbtResults */
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 sm:p-10">
+                      <div className="max-w-md rounded-2xl border border-[#E6DED4] bg-white p-6 shadow-xs space-y-3">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-[#C2530A] border border-amber-200">
+                          <LandingIcon name="FileText" size={24} color="currentColor" />
+                        </div>
+                        <h3 className="m-0 text-sm sm:text-base font-extrabold text-[#0B2559]">
+                          Data Ujian Versi Lama (Non-CBT)
+                        </h3>
+                        <p className="m-0 text-xs text-zinc-500 leading-relaxed">
+                          Pengumpulan milik{" "}
+                          <strong className="text-[#0B2559]">{selectedSubmission.studentName}</strong>{" "}
+                          ini berasal dari sistem ujian lama sebelum fitur soal CBT langsung aktif,
+                          sehingga tidak memiliki rincian jawaban per soal. Anda tetap dapat
+                          memperbarui nilai akhir dan catatan evaluasi di panel sebelah kanan.
+                        </p>
+                        {selectedSubmission.answers?.studentNotes && (
+                          <div className="rounded-xl bg-[#FBF6F1] border border-[#E6DED4] p-3 text-left text-xs text-[#3D4760]">
+                            <span className="font-bold text-[#0B2559] block mb-0.5">
+                              Catatan Siswa:
+                            </span>
+                            <span className="italic">
+                              &ldquo;{String(selectedSubmission.answers.studentNotes)}&rdquo;
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div className="flex h-full items-center justify-center text-center p-8 text-zinc-400 text-xs">
-                Select a student from the left panel to display answer sheet.
+                Pilih siswa untuk meninjau rincian jawaban CBT.
               </div>
             )}
           </div>
 
-          {/* Right Pane: Sticky Grading Workbench Panel */}
-          <div className="w-full lg:w-[330px] xl:w-[340px] shrink-0 bg-white rounded-2xl border border-zinc-200 p-3.5 shadow-xs flex flex-col h-auto lg:h-[calc(100vh-215px)] min-h-0 lg:min-h-[540px] overflow-y-auto space-y-3.5">
+          {/* Right Pane: CBT Score Validation & Certificate Issuance Panel */}
+          <div className="w-full lg:w-[340px] shrink-0 bg-white rounded-2xl border border-[#E6DED4] p-4 shadow-xs flex flex-col lg:h-[calc(100vh-215px)] min-h-0 lg:min-h-[480px] overflow-y-auto space-y-3.5">
             {selectedSubmission ? (
               <>
                 {/* Candidate Info Card */}
-                <div className="bg-zinc-50/80 rounded-xl border border-zinc-200 p-3.5 space-y-2 shrink-0">
+                <div className="bg-[#FBF6F1]/80 rounded-xl border border-[#E6DED4] p-3.5 space-y-2 shrink-0">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-sm shadow-xs">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0B2559] text-white font-extrabold text-sm">
                       {selectedSubmission.studentName[0]?.toUpperCase() || "S"}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h2 className="text-sm font-black text-zinc-900 truncate">{selectedSubmission.studentName}</h2>
-                      <p className="text-[11px] text-zinc-400 truncate">{selectedSubmission.studentEmail}</p>
+                      <h2 className="m-0 text-sm font-extrabold text-[#0B2559] truncate">
+                        {selectedSubmission.studentName}
+                      </h2>
+                      <p className="m-0 text-[11px] text-zinc-500 truncate">
+                        {selectedSubmission.studentEmail}
+                      </p>
                     </div>
                     <span
                       className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
@@ -884,365 +949,293 @@ export function InstructorExamReviewWorkbench({
                           ? "bg-emerald-100 text-emerald-800"
                           : selectedSubmission.status === "failed"
                           ? "bg-red-100 text-red-800"
-                          : "bg-amber-100 text-amber-800 font-extrabold"
+                          : "bg-amber-100 text-amber-800"
                       }`}
                     >
                       {selectedSubmission.status === "passed"
-                        ? `Passed (${selectedSubmission.finalScore})`
+                        ? "Lulus"
                         : selectedSubmission.status === "failed"
-                        ? `Remedial (${selectedSubmission.finalScore})`
+                        ? "Remedial"
                         : "Pending"}
                     </span>
                   </div>
-                  <div className="text-[10px] text-zinc-400 pt-1 border-t border-zinc-200/60 flex items-center justify-between">
-                    <span>Submitted At:</span>
-                    <span suppressHydrationWarning className="font-semibold text-zinc-600">
+                  <div className="text-[10px] text-zinc-500 pt-1.5 border-t border-[#E6DED4] flex items-center justify-between">
+                    <span>Waktu Selesai:</span>
+                    <span suppressHydrationWarning className="font-bold text-[#0B2559]">
                       {mounted
-                        ? new Date(selectedSubmission.submittedAt).toLocaleDateString("en-US", {
+                        ? new Date(selectedSubmission.submittedAt).toLocaleString("id-ID", {
                             day: "numeric",
                             month: "short",
+                            year: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                          })
+                          }) + " WIB"
                         : "..."}
                     </span>
                   </div>
                 </div>
 
-                {/* Grading Input Section */}
+                {/* CBT Score Summary Card */}
                 <div className="space-y-3 flex-1 flex flex-col justify-between">
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-                      <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 flex items-center gap-1.5">
-                        <LandingIcon name="Award" size={14} color="currentColor" />
-                        Instructor Grading
-                      </h3>
-                      <span className="text-[10px] font-bold text-zinc-400">Passing Score: {passingScore}</span>
-                    </div>
-
-                    {/* 4 Skills Input Section */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[11px] font-bold text-zinc-700">
-                          4 Skills Assessment (0 - 100)
-                        </label>
-                        <span className="text-[10px] text-zinc-400">Score each aspect</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Reading */}
-                        <div className="bg-blue-50/40 border border-blue-200/80 rounded-xl p-2 transition focus-within:border-blue-400 focus-within:bg-blue-50/60">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] font-bold text-blue-900 flex items-center gap-1">
-                              <LandingIcon name="BookOpen" size={12} color="var(--brand, #2563eb)" />
-                              Reading
-                            </span>
-                            <span className="text-[9px] text-blue-600 font-semibold">Comprehension</span>
-                          </div>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={readingScore}
-                              onChange={(e) => setReadingScore(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                              className="w-full text-base font-black text-center h-9 py-1 px-2 rounded-lg border border-blue-200 bg-white shadow-2xs focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                            <span className="absolute right-2 top-2 text-[10px] font-bold text-zinc-400">/100</span>
-                          </div>
-                        </div>
-
-                        {/* Listening */}
-                        <div className="bg-indigo-50/40 border border-indigo-200/80 rounded-xl p-2 transition focus-within:border-indigo-400 focus-within:bg-indigo-50/60">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] font-bold text-indigo-900 flex items-center gap-1">
-                              <LandingIcon name="Volume2" size={12} color="#4f46e5" />
-                              Listening
-                            </span>
-                            <span className="text-[9px] text-indigo-600 font-semibold">Audio</span>
-                          </div>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={listeningScore}
-                              onChange={(e) => setListeningScore(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                              className="w-full text-base font-black text-center h-9 py-1 px-2 rounded-lg border border-indigo-200 bg-white shadow-2xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                            />
-                            <span className="absolute right-2 top-2 text-[10px] font-bold text-zinc-400">/100</span>
-                          </div>
-                        </div>
-
-                        {/* Writing */}
-                        <div className="bg-violet-50/40 border border-violet-200/80 rounded-xl p-2 transition focus-within:border-violet-400 focus-within:bg-violet-50/60">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] font-bold text-violet-900 flex items-center gap-1">
-                              <LandingIcon name="FileText" size={12} color="#7c3aed" />
-                              Writing
-                            </span>
-                            <span className="text-[9px] text-violet-600 font-semibold">Grammar</span>
-                          </div>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={writingScore}
-                              onChange={(e) => setWritingScore(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                              className="w-full text-base font-black text-center h-9 py-1 px-2 rounded-lg border border-violet-200 bg-white shadow-2xs focus:ring-2 focus:ring-violet-500 outline-none"
-                            />
-                            <span className="absolute right-2 top-2 text-[10px] font-bold text-zinc-400">/100</span>
-                          </div>
-                        </div>
-
-                        {/* Speaking */}
-                        <div className="bg-emerald-50/40 border border-emerald-200/80 rounded-xl p-2 transition focus-within:border-emerald-400 focus-within:bg-emerald-50/60">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] font-bold text-emerald-900 flex items-center gap-1">
-                              <LandingIcon name="Video" size={12} color="#059669" />
-                              Speaking
-                            </span>
-                            <span className="text-[9px] text-emerald-600 font-semibold">Fluency</span>
-                          </div>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={speakingScore}
-                              onChange={(e) => setSpeakingScore(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                              className="w-full text-base font-black text-center h-9 py-1 px-2 rounded-lg border border-emerald-200 bg-white shadow-2xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                            />
-                            <span className="absolute right-2 top-2 text-[10px] font-bold text-zinc-400">/100</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Preset Buttons */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-zinc-400 font-semibold">Quick Score Preset (All Aspects):</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {[100, 95, 90, 85, 80, 75, 70, 65, 50].map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => {
-                              setReadingScore(val);
-                              setListeningScore(val);
-                              setWritingScore(val);
-                              setSpeakingScore(val);
-                            }}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold border transition ${
-                              readingScore === val && listeningScore === val && writingScore === val && speakingScore === val
-                                ? val >= passingScore
-                                  ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
-                                  : "bg-red-600 text-white border-red-600 shadow-2xs"
-                                : "bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100"
-                            }`}
-                          >
-                            {val}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Auto-Calculated Average Score Highlight */}
-                    <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 text-white rounded-xl p-3 shadow-sm border border-zinc-700/60">
-                      <div className="flex items-center justify-between">
+                    <div className="bg-gradient-to-br from-[#0B2559] to-[#133882] text-white rounded-2xl p-4 shadow-sm space-y-3">
+                      <div className="flex items-start justify-between gap-2">
                         <div>
-                          <span className="text-[10px] uppercase tracking-wider font-extrabold text-zinc-400 block">
-                            Final Score (Auto-Calculated)
+                          <span className="text-[10px] uppercase tracking-wider font-extrabold text-blue-200 block">
+                            {computedCbt ? "Nilai Akhir dari Jawaban CBT" : "Nilai Akhir Ujian"}
                           </span>
-                          <p className="text-[10px] text-zinc-400 mt-0.5">
-                            (R: {readingScore} + L: {listeningScore} + W: {writingScore} + S: {speakingScore}) ÷ 4
+                          <p className="m-0 text-[11px] text-blue-100/85 mt-0.5">
+                            {getOfficialGradeLabel(effectiveFinalScore)}
                           </p>
                         </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black tracking-tight text-white">{averageScore}</span>
-                          <span className="text-xs font-bold text-zinc-400">/ 100</span>
+                        <div className="flex items-baseline gap-1 shrink-0">
+                          <span className="text-3xl font-black tracking-tight text-white">
+                            {effectiveFinalScore}
+                          </span>
+                          <span className="text-xs font-bold text-blue-200">/100</span>
                         </div>
                       </div>
 
-                      <div className="mt-2 pt-2 border-t border-zinc-700/80 flex items-center justify-between text-[11px]">
-                        <span className="text-zinc-300">Result:</span>
+                      {computedCbt && (
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/15 text-[11px]">
+                          <div className="rounded-lg bg-white/10 px-2.5 py-1.5">
+                            <span className="text-[10px] text-blue-200 block">Jawaban Teks</span>
+                            <strong className="font-extrabold text-white">
+                              {computedCbt.readingScore}/100
+                            </strong>
+                          </div>
+                          <div className="rounded-lg bg-white/10 px-2.5 py-1.5">
+                            <span className="text-[10px] text-blue-200 block">Speaking CBT</span>
+                            <strong className="font-extrabold text-white">
+                              {computedCbt.speakingScore}/100
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-t border-white/15 flex items-center justify-between text-[11px]">
+                        <span className="text-blue-200">
+                          Standar Kelulusan (KKM {passingScore}):
+                        </span>
                         <span
                           className={`font-black px-2 py-0.5 rounded-full text-[10px] ${
                             isPassingGrade
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                              : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              ? "bg-emerald-400/25 text-emerald-200 border border-emerald-300/35"
+                              : "bg-amber-400/25 text-amber-200 border border-amber-300/35"
                           }`}
                         >
-                          {isPassingGrade ? `LULUS (>= ${passingScore})` : `REMEDIAL (< ${passingScore})`}
+                          {isPassingGrade ? "LULUS" : "REMEDIAL"}
                         </span>
                       </div>
                     </div>
 
-                    {/* Live Dynamic Status Notice */}
+                    {/* Reset button if instructor adjusted per-question points */}
+                    {computedCbt?.hasManualAdjustment && (
+                      <button
+                        type="button"
+                        onClick={handleResetToAutoCbt}
+                        className="w-full py-1.5 px-3 rounded-xl border border-[#E6DED4] bg-[#FBF6F1] hover:bg-[#EFE7DD] text-[11px] font-bold text-[#0B2559] transition cursor-pointer"
+                      >
+                        ↺ Reset ke Poin Otomatis CBT
+                      </button>
+                    )}
+
+                    {/* Single clean score input ONLY for old non-CBT records */}
+                    {!computedCbt && (
+                      <div className="rounded-xl border border-[#E6DED4] bg-[#FBF6F1]/60 p-3 space-y-1.5">
+                        <label
+                          htmlFor="legacy-final-score"
+                          className="text-[11px] font-bold text-[#0B2559] block"
+                        >
+                          Nilai Akhir (0 – 100)
+                        </label>
+                        <input
+                          id="legacy-final-score"
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={legacyScore}
+                          onChange={(e) =>
+                            setLegacyScore(Math.max(0, Math.min(100, Number(e.target.value) || 0)))
+                          }
+                          className="w-full h-10 rounded-xl border border-[#D4C7B8] bg-white text-center text-lg font-black text-[#0B2559] focus:border-[#0073F5] focus:ring-2 focus:ring-[#0073F5]/20 outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {/* Status Notice */}
                     <div
-                      className={`p-2.5 rounded-xl border text-[11px] leading-relaxed transition ${
+                      className={`p-3 rounded-xl border text-[11px] leading-relaxed ${
                         isPassingGrade
                           ? "bg-emerald-50 text-emerald-900 border-emerald-200"
                           : "bg-amber-50 text-amber-900 border-amber-200"
                       }`}
                     >
                       {isPassingGrade ? (
-                        <div className="flex items-start gap-1.5">
-                          <div className="mt-0.5 text-emerald-600 shrink-0">
-                            <LandingIcon name="CheckCircle" size={13} color="currentColor" />
-                          </div>
+                        <div className="flex items-start gap-2">
+                          <LandingIcon name="CheckCircle" size={14} color="#059669" className="shrink-0 mt-0.5" />
                           <div>
-                            <strong className="font-bold">STATUS: LULUS (Score &ge; {passingScore})</strong>
-                            <p className="mt-0.5 text-[10px] text-emerald-700">
-                              Official QR-verified graduation certificate is automatically issued to student profile.
+                            <strong className="font-extrabold">Lulus (Skor ≥ {passingScore})</strong>
+                            <p className="m-0 mt-0.5 text-[10px] text-emerald-800">
+                              Sertifikat kelulusan resmi ber-QR dengan tanda tangan digital Anda
+                              otomatis diterbitkan ke akun siswa.
                             </p>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-start gap-1.5">
-                          <div className="mt-0.5 text-amber-600 shrink-0">
-                            <LandingIcon name="FileText" size={13} color="currentColor" />
-                          </div>
+                        <div className="flex items-start gap-2">
+                          <LandingIcon name="RotateCcw" size={14} color="#d97706" className="shrink-0 mt-0.5" />
                           <div>
-                            <strong className="font-bold">STATUS: NEEDS REMEDIAL (Score &lt; {passingScore})</strong>
-                            <p className="mt-0.5 text-[10px] text-amber-700">
-                              Score below {passingScore}. Student will download{" "}
-                              <strong>{exam?.content?.remedialFileUrl ? "Remedial Question Paper (Set B)" : "Main Exam Paper for revision"}</strong>.
+                            <strong className="font-extrabold">Perlu Remedial (Skor &lt; {passingScore})</strong>
+                            <p className="m-0 mt-0.5 text-[10px] text-amber-800">
+                              Siswa dapat mengerjakan ulang ujian menggunakan{" "}
+                              <strong>
+                                {exam?.content?.remedialCbtQuestions?.length
+                                  ? "Bank Soal Remedial (Set B)"
+                                  : "Bank Soal Utama CBT"}
+                              </strong>{" "}
+                              langsung di sistem.
                             </p>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Feedback Textarea */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-zinc-600 block">Instructor Feedback & Comments</label>
+                    {/* Instructor Feedback */}
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="cbt-instructor-feedback"
+                        className="text-[11px] font-bold text-[#0B2559] block"
+                      >
+                        Catatan &amp; Feedback Instruktur
+                      </label>
                       <textarea
+                        id="cbt-instructor-feedback"
                         rows={3}
                         value={feedback}
                         onChange={(e) => setFeedback(e.target.value)}
-                        placeholder="Provide feedback on articulation, analysis, grammar, or remedial guidance..."
-                        className="w-full text-xs p-2.5 rounded-xl border border-zinc-300 bg-white placeholder:text-zinc-400 leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Tulis apresiasi, koreksi grammar/kosakata, atau arahan belajar untuk siswa..."
+                        className="w-full text-xs p-2.5 rounded-xl border border-[#E6DED4] bg-white placeholder:text-zinc-400 leading-relaxed focus:border-[#0073F5] focus:ring-2 focus:ring-[#0073F5]/20 outline-none resize-none"
                       />
 
-                      {/* Feedback Template Quick Chips */}
-                      <div className="flex flex-wrap gap-1 pt-0.5">
+                      <div className="flex flex-wrap gap-1">
                         <button
                           type="button"
-                          onClick={() => appendFeedbackTemplate("Very clear articulation and well-structured presentation.")}
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition"
+                          onClick={() =>
+                            appendFeedbackTemplate(
+                              "Hasil ujian CBT sangat baik! Pemahaman kosakata dan kelancaran speaking sudah memenuhi target."
+                            )
+                          }
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FBF6F1] hover:bg-[#EFE7DD] text-[#0B2559] border border-[#E6DED4] transition cursor-pointer"
                         >
-                          + Clear Articulation
+                          + Hasil Sangat Baik
                         </button>
                         <button
                           type="button"
-                          onClick={() => appendFeedbackTemplate("Please review and elaborate more on the final analytical points.")}
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition"
+                          onClick={() =>
+                            appendFeedbackTemplate(
+                              "Perhatikan kembali struktur kalimat pada bagian Translate dan latih pengucapan Speaking."
+                            )
+                          }
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#FBF6F1] hover:bg-[#EFE7DD] text-[#0B2559] border border-[#E6DED4] transition cursor-pointer"
                         >
-                          + Elaborate Analysis
+                          + Evaluasi Translate &amp; Speaking
                         </button>
                         <button
                           type="button"
-                          onClick={() => appendFeedbackTemplate("Score did not meet the passing threshold. Please submit the remedial paper.")}
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-50 hover:bg-red-100 text-red-700 border border-red-100 transition"
+                          onClick={() =>
+                            appendFeedbackTemplate(
+                              "Skor belum mencapai KKM. Silakan pelajari kembali modul dan kerjakan ujian Remedial CBT di sistem."
+                            )
+                          }
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition cursor-pointer"
                         >
-                          + Needs Remedial
+                          + Arahan Remedial
                         </button>
                       </div>
                     </div>
 
-                    {/* Feedback Messages */}
+                    {/* Error & Success Messages */}
                     {error && (
                       <div className="text-[11px] text-red-700 font-bold bg-red-50 p-2.5 rounded-xl border border-red-200 flex flex-col gap-2">
-                        <div className="flex items-start gap-1.5">
-                          <LandingIcon name="X" size={14} color="#dc2626" className="shrink-0 mt-0.5" />
-                          <span>{error}</span>
-                        </div>
+                        <span>{error}</span>
                         {error.toLowerCase().includes("tanda tangan") && (
                           <Link
-                            href="/instructor/profile"
+                            href="/instructor/profile#tanda-tangan"
                             target="_blank"
-                            className="inline-flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900 font-extrabold underline mt-0.5"
+                            className="inline-flex items-center gap-1.5 text-xs text-[#0062D1] hover:underline font-extrabold"
                           >
-                            <LandingIcon name="Award" size={14} color="currentColor" />
-                            <span>Buka Profil Instruktur untuk Upload Tanda Tangan &rarr;</span>
+                            <span>Buka Profil untuk Upload Tanda Tangan &rarr;</span>
                           </Link>
                         )}
                       </div>
                     )}
                     {successMsg && (
-                      <p className="text-[11px] text-emerald-800 font-bold bg-emerald-50 p-2 rounded-lg border border-emerald-200 flex items-center gap-1.5">
-                        <LandingIcon name="CheckCircle" size={13} color="currentColor" />
+                      <p className="m-0 text-[11px] text-emerald-800 font-bold bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
                         {successMsg}
                       </p>
                     )}
                   </div>
 
-                  {/* Warning if instructor signature is missing and score is passing */}
+                  {/* Digital Signature Gate Warning */}
                   {!instructorHasSignature && isPassingGrade && (
-                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex flex-col gap-2 shadow-2xs">
-                      <div className="flex items-center gap-1.5 font-extrabold text-amber-900">
-                        <LandingIcon name="Lock" size={15} color="#d97706" />
-                        <span>Wajib Tanda Tangan Digital Sebelum Menerbitkan Sertifikat</span>
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5 font-extrabold">
+                        <LandingIcon name="Lock" size={14} color="#d97706" />
+                        <span>Wajib Tanda Tangan Digital</span>
                       </div>
-                      <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
-                        Nilai siswa memenuhi standar kelulusan (Lulus). Namun, Anda belum mengunggah tanda tangan digital di profil sehingga sertifikat belum dapat diterbitkan.
+                      <p className="m-0 text-[11px] text-amber-800 leading-relaxed">
+                        Unggah tanda tangan digital Anda di Profil Instruktur sebelum menerbitkan
+                        sertifikat kelulusan siswa.
                       </p>
                       <Link
-                        href="/instructor/profile"
+                        href="/instructor/profile#tanda-tangan"
                         target="_blank"
-                        className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition shadow-xs"
+                        className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition"
                       >
-                        <LandingIcon name="Award" size={13} color="#fff" />
-                        <span>Unggah Tanda Tangan di Profil Instruktur &rarr;</span>
+                        Unggah Tanda Tangan &rarr;
                       </Link>
                     </div>
                   )}
 
-                  {/* Primary CTA Submit Button */}
+                  {/* Save Button & Prev/Next */}
                   <div className="pt-2 border-t border-zinc-100 space-y-2">
                     <button
                       type="button"
                       disabled={saving}
                       onClick={handleGrade}
-                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-black text-white shadow-xs transition flex items-center justify-center gap-2 ${
-                        isPassingGrade ? "bg-[#F26A12] hover:bg-[#D65507]" : "bg-[#0B2559] hover:bg-[#133575]"
+                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-extrabold text-white shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 ${
+                        isPassingGrade
+                          ? "bg-[#F26A12] hover:bg-[#D65507]"
+                          : "bg-[#0B2559] hover:bg-[#133882]"
                       }`}
                     >
                       <LandingIcon name={isPassingGrade ? "Award" : "FileText"} size={14} color="#fff" />
                       <span>
                         {saving
-                          ? "Saving..."
-                          : selectedSubmission.status !== "pending"
-                          ? isPassingGrade
-                            ? "Update Grade & Issue Certificate"
-                            : "Update Evaluation (Set to Remedial)"
+                          ? "Menyimpan..."
                           : isPassingGrade
-                          ? "Save & Issue Certificate"
-                          : "Save Evaluation (Remedial)"}
+                          ? "Simpan Nilai & Terbitkan Sertifikat"
+                          : "Simpan Evaluasi (Remedial)"}
                       </span>
                     </button>
 
-                    {/* Prev / Next Shortcuts */}
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-500 pt-1">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-zinc-500 pt-1">
                       <button
                         type="button"
                         onClick={handlePrev}
                         disabled={!hasPrev}
-                        className="hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                        className="hover:text-[#0B2559] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                       >
-                        &larr; Previous
+                        &larr; Sebelumnya
                       </button>
                       <button
                         type="button"
                         onClick={handleNext}
                         disabled={!hasNext}
-                        className="hover:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                        className="hover:text-[#0B2559] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                       >
-                        Next &rarr;
+                        Berikutnya &rarr;
                       </button>
                     </div>
                   </div>
@@ -1250,7 +1243,7 @@ export function InstructorExamReviewWorkbench({
               </>
             ) : (
               <div className="flex h-full items-center justify-center text-center p-6 text-zinc-400 text-xs">
-                Select a student to grade.
+                Pilih siswa untuk menilai ujian CBT.
               </div>
             )}
           </div>

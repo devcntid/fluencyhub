@@ -5,11 +5,13 @@ import { gradeExamSubmission } from "@/lib/db/exams.queries";
 
 const GradeSchema = z.object({
   submissionId: z.number().int().positive(),
+  finalScore: z.number().min(0).max(100).optional(),
   readingScore: z.number().min(0).max(100).optional(),
   listeningScore: z.number().min(0).max(100).optional(),
   writingScore: z.number().min(0).max(100).optional(),
   speakingScore: z.number().min(0).max(100).optional(),
   manualScore: z.number().min(0).max(100).optional(),
+  cbtResults: z.record(z.string(), z.any()).nullable().optional(),
   feedback: z.string().nullable().optional(),
 });
 
@@ -32,11 +34,13 @@ export async function POST(req: Request) {
   try {
     const result = await gradeExamSubmission({
       submissionId: parsed.data.submissionId,
+      finalScore: parsed.data.finalScore,
       readingScore: parsed.data.readingScore,
       listeningScore: parsed.data.listeningScore,
       writingScore: parsed.data.writingScore,
       speakingScore: parsed.data.speakingScore,
       manualScore: parsed.data.manualScore,
+      cbtResults: parsed.data.cbtResults ?? null,
       feedback: parsed.data.feedback || null,
       instructorId,
     });
@@ -49,16 +53,17 @@ export async function POST(req: Request) {
         ? "Nilai berhasil disimpan! Siswa dinyatakan Lulus dan Sertifikat resmi telah otomatis diterbitkan."
         : "Nilai berhasil disimpan. Siswa belum mencapai nilai kelulusan.",
     });
-  } catch (err: any) {
-    if (err?.code === "INSTRUCTOR_SIGNATURE_REQUIRED") {
+  } catch (err: unknown) {
+    const errObj = err as { code?: string; message?: string } | null;
+    if (errObj?.code === "INSTRUCTOR_SIGNATURE_REQUIRED") {
       return NextResponse.json(
         {
-          error: err.message,
+          error: errObj.message,
           requiresSignature: true,
         },
         { status: 400 }
       );
     }
-    return NextResponse.json({ error: err.message || "Gagal menyimpan penilaian." }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Gagal menyimpan penilaian." }, { status: 500 });
   }
 }

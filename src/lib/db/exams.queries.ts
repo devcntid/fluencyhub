@@ -412,11 +412,13 @@ export async function submitExamAnswers(data: {
 
 export async function gradeExamSubmission(data: {
   submissionId: number;
+  finalScore?: number;
   readingScore?: number;
   listeningScore?: number;
   writingScore?: number;
   speakingScore?: number;
   manualScore?: number;
+  cbtResults?: Record<string, unknown> | null;
   feedback?: string | null;
   instructorId: number;
 }): Promise<{ submission: ExamSubmission; certificateIssued: boolean; certificateCode?: string }> {
@@ -428,17 +430,46 @@ export async function gradeExamSubmission(data: {
     LIMIT 1
   `;
   if (!subRows[0]) throw new Error("Submission not found");
-  const sub = subRows[0] as Record<string, any>;
+  const sub = subRows[0] as Record<string, unknown>;
+  const existingAnswers = (sub.answers as Record<string, unknown>) || {};
 
-  // Input 4 keterampilan bahasa (0 - 100):
-  const fallback = Number(data.manualScore ?? 0);
-  const readingScore = Math.max(0, Math.min(100, Number(data.readingScore ?? fallback)));
-  const listeningScore = Math.max(0, Math.min(100, Number(data.listeningScore ?? fallback)));
-  const writingScore = Math.max(0, Math.min(100, Number(data.writingScore ?? fallback)));
-  const speakingScore = Math.max(0, Math.min(100, Number(data.speakingScore ?? fallback)));
+  // Clamp helper 0 - 100
+  const clampScore = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
 
-  // Sistem yang merata-ratakan nilai dari 4 sub-tes:
-  const finalScore = Math.round((readingScore + listeningScore + writingScore + speakingScore) / 4);
+  let finalScore: number;
+  let readingScore: number;
+  let listeningScore: number;
+  let writingScore: number;
+  let speakingScore: number;
+
+  if (data.cbtResults && typeof data.cbtResults.finalPercentage === "number") {
+    // Penilaian langsung dari jawaban soal CBT di sistem
+    finalScore = clampScore(Number(data.cbtResults.finalPercentage));
+    readingScore = clampScore(Number(data.cbtResults.readingScore ?? data.readingScore ?? finalScore));
+    speakingScore = clampScore(Number(data.cbtResults.speakingScore ?? data.speakingScore ?? finalScore));
+    writingScore = readingScore;
+    listeningScore = speakingScore;
+  } else if (typeof data.finalScore === "number") {
+    finalScore = clampScore(data.finalScore);
+    readingScore = clampScore(Number(data.readingScore ?? finalScore));
+    speakingScore = clampScore(Number(data.speakingScore ?? finalScore));
+    writingScore = clampScore(Number(data.writingScore ?? readingScore));
+    listeningScore = clampScore(Number(data.listeningScore ?? speakingScore));
+  } else {
+    // Fallback kompatibilitas bila pemanggil lama mengirim 4 skor terpisah
+    const fallback = Number(data.manualScore ?? 0);
+    readingScore = clampScore(Number(data.readingScore ?? fallback));
+    listeningScore = clampScore(Number(data.listeningScore ?? fallback));
+    writingScore = clampScore(Number(data.writingScore ?? fallback));
+    speakingScore = clampScore(Number(data.speakingScore ?? fallback));
+    finalScore = clampScore((readingScore + listeningScore + writingScore + speakingScore) / 4);
+  }
+
+  const updatedAnswers = data.cbtResults
+    ? { ...existingAnswers, cbtResults: data.cbtResults }
+    : existingAnswers;
+  const updatedAnswersJson = JSON.stringify(updatedAnswers);
+
   const passingScore = Number(sub.passing_score || 70);
   const isPassed = finalScore >= passingScore;
   const status: ExamSubmission["status"] = isPassed ? "passed" : "failed";
@@ -467,6 +498,7 @@ export async function gradeExamSubmission(data: {
 
   const rows = await sql`
     UPDATE exam_submissions SET
+      answers = ${updatedAnswersJson}::jsonb,
       reading_score = ${readingScore},
       listening_score = ${listeningScore},
       writing_score = ${writingScore},
