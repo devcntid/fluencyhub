@@ -22,10 +22,12 @@ export function CmsSettingsForm({ initial }: CmsSettingsFormProps) {
       initial.problem_subtitle ??
       "Kamu tidak sendirian. Speaking adalah kemampuan bahasa Inggris terlemah orang Indonesia: skor 447, di bawah reading 491 (EF EPI 2025).",
 
-    cta_title: initial.cta_title ?? "Kesiapan bahasa Inggris tim, terukur per orang",
+    cta_title:
+      initial.cta_title ??
+      "Bingung pilih kelas atau jadwal yang pas? Yuk konsultasi dulu",
     cta_subtitle:
       initial.cta_subtitle ??
-      "Asesmen awal dan akhir, laporan kenaikan skor per karyawan, dan ringkasan dampak untuk manajemen.",
+      "Cocok untuk anak-anak, pelajar, ibu rumah tangga, pekerja, maupun rombongan sekolah dan kantor. Kami bantu pilihkan level, program, dan jadwal belajar terbaik.",
   });
 
   const [busy, setBusy] = useState(false);
@@ -206,46 +208,46 @@ export function CmsSettingsForm({ initial }: CmsSettingsFormProps) {
         </div>
       </div>
 
-      {/* CARD 3: ENGLISH READY FOR TEAMS (FINAL CTA) */}
+      {/* CARD 3: KONSULTASI PROGRAM (FINAL CTA) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
-              🏢
+              💬
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 font-heading">
-                English Ready for Teams (Penawaran B2B)
+                Konsultasi Program &amp; Jadwal Belajar
               </h2>
               <p className="text-xs text-slate-500">
-                Banner penawaran pelatihan bahasa Inggris untuk instansi, perusahaan, dan tim kerja
+                Banner konsultasi gratis untuk semua kalangan (anak, pelajar, ibu rumah tangga, pekerja, hingga rombongan)
               </p>
             </div>
           </div>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100">
-            Bagian B2B
+            Konsultasi
           </span>
         </div>
 
         <div className="grid gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-slate-700">Judul Penawaran Tim (CTA Title)</label>
+            <label className="text-xs font-bold text-slate-700">Judul Banner Konsultasi (CTA Title)</label>
             <input
               type="text"
               className="w-full rounded-xl border border-slate-300 p-2.5 text-xs sm:text-sm font-bold text-slate-900 focus:border-[#0073F5] outline-none transition"
               value={values.cta_title}
-              placeholder="Contoh: Kesiapan bahasa Inggris tim, terukur per orang"
+              placeholder="Contoh: Bingung pilih kelas atau jadwal yang pas? Yuk konsultasi dulu"
               onChange={(e) => setValues((v) => ({ ...v, cta_title: e.target.value }))}
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-slate-700">Deskripsi Penawaran Tim (CTA Subtitle)</label>
+            <label className="text-xs font-bold text-slate-700">Deskripsi Banner Konsultasi (CTA Subtitle)</label>
             <textarea
               rows={2}
               className="w-full rounded-xl border border-slate-300 p-2.5 text-xs sm:text-sm text-slate-800 leading-relaxed focus:border-[#0073F5] outline-none transition"
               value={values.cta_subtitle}
-              placeholder="Contoh: Asesmen awal dan akhir, laporan kenaikan skor per karyawan, dan ringkasan dampak untuk manajemen."
+              placeholder="Contoh: Cocok untuk anak-anak, pelajar, ibu rumah tangga, pekerja, maupun rombongan sekolah dan kantor."
               onChange={(e) => setValues((v) => ({ ...v, cta_subtitle: e.target.value }))}
             />
           </div>

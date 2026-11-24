@@ -8,7 +8,7 @@ const NAV_LINKS = [
   { href: "/#program", label: "Program" },
   { href: "/#ready-score", label: "Ready Score" },
   { href: "/#podcast", label: "Podcast" },
-  { href: "/#untuk-tim", label: "Untuk Tim" },
+  { href: "/#konsultasi", label: "Konsultasi" },
   { href: "/#faq", label: "FAQ" },
 ];
 

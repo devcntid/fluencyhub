@@ -26,13 +26,23 @@ const FALLBACK_MOMENT: Testimonial[] = [
   },
 ];
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "ER";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 export function TestimonialSection({ items }: { items: Testimonial[] }) {
   const moments = items.length > 0 ? items : FALLBACK_MOMENT;
   const [activeIndex, setActiveIndex] = useState(0);
+  const [failedAvatarUrls, setFailedAvatarUrls] = useState<Record<string, boolean>>({});
 
   const safeIndex = activeIndex % moments.length;
   const current = moments[safeIndex];
   const progression = SCORE_PROGRESSIONS[safeIndex % SCORE_PROGRESSIONS.length];
+  const avatarSrc = current.avatarUrl?.trim() || "";
+  const showAvatarImage = Boolean(avatarSrc) && !failedAvatarUrls[avatarSrc];
 
   return (
     <section
@@ -100,15 +110,43 @@ export function TestimonialSection({ items }: { items: Testimonial[] }) {
           )}
         </div>
 
-        <div className="flex flex-col gap-3 rounded-[20px] border border-dashed border-[#C9BBA9] bg-white p-6">
+        <div className="flex flex-col gap-4 rounded-[20px] border border-dashed border-[#C9BBA9] bg-white p-6">
           <p className="m-0 text-[16.5px] leading-[1.6] text-[#0B2559] sm:text-[17px]">
             “{current.quote}”
           </p>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="font-bold text-[#0B2559]">
-              {current.name}, {current.role}
-            </span>
-            <span className="rounded-full bg-[#FBF6F1] px-2.5 py-1 font-bold text-[#0B2559]">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex min-w-0 items-center gap-3">
+              {showAvatarImage ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  key={avatarSrc}
+                  src={avatarSrc}
+                  alt={`Foto ${current.name}`}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={() =>
+                    setFailedAvatarUrls((prev) => ({ ...prev, [avatarSrc]: true }))
+                  }
+                  className="h-11 w-11 shrink-0 rounded-full border-2 border-[#E6DED4] bg-[#FBF6F1] object-cover object-top"
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0B2559] text-xs font-extrabold tracking-wide text-white"
+                >
+                  {getInitials(current.name)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="truncate text-sm font-extrabold text-[#0B2559]">
+                  {current.name}
+                </div>
+                <div className="truncate text-xs font-medium text-[#4A5468]">
+                  {current.role}
+                </div>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full border border-[#E6DED4] bg-[#FBF6F1] px-3 py-1 text-xs font-bold text-[#0B2559]">
               Baseline {progression.baseline} → Exit {progression.exit}
             </span>
           </div>

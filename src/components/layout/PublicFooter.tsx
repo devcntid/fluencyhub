@@ -31,8 +31,8 @@ export function PublicFooter() {
             <Link href="/#program" className="text-[#D5DDEE] transition-colors hover:text-white">
               Ready for the World
             </Link>
-            <Link href="/#untuk-tim" className="text-[#D5DDEE] transition-colors hover:text-white">
-              Untuk Tim
+            <Link href="/#konsultasi" className="text-[#D5DDEE] transition-colors hover:text-white">
+              Konsultasi Program
             </Link>
           </div>
 

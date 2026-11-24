@@ -44,7 +44,12 @@ export default async function LandingPage({
       <MethodSection items={methods} imageUrl={settings.method_image_url ?? ""} />
       <ProgramAndCatalogSection />
       <TestimonialSection items={testimonials} />
-      <TeamsBannerSection settings={settings} />
+      <TeamsBannerSection
+        settings={settings}
+        isLoggedIn={Boolean(session?.user?.id)}
+        userName={session?.user?.name ?? null}
+        userEmail={session?.user?.email ?? null}
+      />
       <FaqSection items={faqs} />
     </main>
   );

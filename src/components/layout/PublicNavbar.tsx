@@ -77,10 +77,10 @@ export async function PublicNavbar() {
             Podcast
           </Link>
           <Link
-            href="/#untuk-tim"
+            href="/#konsultasi"
             className="text-[#0B2559] transition-colors hover:text-[#C2530A]"
           >
-            Untuk Tim
+            Konsultasi
           </Link>
           <Link
             href="/#faq"
