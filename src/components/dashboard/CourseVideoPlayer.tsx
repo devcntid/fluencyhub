@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -58,18 +58,26 @@ export function CourseVideoPlayer({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const urlLesson = searchParams.get("lesson");
-  const parsedUrlLesson = urlLesson ? Number(urlLesson) : null;
+  const urlLessonRaw = searchParams.get("lesson");
+  const parsedUrlLesson =
+    urlLessonRaw && !Number.isNaN(Number(urlLessonRaw)) ? Number(urlLessonRaw) : null;
 
-  const [localLessonId, setLocalLessonId] = useState<number | null>(
-    parsedUrlLesson && !Number.isNaN(parsedUrlLesson)
-      ? parsedUrlLesson
-      : initialLessonId || null
+  const [activeLessonId, setActiveLessonId] = useState<number | null>(
+    parsedUrlLesson ?? initialLessonId ?? null
   );
+  const [prevUrlLesson, setPrevUrlLesson] = useState<number | null>(parsedUrlLesson);
 
-  // URL param takes precedence when present
-  const activeLessonId =
-    parsedUrlLesson && !Number.isNaN(parsedUrlLesson) ? parsedUrlLesson : localLessonId;
+  // Sync if URL query param changes externally (e.g. course switch or browser back/forward)
+  if (parsedUrlLesson !== prevUrlLesson) {
+    setPrevUrlLesson(parsedUrlLesson);
+    setActiveLessonId(parsedUrlLesson);
+  }
+
+  const playerCardRef = useRef<HTMLDivElement>(null);
+  const playlistScrollRef = useRef<HTMLDivElement>(null);
+  const pendingScrollModeRef = useRef<"force" | "keep-in-view" | null>(
+    parsedUrlLesson || initialLessonId ? "force" : null
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,24 +92,84 @@ export function CourseVideoPlayer({
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [noteStatus, setNoteStatus] = useState("");
 
+  const scrollPlayerIntoPosition = useCallback((mode: "force" | "keep-in-view") => {
+    if (typeof window === "undefined") return;
+    const el = playerCardRef.current;
+    if (!el) return;
+
+    const topOffset = 84; // 72px sticky dashboard topbar + 12px breathing room
+    const rect = el.getBoundingClientRect();
+
+    if (mode === "keep-in-view") {
+      // Keep the viewport completely still when the player is already comfortably in view
+      const isComfortablyInView = rect.top >= -40 && rect.top <= window.innerHeight * 0.45;
+      if (isComfortablyInView) return;
+    }
+
+    const targetY = Math.max(0, window.scrollY + rect.top - topOffset);
+    window.scrollTo({ top: targetY, behavior: "smooth" });
+  }, []);
+
   function handleSelectLesson(lessonId: number) {
-    setLocalLessonId(lessonId);
+    const wasAlreadyWatching = Boolean(activeLessonId);
+    pendingScrollModeRef.current = wasAlreadyWatching ? "keep-in-view" : "force";
+
+    setActiveLessonId(lessonId);
     setNoteContent("");
     setNoteStatus("");
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("lesson", String(lessonId));
-    router.replace(`?${params.toString()}`, { scroll: false });
+
     if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const params = new URLSearchParams(window.location.search);
+      params.set("lesson", String(lessonId));
+      window.history.replaceState(null, "", `?${params.toString()}`);
     }
   }
 
   function handleClosePlayer() {
-    setLocalLessonId(null);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("lesson");
-    router.replace(`?${params.toString()}`, { scroll: false });
+    pendingScrollModeRef.current = null;
+    setActiveLessonId(null);
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("lesson");
+      const qs = params.toString();
+      window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+    }
   }
+
+  // Keep viewport anchored consistently on the player (never jump back to hero banner top)
+  // and keep the active lesson visible inside the playlist sidebar without scrolling the window.
+  useEffect(() => {
+    if (!activeLessonId) return;
+
+    const scrollMode = pendingScrollModeRef.current;
+    pendingScrollModeRef.current = null;
+
+    const rafId = window.requestAnimationFrame(() => {
+      if (scrollMode) {
+        scrollPlayerIntoPosition(scrollMode);
+      }
+
+      const listEl = playlistScrollRef.current;
+      if (listEl) {
+        const activeBtn = listEl.querySelector<HTMLElement>(`[data-lesson-id="${activeLessonId}"]`);
+        if (activeBtn) {
+          const itemTop = activeBtn.offsetTop;
+          const itemBottom = itemTop + activeBtn.offsetHeight;
+          const viewTop = listEl.scrollTop;
+          const viewBottom = viewTop + listEl.clientHeight;
+          if (itemTop < viewTop || itemBottom > viewBottom) {
+            listEl.scrollTo({
+              top: Math.max(0, itemTop - listEl.clientHeight / 2 + activeBtn.offsetHeight / 2),
+              behavior: "smooth",
+            });
+          }
+        }
+      }
+    });
+
+    return () => window.cancelAnimationFrame(rafId);
+  }, [activeLessonId, scrollPlayerIntoPosition]);
 
   function toggleSection(sectionId: number) {
     setCollapsedSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
@@ -251,7 +319,8 @@ export function CourseVideoPlayer({
 
         {/* Main Player Card */}
         <div
-          className="player-shell rounded-2xl sm:rounded-3xl border border-[#E6DED4] overflow-hidden shadow-sm bg-white"
+          ref={playerCardRef}
+          className="player-shell scroll-mt-24 rounded-2xl sm:rounded-3xl border border-[#E6DED4] overflow-hidden shadow-sm bg-white"
           style={{ minHeight: "auto" }}
         >
           {/* Navy Player Topbar */}
@@ -423,6 +492,7 @@ export function CourseVideoPlayer({
                 </div>
               ) : (
                 <ProtectedVideoPlayer
+                  playbackKey={activeLesson.id}
                   youtubeVideoId={activeLesson.youtubeVideoId}
                   title={activeLesson.title}
                   autoplay={true}
@@ -548,7 +618,10 @@ export function CourseVideoPlayer({
                 </span>
               </div>
 
-              <div className="max-h-[420px] xl:max-h-[560px] overflow-y-auto space-y-4 pr-1">
+              <div
+                ref={playlistScrollRef}
+                className="relative max-h-[420px] xl:max-h-[560px] overflow-y-auto space-y-4 pr-1"
+              >
                 {curriculum.map((sec) => (
                   <div key={sec.id} className="space-y-1.5">
                     {sec.courseTitle && (
@@ -565,6 +638,7 @@ export function CourseVideoPlayer({
                           <button
                             key={l.id}
                             type="button"
+                            data-lesson-id={l.id}
                             onClick={() => handleSelectLesson(l.id)}
                             className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition cursor-pointer border ${
                               isPlaying

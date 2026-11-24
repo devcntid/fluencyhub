@@ -597,20 +597,34 @@ export const CBT_EXAM_PRESETS: CbtExamPreset[] = [
   },
 ];
 
+export const CBT_QUESTIONS_PER_EXAM = 10;
+
 /**
- * Default Comprehensive Question Bank (Paket Jago Bahasa Inggris A1–A3 Mixed)
+ * Default Comprehensive Question Pool (24 Soal — 6 Vocab, 6 Isian, 6 Translate, 6 Speaking @ 10 poin)
  * Used as fallback when instructor hasn't saved custom questions yet.
+ * Every student automatically receives a unique randomized set of 10 questions (100 poin).
  */
-export const DEFAULT_CBT_QUESTIONS: CbtQuestion[] = [
-  PRESET_A2_SCHOOL[0], // Vocab Match: Progress
-  PRESET_A2_SCHOOL[2], // Complete the Sentences: homework
-  PRESET_A3_TENSES[1], // 10 Tenses Fill: Present Perfect (learned)
-  PRESET_A2_SCHOOL[4], // Translate: I want to ask about my child's progress.
-  PRESET_A1_DAILY[6],  // Speaking A1: Introduce yourself
-  PRESET_A2_SCHOOL[6], // Speaking A2: Meeting the Teacher Role Play
-  PRESET_WH_INTERVIEW[4], // WH Interview: What do you do for a living
-  PRESET_A3_TENSES[6], // Speaking A3: Teamwork
+const ALL_PRESET_QUESTIONS: CbtQuestion[] = [
+  ...PRESET_A1_DAILY,
+  ...PRESET_A2_SCHOOL,
+  ...PRESET_A3_TENSES,
+  ...PRESET_WH_INTERVIEW,
 ];
+
+function buildBalancedPool(source: CbtQuestion[], perType = 6): CbtQuestion[] {
+  const types: CbtQuestionType[] = ["vocab_match", "text_fill", "translate", "audio_speaking"];
+  const picked: CbtQuestion[] = [];
+  for (const t of types) {
+    const items = source
+      .filter((q) => q.type === t)
+      .slice(0, perType)
+      .map((q) => ({ ...q, points: 10 }));
+    picked.push(...items);
+  }
+  return picked;
+}
+
+export const DEFAULT_CBT_QUESTIONS: CbtQuestion[] = buildBalancedPool(ALL_PRESET_QUESTIONS, 6);
 
 /**
  * Levenshtein Distance Algorithm (Edit Distance)
@@ -868,42 +882,163 @@ export function gradeSpeakingQuestion(transcript: string, question: CbtQuestion)
   };
 }
 
+function createMulberry32(seedInput: number): () => number {
+  let a = seedInput >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function mixSeed(userId: number, courseId: number, salt: number): number {
+  let h = 2166136261 >>> 0;
+  const parts = [userId, courseId, salt];
+  for (const part of parts) {
+    h ^= part >>> 0;
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+function shuffleWithMulberry<T>(arr: T[], seedInput: number): T[] {
+  const copy = [...arr];
+  const rand = createMulberry32(seedInput);
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function pickStratifiedBucketCounts(
+  bucketLengths: [number, number, number, number],
+  targetCount: number
+): [number, number, number, number] {
+  const total = bucketLengths[0] + bucketLengths[1] + bucketLengths[2] + bucketLengths[3];
+  if (total <= targetCount) return [...bucketLengths] as [number, number, number, number];
+
+  // Ideal balanced 10-question composition across all 4 CBT types:
+  // 3 Vocab A–D + 3 Isian + 2 Translate + 2 Speaking = 10 Soal
+  if (
+    targetCount === 10 &&
+    bucketLengths[0] >= 3 &&
+    bucketLengths[1] >= 3 &&
+    bucketLengths[2] >= 2 &&
+    bucketLengths[3] >= 2
+  ) {
+    return [3, 3, 2, 2];
+  }
+
+  // General proportional stratified allocation for custom bank ratios
+  const counts: [number, number, number, number] = [0, 0, 0, 0];
+  let remaining = targetCount;
+
+  // First guarantee at least 1 from every non-empty bucket
+  for (let i = 0; i < 4; i++) {
+    if (bucketLengths[i] > 0 && remaining > 0) {
+      counts[i] = 1;
+      remaining -= 1;
+    }
+  }
+
+  // Distribute remaining slots proportionally
+  if (remaining > 0) {
+    const spares = bucketLengths.map((len, i) => Math.max(0, len - counts[i]));
+    const totalSpare = spares.reduce((a, b) => a + b, 0);
+    if (totalSpare > 0) {
+      for (let i = 0; i < 4; i++) {
+        const extra = Math.min(spares[i], Math.floor((remaining * spares[i]) / totalSpare));
+        counts[i] += extra;
+      }
+      let assigned = counts[0] + counts[1] + counts[2] + counts[3];
+      let guard = 0;
+      while (assigned < targetCount && guard < 40) {
+        for (let i = 0; i < 4 && assigned < targetCount; i++) {
+          if (counts[i] < bucketLengths[i]) {
+            counts[i] += 1;
+            assigned += 1;
+          }
+        }
+        guard += 1;
+      }
+    }
+  }
+
+  return counts;
+}
+
 /**
- * Seeded Random Shuffle for Questions per User
+ * Deterministic Seeded Random Shuffle & Stratified Sampling per User
  * Guarantees:
- * 1. Stage 1: Written questions (Vocabulary Matching -> Complete the Sentences -> Translate into English)
- * 2. Stage 2: Oral questions (Audio Speaking Interview Test)
- * 3. Uniquely randomized within each group per user ID.
+ * 1. Each user receives up to `count` questions (default: 10 questions) uniquely drawn from the course pool.
+ * 2. Deterministic per (userId, courseId, isRemedial): refreshing mid-exam keeps the exact same 10 questions,
+ *    while different users receive different subsets & orders.
+ * 3. On remedial retry using the same pool (>= 20 questions), prioritizes unseen questions first!
+ * 4. Stage 1: Written (Vocab A–D -> Isian -> Translate), Stage 2: Oral (Speaking Interview).
  */
 export function getShuffledQuestionsForUser(
   userId: number,
-  questions: CbtQuestion[] = DEFAULT_CBT_QUESTIONS
+  questions: CbtQuestion[] = DEFAULT_CBT_QUESTIONS,
+  options?: {
+    count?: number;
+    courseId?: number;
+    isRemedial?: boolean;
+  }
 ): CbtQuestion[] {
-  const vocabQuestions = questions.filter((q) => q.type === "vocab_match");
-  const fillQuestions = questions.filter((q) => q.type === "text_fill");
-  const translateQuestions = questions.filter((q) => q.type === "translate");
-  const audioQuestions = questions.filter((q) => q.type === "audio_speaking");
+  const targetCount = options?.count ?? CBT_QUESTIONS_PER_EXAM;
+  const courseId = options?.courseId ?? 0;
+  const isRemedial = Boolean(options?.isRemedial);
 
-  function shuffleWithSeed<T>(arr: T[], salt: number): T[] {
-    const copy = [...arr];
-    let seed = ((userId + salt) * 1103515245 + 12345) & 0x7fffffff;
+  const drawForSalt = (pool: CbtQuestion[], attemptSalt: number): CbtQuestion[] => {
+    const vocab = shuffleWithMulberry(
+      pool.filter((q) => q.type === "vocab_match"),
+      mixSeed(userId, courseId, attemptSalt + 71)
+    );
+    const fill = shuffleWithMulberry(
+      pool.filter((q) => q.type === "text_fill"),
+      mixSeed(userId, courseId, attemptSalt + 101)
+    );
+    const translate = shuffleWithMulberry(
+      pool.filter((q) => q.type === "translate"),
+      mixSeed(userId, courseId, attemptSalt + 151)
+    );
+    const speaking = shuffleWithMulberry(
+      pool.filter((q) => q.type === "audio_speaking"),
+      mixSeed(userId, courseId, attemptSalt + 202)
+    );
 
-    for (let i = copy.length - 1; i > 0; i--) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      const rnd = seed / 0x7fffffff;
-      const j = Math.floor(rnd * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
+    const [vCount, fCount, tCount, sCount] = pickStratifiedBucketCounts(
+      [vocab.length, fill.length, translate.length, speaking.length],
+      targetCount
+    );
+
+    return [
+      ...vocab.slice(0, vCount),
+      ...fill.slice(0, fCount),
+      ...translate.slice(0, tCount),
+      ...speaking.slice(0, sCount),
+    ];
+  };
+
+  if (isRemedial && questions.length > targetCount) {
+    // Draw main set first, then prioritize unseen questions for the remedial attempt
+    const mainPicked = drawForSalt(questions, 17);
+    const seenIds = new Set(mainPicked.map((q) => q.id));
+    const unseenPool = questions.filter((q) => !seenIds.has(q.id));
+    if (unseenPool.length >= targetCount) {
+      return drawForSalt(unseenPool, 9001);
     }
-
-    return copy;
+    // Mix all unseen + top-up from shuffled main pool
+    const topUp = shuffleWithMulberry(mainPicked, mixSeed(userId, courseId, 9973)).slice(
+      0,
+      targetCount - unseenPool.length
+    );
+    return drawForSalt([...unseenPool, ...topUp], 9001);
   }
 
-  return [
-    ...shuffleWithSeed(vocabQuestions, 71),
-    ...shuffleWithSeed(fillQuestions, 101),
-    ...shuffleWithSeed(translateQuestions, 151),
-    ...shuffleWithSeed(audioQuestions, 202),
-  ];
+  return drawForSalt(questions, 17);
 }
 
 /**

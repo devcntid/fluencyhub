@@ -9,6 +9,7 @@ import {
   type CbtQuestion,
   type CbtUserAnswer,
   type CbtExamResult,
+  CBT_QUESTIONS_PER_EXAM,
   DEFAULT_CBT_QUESTIONS,
   getShuffledQuestionsForUser,
   gradeVocabMatchQuestion,
@@ -77,8 +78,8 @@ export function ExamPortal({
     exam.content.remedialCbtQuestions.length > 0;
   const usingRemedialBank = Boolean(isFailed && hasRemedialBank);
 
-  // Seeded Randomization: Use Instructor's custom CBT bank (or Remedial Set B if remedial), fallback to default bank
-  const questions: CbtQuestion[] = useMemo(() => {
+  // Seeded Randomization: Draw 10 unique questions per user from the course CBT bank (or Remedial Set B)
+  const { questions, sourceBankCount } = useMemo(() => {
     const customMain =
       Array.isArray(exam?.content?.cbtQuestions) && exam.content.cbtQuestions.length > 0
         ? (exam.content.cbtQuestions as CbtQuestion[])
@@ -88,9 +89,20 @@ export function ExamPortal({
         ? (exam.content.remedialCbtQuestions as CbtQuestion[])
         : null;
     const sourceBank = customRemedial || customMain || DEFAULT_CBT_QUESTIONS;
-    const seed = usingRemedialBank ? user.id + 10007 : user.id;
-    return getShuffledQuestionsForUser(seed, sourceBank);
-  }, [user.id, exam?.content?.cbtQuestions, exam?.content?.remedialCbtQuestions, usingRemedialBank]);
+    const drawn = getShuffledQuestionsForUser(user.id, sourceBank, {
+      count: CBT_QUESTIONS_PER_EXAM,
+      courseId,
+      isRemedial: Boolean(isFailed && !usingRemedialBank),
+    });
+    return { questions: drawn, sourceBankCount: sourceBank.length };
+  }, [
+    user.id,
+    courseId,
+    exam?.content?.cbtQuestions,
+    exam?.content?.remedialCbtQuestions,
+    usingRemedialBank,
+    isFailed,
+  ]);
 
   const timeRangeLabel = useMemo(() => {
     if (questions.length === 0) return "90 - 120 Detik";
@@ -563,10 +575,15 @@ export function ExamPortal({
                 Peraturan & Cara Pengerjaan Soal CBT
               </h3>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {usingRemedialBank && (
                 <span className="text-[11px] font-extrabold text-amber-800 bg-amber-100 border border-amber-200 px-2.5 py-0.5 rounded-full">
                   Set B (Remedial)
+                </span>
+              )}
+              {sourceBankCount > questions.length && (
+                <span className="text-[11px] font-bold text-[#0062D1] bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                  Soal Acak Unik ({questions.length} dari {sourceBankCount} Bank Soal)
                 </span>
               )}
               <span className="text-xs text-zinc-500 font-medium">Total: <strong>{questions.length} Soal</strong></span>
@@ -608,7 +625,7 @@ export function ExamPortal({
                 <span>Timer Cooldown per Nomor Soal</span>
               </div>
               <p className="text-xs text-zinc-600 leading-relaxed">
-                Setiap nomor soal dibatasi <strong>90 - 120 detik</strong>. Saat memutar ulang audio, <strong>timer tetap berjalan mundur tanpa reset</strong>. Begitu waktu habis, jawaban otomatis tersimpan dan berpindah ke nomor berikutnya.
+                Setiap nomor soal dibatasi <strong>{timeRangeLabel.toLowerCase()}</strong>. Saat memutar ulang audio, <strong>timer tetap berjalan mundur tanpa reset</strong>. Begitu waktu habis, jawaban otomatis tersimpan dan berpindah ke nomor berikutnya.
               </p>
             </div>
 
@@ -618,7 +635,15 @@ export function ExamPortal({
                 <span>Randomizer Berbeda Tiap Akun Siswa</span>
               </div>
               <p className="text-xs text-zinc-600 leading-relaxed">
-                Urutan soal teks dan audio diacak secara unik berdasarkan ID akunmu sehingga <strong>berbeda dari siswa lain</strong>, namun tetap menjaga urutan: menulis teks terlebih dahulu, lalu audio berikutnya.
+                {sourceBankCount > questions.length ? (
+                  <>
+                    Sistem memilih <strong>{questions.length} soal acak unik</strong> dari total <strong>{sourceBankCount} bank soal</strong> khusus berdasarkan ID akunmu sehingga <strong>paket soal &amp; urutannya berbeda dari siswa lain</strong>, tetap menjaga Tahap 1 teks lalu Tahap 2 audio.
+                  </>
+                ) : (
+                  <>
+                    Urutan soal teks dan audio diacak secara unik berdasarkan ID akunmu sehingga <strong>berbeda dari siswa lain</strong>, namun tetap menjaga urutan: menulis teks terlebih dahulu, lalu audio berikutnya.
+                  </>
+                )}
               </p>
             </div>
           </div>

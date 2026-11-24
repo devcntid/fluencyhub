@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LandingIcon } from "@/components/landing/LandingIcon";
-import { DEFAULT_CBT_QUESTIONS } from "@/lib/exams/cbt";
+import { CBT_QUESTIONS_PER_EXAM, DEFAULT_CBT_QUESTIONS } from "@/lib/exams/cbt";
 import type { Exam } from "@/types/db";
 import type { InstructorSubmissionRow } from "@/components/instructor/InstructorExamReviewWorkbench";
 
@@ -118,8 +118,13 @@ export function InstructorExamsManager({
                       {mainAudioCount} Speaking
                     </span>
                     <span className="rounded-lg bg-[#FBF6F1] border border-[#E6DED4] px-2 py-0.5 text-zinc-600">
-                      {mainTotalPoints} Poin
+                      {mainTotalPoints} Poin Pool
                     </span>
+                    {activeMainQuestions.length > CBT_QUESTIONS_PER_EXAM && (
+                      <span className="rounded-lg bg-blue-50 border border-blue-200 px-2 py-0.5 text-[#0062D1]">
+                        Acak {CBT_QUESTIONS_PER_EXAM} Soal / Siswa
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

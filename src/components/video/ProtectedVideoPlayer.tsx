@@ -1,9 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useId, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useId,
+  useCallback,
+  useSyncExternalStore,
+} from "react";
 import { EnglishReadyLogo } from "@/components/brand/EnglishReadyLogo";
 
 export interface ProtectedVideoPlayerProps {
+  playbackKey?: string | number;
   youtubeVideoId?: string | null;
   videoUrl?: string | null;
   title?: string;
@@ -13,12 +21,42 @@ export interface ProtectedVideoPlayerProps {
   onNextLesson?: () => void;
 }
 
+interface YTPlayerInstance {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
+  mute: () => void;
+  unMute: () => void;
+  setVolume: (volume: number) => void;
+  setPlaybackRate: (rate: number) => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
+  destroy: () => void;
+  [key: string]: unknown;
+}
+
+interface YTNamespace {
+  Player: new (
+    elementId: string,
+    options: {
+      events?: {
+        onReady?: (event: { target: YTPlayerInstance }) => void;
+        onStateChange?: (event: { data: number; target: YTPlayerInstance }) => void;
+      };
+    }
+  ) => YTPlayerInstance;
+}
+
 declare global {
   interface Window {
-    YT: any;
+    YT?: YTNamespace;
     onYouTubeIframeAPIReady?: () => void;
   }
 }
+
+const emptySubscribe = () => () => {};
+const getClientOrigin = () => (typeof window !== "undefined" ? window.location.origin : "");
+const getServerOrigin = () => "";
 
 function formatTime(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -32,6 +70,7 @@ function formatTime(seconds: number): string {
 }
 
 export function ProtectedVideoPlayer({
+  playbackKey,
   youtubeVideoId,
   videoUrl,
   title = "Video Lesson",
@@ -42,17 +81,18 @@ export function ProtectedVideoPlayer({
 }: ProtectedVideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<YTPlayerInstance | null>(null);
   const hideControlsTimerRef = useRef<NodeJS.Timeout | null>(null);
   const scrubBarRef = useRef<HTMLDivElement>(null);
 
   const rawId = useId();
-  const iframeId = `er-yt-player-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const baseIframeId = `er-yt-player-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const playerIdentity = `${playbackKey ?? ""}-${youtubeVideoId ?? ""}-${videoUrl ?? ""}`;
+  const activeIframeId = `${baseIframeId}-${String(playbackKey ?? youtubeVideoId ?? "none").replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
-  const [origin, setOrigin] = useState("");
-  const [isReady, setIsReady] = useState(false);
+  const origin = useSyncExternalStore(emptySubscribe, getClientOrigin, getServerOrigin);
+  const [prevIdentity, setPrevIdentity] = useState(playerIdentity);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(false);
   const [isEnded, setIsEnded] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -61,21 +101,25 @@ export function ProtectedVideoPlayer({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isScrubbing, setIsScrubbing] = useState(false);
   const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
   const [clickIndicator, setClickIndicator] = useState<"play" | "pause" | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
-  }, []);
+  // Cleanly reset playback overlay/timer when switching to another lesson while keeping container mounted
+  if (playerIdentity !== prevIdentity) {
+    setPrevIdentity(playerIdentity);
+    setIsPlaying(false);
+    setIsEnded(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setSpeedMenuOpen(false);
+  }
 
   // PostMessage helper fallback to control YouTube iframe directly
-  const sendCommand = useCallback((func: string, args: any[] = []) => {
-    if (playerRef.current && typeof playerRef.current[func] === "function") {
+  const sendCommand = useCallback((func: string, args: unknown[] = []) => {
+    const fn = playerRef.current?.[func];
+    if (typeof fn === "function") {
       try {
-        playerRef.current[func](...args);
+        (fn as (...callArgs: unknown[]) => void).apply(playerRef.current, args);
         return;
       } catch (e) {
         console.warn("Direct YT API call failed, falling back to postMessage:", e);
@@ -99,32 +143,26 @@ export function ProtectedVideoPlayer({
       if (destroyed || !window.YT || !window.YT.Player) return;
 
       try {
-        playerRef.current = new window.YT.Player(iframeId, {
+        playerRef.current = new window.YT.Player(activeIframeId, {
           events: {
-            onReady: (event: any) => {
+            onReady: (event) => {
               if (destroyed) return;
-              setIsReady(true);
               const dur = event.target.getDuration();
               if (dur && dur > 0) setDuration(dur);
               if (autoplay) {
                 event.target.playVideo();
               }
             },
-            onStateChange: (event: any) => {
+            onStateChange: (event) => {
               if (destroyed) return;
               // YT.PlayerState: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
               if (event.data === 1) {
                 setIsPlaying(true);
-                setIsBuffering(false);
                 setIsEnded(false);
               } else if (event.data === 2) {
                 setIsPlaying(false);
-                setIsBuffering(false);
-              } else if (event.data === 3) {
-                setIsBuffering(true);
               } else if (event.data === 0) {
                 setIsPlaying(false);
-                setIsBuffering(false);
                 setIsEnded(true);
                 if (onEnded) onEnded();
               }
@@ -165,11 +203,11 @@ export function ProtectedVideoPlayer({
       }
       playerRef.current = null;
     };
-  }, [youtubeVideoId, iframeId, autoplay, onEnded]);
+  }, [youtubeVideoId, activeIframeId, autoplay, onEnded]);
 
   // Sync current time and duration when playing
   useEffect(() => {
-    if (!isPlaying || isScrubbing) return;
+    if (!isPlaying) return;
 
     const interval = setInterval(() => {
       if (playerRef.current) {
@@ -183,7 +221,7 @@ export function ProtectedVideoPlayer({
     }, 300);
 
     return () => clearInterval(interval);
-  }, [isPlaying, isScrubbing]);
+  }, [isPlaying]);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -296,6 +334,7 @@ export function ProtectedVideoPlayer({
     return (
       <div className={`relative aspect-video w-full overflow-hidden rounded-[var(--r-lg)] bg-black shadow-md ${className}`}>
         <video
+          key={playerIdentity}
           src={videoUrl}
           controls
           controlsList="nodownload"
@@ -382,8 +421,9 @@ export function ProtectedVideoPlayer({
       */}
       <div className="absolute inset-0 pointer-events-none">
         <iframe
+          key={activeIframeId}
           ref={iframeRef}
-          id={iframeId}
+          id={activeIframeId}
           className="w-full h-full border-0 pointer-events-none"
           src={embedUrl}
           title={title}

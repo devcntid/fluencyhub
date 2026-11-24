@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { LandingIcon } from "@/components/landing/LandingIcon";
 import {
   CBT_EXAM_PRESETS,
+  CBT_QUESTIONS_PER_EXAM,
   OFFICIAL_SPEAKING_RUBRIC,
   type CbtQuestion,
   type CbtQuestionType,
@@ -190,6 +191,12 @@ function clonePresetQuestions(presetId: string, prefix: string): {
   };
 }
 
+let qIdCounter = 0;
+function makeUniqueQuestionId(prefix: string): string {
+  qIdCounter += 1;
+  return `${prefix}-${Date.now()}-${qIdCounter}`;
+}
+
 export function InstructorExamBuilder({
   course,
   initialExam,
@@ -252,16 +259,6 @@ export function InstructorExamBuilder({
   const setActiveList = activeTab === "main" ? setMainQuestions : setRemedialQuestions;
 
   useEffect(() => {
-    if (activeList.length === 0) {
-      if (selectedId !== null) setSelectedId(null);
-      return;
-    }
-    if (!selectedId || !activeList.some((q) => q.id === selectedId)) {
-      setSelectedId(activeList[0].id);
-    }
-  }, [activeList, selectedId]);
-
-  useEffect(() => {
     return () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
@@ -269,7 +266,12 @@ export function InstructorExamBuilder({
     };
   }, []);
 
-  const selectedIndex = activeList.findIndex((q) => q.id === selectedId);
+  const resolvedSelectedId =
+    selectedId && activeList.some((q) => q.id === selectedId)
+      ? selectedId
+      : activeList[0]?.id ?? null;
+
+  const selectedIndex = activeList.findIndex((q) => q.id === resolvedSelectedId);
   const selectedQ = selectedIndex >= 0 ? activeList[selectedIndex] : null;
 
   const stats = useMemo(() => {
@@ -380,7 +382,7 @@ export function InstructorExamBuilder({
   function handleDuplicateQuestion(q: CbtQuestion) {
     const copy: CbtQuestion = {
       ...q,
-      id: `${activeTab === "main" ? "cbt" : "rem"}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      id: makeUniqueQuestionId(activeTab === "main" ? "cbt" : "rem"),
       title: q.title ? `${q.title} (Salinan)` : "",
       options: q.options ? [...q.options] : undefined,
       acceptableAnswers: q.acceptableAnswers ? [...q.acceptableAnswers] : undefined,
@@ -569,8 +571,8 @@ export function InstructorExamBuilder({
 
       setSuccess("Bank soal ujian CBT berhasil disimpan dan langsung aktif untuk siswa!");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || "Gagal menyimpan konfigurasi ujian.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal menyimpan konfigurasi ujian.");
     } finally {
       setSaving(false);
     }
@@ -581,28 +583,35 @@ export function InstructorExamBuilder({
   return (
     <div className="mx-auto max-w-[1360px] space-y-5 pb-12">
       {/* Top Sticky Action Header */}
-      <div className="sticky top-0 z-20 rounded-2xl border border-zinc-200/90 bg-white/95 backdrop-blur px-4 py-3.5 sm:px-5 shadow-xs space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+      <div className="sticky top-0 z-20 rounded-2xl border border-[#E6DED4] bg-white/95 backdrop-blur px-4 py-4 sm:px-5 shadow-xs space-y-3.5">
+        {/* Row 1: Identity & Action Buttons */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
+          <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
             <Link
               href={`/instructor/curriculum?tab=exams&courseId=${course.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-xs font-bold text-zinc-700 transition shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E6DED4] bg-[#FBF6F1] hover:bg-[#EFE7DD] text-xs font-bold text-[#0B2559] transition shrink-0"
             >
               <LandingIcon name="ArrowLeft" size={14} color="currentColor" />
               <span>Kembali</span>
             </Link>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
-                  CBT Exam Builder &bull; Paket Jago Bahasa Inggris
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex items-center whitespace-nowrap shrink-0 text-[10px] font-extrabold uppercase tracking-wider text-[#0062D1] bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md">
+                  CBT Exam Builder
                 </span>
-                <span className="text-xs text-zinc-400 hidden sm:inline">&bull;</span>
-                <span className="text-xs font-semibold text-zinc-500 truncate hidden sm:inline">
+                <span className="text-zinc-300 hidden sm:inline shrink-0">&bull;</span>
+                <span
+                  title={course.title}
+                  className="text-xs font-semibold text-zinc-500 truncate hidden sm:inline min-w-0"
+                >
                   {course.title}
                 </span>
               </div>
-              <h1 className="text-sm sm:text-base font-black text-zinc-900 truncate mt-0.5 font-[family-name:var(--font-heading)]">
+              <h1
+                title={title || `Final Competency Exam — ${course.title}`}
+                className="m-0 text-base sm:text-lg font-extrabold text-[#0B2559] leading-snug truncate font-[family-name:var(--font-heading)]"
+              >
                 {title || `Final Competency Exam — ${course.title}`}
               </h1>
             </div>
@@ -612,23 +621,23 @@ export function InstructorExamBuilder({
             <button
               type="button"
               onClick={() => setShowPresetModal((prev) => !prev)}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                 showPresetModal
-                  ? "border-indigo-300 bg-indigo-50 text-indigo-800"
-                  : "border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-800"
+                  ? "border-[#0073F5] bg-blue-50 text-[#0062D1]"
+                  : "border-[#E6DED4] bg-[#FBF6F1] hover:bg-[#EFE7DD] text-[#0B2559]"
               }`}
             >
               <LandingIcon name="BookOpen" size={14} color="currentColor" />
-              <span>Template Paket A1–A3</span>
+              <span>Template A1–A3</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowSettings((prev) => !prev)}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                 showSettings
-                  ? "border-blue-300 bg-blue-50 text-blue-800"
-                  : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  ? "border-[#0073F5] bg-blue-50 text-[#0062D1]"
+                  : "border-[#E6DED4] bg-white hover:bg-[#FBF6F1] text-[#0B2559]"
               }`}
             >
               <LandingIcon name="Target" size={14} color="currentColor" />
@@ -639,27 +648,27 @@ export function InstructorExamBuilder({
               type="button"
               disabled={saving}
               onClick={handleSave}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#F26A12] hover:bg-[#D65507] disabled:opacity-50 text-white text-xs font-extrabold shadow-xs transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F26A12] hover:bg-[#D65507] disabled:opacity-50 text-white text-xs font-extrabold whitespace-nowrap shadow-xs transition cursor-pointer"
             >
               <LandingIcon name="Check" size={14} color="#fff" />
-              <span>{saving ? "Menyimpan..." : "Simpan & Terbitkan Soal"}</span>
+              <span>{saving ? "Menyimpan..." : "Simpan & Terbitkan"}</span>
             </button>
           </div>
         </div>
 
-        {/* Tab Switcher + Breakdown Pills */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-zinc-100">
-          <div className="inline-flex p-1 bg-zinc-100 rounded-xl border border-zinc-200/80 self-start">
+        {/* Row 2: Tab Switcher + Breakdown Pills */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pt-3 border-t border-[#EFE7DC]">
+          <div className="inline-flex p-1 bg-[#FBF6F1] rounded-xl border border-[#E6DED4] self-start">
             <button
               type="button"
               onClick={() => switchTab("main")}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
                 activeTab === "main"
-                  ? "bg-white text-blue-700 shadow-2xs"
-                  : "text-zinc-600 hover:text-zinc-900"
+                  ? "bg-white text-[#0B2559] shadow-2xs ring-1 ring-[#E6DED4]"
+                  : "text-zinc-500 hover:text-[#0B2559]"
               }`}
             >
-              <LandingIcon name="FileText" size={14} color="currentColor" />
+              <LandingIcon name="FileText" size={14} color={activeTab === "main" ? "#0073F5" : "currentColor"} />
               <span>1. Soal Ujian Utama</span>
               <span
                 className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
@@ -675,10 +684,10 @@ export function InstructorExamBuilder({
             <button
               type="button"
               onClick={() => switchTab("remedial")}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
                 activeTab === "remedial"
-                  ? "bg-white text-amber-800 shadow-2xs"
-                  : "text-zinc-600 hover:text-zinc-900"
+                  ? "bg-white text-[#C2530A] shadow-2xs ring-1 ring-[#E6DED4]"
+                  : "text-zinc-500 hover:text-[#0B2559]"
               }`}
             >
               <LandingIcon name="RotateCcw" size={14} color="currentColor" />
@@ -687,7 +696,7 @@ export function InstructorExamBuilder({
                 className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                   remedialQuestions.length > 0
                     ? "bg-amber-100 text-amber-900"
-                    : "bg-zinc-200 text-zinc-600"
+                    : "bg-zinc-200/80 text-zinc-600"
                 }`}
               >
                 {remedialQuestions.length > 0 ? `${remedialQuestions.length} Soal` : "Opsional"}
@@ -696,20 +705,22 @@ export function InstructorExamBuilder({
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
-            <span className="px-2 py-1 rounded-lg bg-teal-50 text-teal-700 border border-teal-100">
-              🔤 {stats.vocabCount} Vocab
+            <span className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200/70">
+              {stats.vocabCount} Vocab
             </span>
-            <span className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
-              ✍️ {stats.fillCount} Isian
+            <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#0062D1] border border-blue-200/70">
+              {stats.fillCount} Isian
             </span>
-            <span className="px-2 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-100">
-              🌐 {stats.translateCount} Translate
+            <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/70">
+              {stats.translateCount} Translate
             </span>
-            <span className="px-2 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
-              🎙️ {stats.audioCount} Speaking
+            <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-800 border border-purple-200/70">
+              {stats.audioCount} Speaking
             </span>
-            <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
-              {stats.totalPoints} Poin &bull; ~{stats.totalMinutes} mnt
+            <span className="px-2.5 py-1 rounded-lg bg-[#0B2559] text-white">
+              {activeList.length > CBT_QUESTIONS_PER_EXAM
+                ? `Pool ${activeList.length} Soal → Acak ${CBT_QUESTIONS_PER_EXAM}/Siswa`
+                : `${stats.totalPoints} Poin • ~${stats.totalMinutes} mnt`}
             </span>
           </div>
         </div>
@@ -924,12 +935,12 @@ export function InstructorExamBuilder({
               </button>
             </div>
 
-            {/* Clean Segmented Quick Add Bar */}
+            {/* Clean 2x2 Quick Add Grid (zero label truncation) */}
             <div>
               <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                 + Tambah Bentuk Soal:
               </div>
-              <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-100 rounded-xl border border-zinc-200/80">
+              <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-[#FBF6F1] rounded-xl border border-[#E6DED4]">
                 {(["vocab_match", "text_fill", "translate", "audio_speaking"] as CbtQuestionType[]).map((t) => {
                   const meta = QUESTION_TYPE_META[t];
                   return (
@@ -938,10 +949,10 @@ export function InstructorExamBuilder({
                       type="button"
                       onClick={() => handleAddQuestion(t)}
                       title={`Tambah ${meta.label}`}
-                      className="py-1.5 px-0.5 rounded-lg bg-white hover:bg-blue-50 text-zinc-700 hover:text-[#0062D1] border border-zinc-200/80 hover:border-[#0073F5]/40 text-[10.5px] font-bold shadow-2xs transition flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95"
+                      className="py-2 px-2.5 rounded-lg bg-white hover:bg-blue-50 text-[#0B2559] hover:text-[#0062D1] border border-[#E6DED4] hover:border-[#0073F5]/40 text-[11px] font-bold shadow-2xs transition flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
                     >
-                      <span className="text-xs">{meta.icon}</span>
-                      <span className="truncate max-w-full text-[9.5px]">{meta.shortLabel}</span>
+                      <span className="text-xs leading-none">{meta.icon}</span>
+                      <span>{meta.shortLabel}</span>
                     </button>
                   );
                 })}
@@ -965,7 +976,7 @@ export function InstructorExamBuilder({
               </div>
             ) : (
               activeList.map((q, idx) => {
-                const isSelected = q.id === selectedId;
+                const isSelected = q.id === resolvedSelectedId;
                 const meta = QUESTION_TYPE_META[q.type] || QUESTION_TYPE_META.text_fill;
                 const isIncomplete =
                   !q.title.trim() ||
